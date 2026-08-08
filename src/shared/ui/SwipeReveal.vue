@@ -23,11 +23,12 @@ const emit = defineEmits<{
 const rootRef = ref<HTMLElement | null>(null)
 const offset = ref(0)
 const dragging = ref(false)
+const tracking = ref(false)
 const armed = ref(false)
 
 const REVEAL_SNAP = 0.55
 const COMMIT_RATIO = 0.62
-const AXIS_LOCK = 10
+const AXIS_LOCK = 12
 
 let pointerId: number | null = null
 let startX = 0
@@ -73,6 +74,13 @@ function isInteractive(target: EventTarget | null) {
   return Boolean(target.closest('button, a, input, textarea, select, [role="menuitem"]'))
 }
 
+function resetGesture() {
+  tracking.value = false
+  dragging.value = false
+  pointerId = null
+  axis = null
+}
+
 function onPointerDown(event: PointerEvent) {
   if (props.disabled || event.button !== 0) return
   if (isInteractive(event.target)) return
@@ -86,12 +94,12 @@ function onPointerDown(event: PointerEvent) {
   startY = event.clientY
   startOffset = offset.value
   axis = null
-  dragging.value = true
-  root.setPointerCapture(event.pointerId)
+  tracking.value = true
+  dragging.value = false
 }
 
 function onPointerMove(event: PointerEvent) {
-  if (!dragging.value || event.pointerId !== pointerId) return
+  if (!tracking.value || event.pointerId !== pointerId) return
 
   const dx = event.clientX - startX
   const dy = event.clientY - startY
@@ -100,15 +108,22 @@ function onPointerMove(event: PointerEvent) {
     if (Math.abs(dx) < AXIS_LOCK && Math.abs(dy) < AXIS_LOCK) return
     axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
     if (axis === 'y') {
-      dragging.value = false
-      pointerId = null
-      releasePointer(event)
+      resetGesture()
       return
     }
+
+    const root = rootRef.value
+    if (!root) {
+      resetGesture()
+      return
+    }
+    dragging.value = true
+    root.setPointerCapture(event.pointerId)
   }
 
-  if (axis !== 'x') return
+  if (axis !== 'x' || !dragging.value) return
 
+  event.preventDefault()
   const next = Math.min(0, Math.max(-width, startOffset + dx))
   offset.value = next
   armed.value = Math.abs(next) >= props.revealWidth * REVEAL_SNAP
@@ -125,15 +140,13 @@ function finishDrag(event: PointerEvent) {
   if (event.pointerId !== pointerId) return
 
   const wasDragging = dragging.value
-  dragging.value = false
-  pointerId = null
+  const lockedAxis = axis
   releasePointer(event)
+  resetGesture()
 
-  if (!wasDragging || axis !== 'x') {
-    axis = null
+  if (!wasDragging || lockedAxis !== 'x') {
     return
   }
-  axis = null
 
   const abs = Math.abs(offset.value)
   const commitAt = width * COMMIT_RATIO
@@ -176,7 +189,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 onBeforeUnmount(() => {
-  pointerId = null
+  resetGesture()
 })
 
 defineExpose({ close })
@@ -213,6 +226,10 @@ defineExpose({ close })
   touch-action: pan-y;
   overflow: hidden;
   isolation: isolate;
+}
+
+.swipe.is-dragging {
+  touch-action: none;
 }
 
 .swipe__action {

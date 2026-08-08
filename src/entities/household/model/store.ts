@@ -1,9 +1,11 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { useSessionStore } from '@/entities/session'
 import {
   createHousehold as createHouseholdApi,
   fetchCurrentMembership,
   joinHousehold as joinHouseholdApi,
+  updateOwnDisplayName as updateOwnDisplayNameApi,
 } from '../api/householdApi'
 import type { HouseholdMember } from './member'
 import type { Household } from './types'
@@ -48,13 +50,15 @@ export const useHouseholdStore = defineStore('household', () => {
   }
 
   async function createHousehold(name: string) {
-    const created = await createHouseholdApi(name)
+    const session = useSessionStore()
+    const created = await createHouseholdApi(name, session.user?.displayName)
     await loadCurrent()
     return created
   }
 
   async function joinHousehold(code: string) {
-    const joined = await joinHouseholdApi(code)
+    const session = useSessionStore()
+    const joined = await joinHouseholdApi(code, session.user?.displayName)
     await loadCurrent()
     return joined
   }
@@ -63,6 +67,19 @@ export const useHouseholdStore = defineStore('household', () => {
     household.value = null
     members.value = []
     loaded.value = false
+  }
+
+  async function updateOwnDisplayName(displayName: string) {
+    const name = displayName.trim()
+    await updateOwnDisplayNameApi(name)
+    const session = useSessionStore()
+    const userId = session.user?.id
+    if (!userId) {
+      return
+    }
+    members.value = members.value.map((item) =>
+      item.userId === userId ? { ...item, displayName: name } : item,
+    )
   }
 
   return {
@@ -77,6 +94,7 @@ export const useHouseholdStore = defineStore('household', () => {
     loadCurrent,
     createHousehold,
     joinHousehold,
+    updateOwnDisplayName,
     clearHousehold,
   }
 })

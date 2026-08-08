@@ -4,10 +4,26 @@ import type { Session, User } from '@supabase/supabase-js'
 import { getErrorMessage, supabase } from '@/shared'
 import type { SessionUser } from './types'
 
+function readDisplayName(user: User): string {
+  const meta = user.user_metadata ?? {}
+  const fromMeta =
+    typeof meta.display_name === 'string'
+      ? meta.display_name.trim()
+      : typeof meta.full_name === 'string'
+        ? meta.full_name.trim()
+        : ''
+  if (fromMeta) {
+    return fromMeta
+  }
+  const emailLocal = (user.email ?? '').split('@')[0]?.trim()
+  return emailLocal || 'Участник'
+}
+
 function toSessionUser(user: User): SessionUser {
   return {
     id: user.id,
     email: user.email ?? '',
+    displayName: readDisplayName(user),
   }
 }
 
@@ -51,10 +67,16 @@ export const useSessionStore = defineStore('session', () => {
     applySession(data.session)
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string, displayName: string) {
+    const name = displayName.trim()
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: {
+        data: {
+          display_name: name,
+        },
+      },
     })
     if (error) {
       throw new Error(getErrorMessage(error, 'Не удалось создать аккаунт'))
@@ -73,6 +95,28 @@ export const useSessionStore = defineStore('session', () => {
     user.value = null
   }
 
+  async function updateDisplayName(displayName: string) {
+    const name = displayName.trim()
+    if (!name) {
+      throw new Error('Укажите имя')
+    }
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        display_name: name,
+      },
+    })
+    if (error) {
+      throw new Error(getErrorMessage(error, 'Не удалось обновить имя'))
+    }
+    if (data.user) {
+      user.value = toSessionUser(data.user)
+      return
+    }
+    if (user.value) {
+      user.value = { ...user.value, displayName: name }
+    }
+  }
+
   function dispose() {
     authSubscription?.unsubscribe()
     authSubscription = null
@@ -86,6 +130,7 @@ export const useSessionStore = defineStore('session', () => {
     login,
     register,
     logout,
+    updateDisplayName,
     dispose,
   }
 })

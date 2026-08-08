@@ -63,9 +63,12 @@ export async function fetchCurrentMembership(): Promise<{
   }
 }
 
-export async function createHousehold(name: string): Promise<Household> {
+export async function createHousehold(name: string, displayName?: string): Promise<Household> {
   const { data, error } = await supabase
-    .rpc('create_household', { p_name: name.trim() || 'Наша семья' })
+    .rpc('create_household', {
+      p_name: name.trim() || 'Наша семья',
+      p_display_name: displayName?.trim() || undefined,
+    })
     .single()
 
   if (error) {
@@ -74,13 +77,41 @@ export async function createHousehold(name: string): Promise<Household> {
   return mapHousehold(data)
 }
 
-export async function joinHousehold(inviteCode: string): Promise<Household> {
+export async function joinHousehold(inviteCode: string, displayName?: string): Promise<Household> {
   const { data, error } = await supabase
-    .rpc('join_household', { p_invite_code: inviteCode.trim() })
+    .rpc('join_household', {
+      p_invite_code: inviteCode.trim(),
+      p_display_name: displayName?.trim() || undefined,
+    })
     .single()
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось войти в семью'))
   }
   return mapHousehold(data)
+}
+
+export async function updateOwnDisplayName(displayName: string): Promise<void> {
+  const name = displayName.trim()
+  if (!name) {
+    throw new Error('Укажите имя')
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (userError) {
+    throw new Error(getErrorMessage(userError))
+  }
+  const userId = userData.user?.id
+  if (!userId) {
+    throw new Error('Войдите в аккаунт')
+  }
+
+  const { error } = await supabase
+    .from('members')
+    .update({ display_name: name })
+    .eq('user_id', userId)
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось обновить имя'))
+  }
 }

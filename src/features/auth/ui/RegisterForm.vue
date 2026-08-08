@@ -7,6 +7,7 @@ import { useSessionStore } from '@/entities/session'
 const router = useRouter()
 const session = useSessionStore()
 
+const displayName = ref('')
 const email = ref('')
 const password = ref('')
 const error = ref('')
@@ -14,6 +15,10 @@ const pending = ref(false)
 
 async function onSubmit() {
   error.value = ''
+  if (!displayName.value.trim()) {
+    error.value = 'Укажите имя'
+    return
+  }
   if (!email.value.trim() || password.value.length < 6) {
     error.value = 'Email и пароль от 6 символов'
     return
@@ -21,7 +26,7 @@ async function onSubmit() {
 
   pending.value = true
   try {
-    await session.register(email.value, password.value)
+    await session.register(email.value, password.value, displayName.value)
     await router.push('/onboarding')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось создать аккаунт')
@@ -33,6 +38,16 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
+    <AppField label="Имя" for-id="register-name">
+      <AppInput
+        id="register-name"
+        v-model="displayName"
+        type="text"
+        autocomplete="name"
+        placeholder="Как вас зовут"
+        required
+      />
+    </AppField>
     <AppField label="Почта" for-id="register-email">
       <AppInput
         id="register-email"

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
+import { EditAccountForm } from '@/features/edit-account'
 import { EditBalanceForm } from '@/features/edit-balance'
 import { ThemeSwitch } from '@/features/theme-switch'
 import { resetHouseholdSession, useHouseholdStore } from '@/entities/household'
@@ -9,6 +11,10 @@ import { useSessionStore } from '@/entities/session'
 const router = useRouter()
 const session = useSessionStore()
 const household = useHouseholdStore()
+
+const members = computed(() =>
+  [...household.members].sort((a, b) => a.displayName.localeCompare(b.displayName, 'ru')),
+)
 
 async function logout() {
   const ok = await confirmAction({
@@ -44,6 +50,15 @@ async function copyInvite() {
     <section class="settings__block">
       <h2 class="settings__heading">Семья</h2>
       <p class="settings__name">{{ household.household?.name }}</p>
+      <div class="settings__members">
+        <p class="settings__label">Участники</p>
+        <ul class="settings__member-list">
+          <li v-for="member in members" :key="member.userId" class="settings__member">
+            <span>{{ member.displayName }}</span>
+            <span v-if="member.userId === session.user?.id" class="settings__you">вы</span>
+          </li>
+        </ul>
+      </div>
       <div class="settings__invite">
         <div>
           <p class="settings__label">Код приглашения</p>
@@ -73,6 +88,7 @@ async function copyInvite() {
 
     <section class="settings__block">
       <h2 class="settings__heading">Аккаунт</h2>
+      <EditAccountForm />
       <p class="settings__email">{{ session.user?.email }}</p>
       <AppButton variant="danger" block @click="logout">Выйти</AppButton>
     </section>
@@ -110,11 +126,45 @@ async function copyInvite() {
   color: var(--color-text-muted);
 }
 
+.settings__members {
+  margin-bottom: var(--space-4);
+}
+
+.settings__member-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings__member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  font-weight: 600;
+}
+
+.settings__you {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
 .settings__invite {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.settings__invite > div {
+  min-width: 0;
+  flex: 1 1 8rem;
 }
 
 .settings__label {
@@ -126,6 +176,7 @@ async function copyInvite() {
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
 }
 
 .settings__link {

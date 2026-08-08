@@ -330,8 +330,14 @@ function edit(id: string, event?: Event) {
   background: var(--color-warning-soft);
 }
 
+.item__main {
+  min-width: 0;
+  flex: 1;
+}
+
 .item__title {
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .item__meta {
