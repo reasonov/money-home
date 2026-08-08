@@ -47,6 +47,22 @@ export function startHouseholdRealtime(householdId: string) {
     .on(
       'postgres_changes',
       {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'households',
+        filter: `id=eq.${householdId}`,
+      },
+      (payload) => {
+        const row = payload.new as { name?: string } | null
+        if (!row?.name) {
+          return
+        }
+        household.applyRemoteName(row.name)
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
         event: '*',
         schema: 'public',
         table: 'members',

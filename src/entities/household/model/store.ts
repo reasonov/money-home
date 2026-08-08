@@ -5,6 +5,7 @@ import {
   createHousehold as createHouseholdApi,
   fetchCurrentMembership,
   joinHousehold as joinHouseholdApi,
+  updateHouseholdName as updateHouseholdNameApi,
   updateOwnDisplayName as updateOwnDisplayNameApi,
 } from '../api/householdApi'
 import type { HouseholdMember } from './member'
@@ -82,6 +83,23 @@ export const useHouseholdStore = defineStore('household', () => {
     )
   }
 
+  async function updateHouseholdName(name: string) {
+    const current = household.value
+    if (!current) {
+      throw new Error('Семья не загружена')
+    }
+    const nextName = name.trim()
+    await updateHouseholdNameApi(current.id, nextName)
+    household.value = { ...current, name: nextName }
+  }
+
+  function applyRemoteName(name: string) {
+    if (!household.value) {
+      return
+    }
+    household.value = { ...household.value, name }
+  }
+
   return {
     household,
     members,
@@ -95,6 +113,8 @@ export const useHouseholdStore = defineStore('household', () => {
     createHousehold,
     joinHousehold,
     updateOwnDisplayName,
+    updateHouseholdName,
+    applyRemoteName,
     clearHousehold,
   }
 })

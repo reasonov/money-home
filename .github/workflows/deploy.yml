@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -18,9 +18,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,8 +35,46 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Bump version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          latest_tag="$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1 || true)"
+          if [ -n "$latest_tag" ]; then
+            base_version="${latest_tag#v}"
+          else
+            base_version="$(node -p "require('./package.json').version")"
+          fi
+
+          major="${base_version%%.*}"
+          rest="${base_version#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+          patch=$((patch + 1))
+          new_version="${major}.${minor}.${patch}"
+          tag="v${new_version}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release ${tag}"
+          git push origin "$tag"
+
+          gh release create "$tag" \
+            --title "$tag" \
+            --generate-notes \
+            --target "${{ github.sha }}"
+
+          echo "app_version=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Released ${tag}"
+
       - name: Build
         env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

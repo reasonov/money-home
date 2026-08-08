@@ -115,3 +115,19 @@ export async function updateOwnDisplayName(displayName: string): Promise<void> {
     throw new Error(getErrorMessage(error, 'Не удалось обновить имя'))
   }
 }
+
+export async function updateHouseholdName(householdId: string, name: string): Promise<void> {
+  const nextName = name.trim()
+  if (!nextName) {
+    throw new Error('Укажите название')
+  }
+
+  const { error } = await supabase
+    .from('households')
+    .update({ name: nextName })
+    .eq('id', householdId)
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось обновить название'))
+  }
+}

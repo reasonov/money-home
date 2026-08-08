@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
 import { EditAccountForm } from '@/features/edit-account'
 import { EditBalanceForm } from '@/features/edit-balance'
+import { EditHouseholdNameForm } from '@/features/edit-household-name'
 import { ThemeSwitch } from '@/features/theme-switch'
 import { resetHouseholdSession, useHouseholdStore } from '@/entities/household'
 import { useSessionStore } from '@/entities/session'
@@ -49,7 +50,7 @@ async function copyInvite() {
   <div class="settings">
     <section class="settings__block">
       <h2 class="settings__heading">Семья</h2>
-      <p class="settings__name">{{ household.household?.name }}</p>
+      <EditHouseholdNameForm />
       <div class="settings__members">
         <p class="settings__label">Участники</p>
         <ul class="settings__member-list">
@@ -114,7 +115,6 @@ async function copyInvite() {
   font-size: 1.125rem;
 }
 
-.settings__name,
 .settings__email {
   margin-bottom: var(--space-3);
   color: var(--color-text-muted);
@@ -145,7 +145,7 @@ async function copyInvite() {
   justify-content: space-between;
   gap: var(--space-3);
   min-height: 44px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .settings__you {
@@ -173,9 +173,9 @@ async function copyInvite() {
 }
 
 .settings__code {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   overflow-wrap: anywhere;
 }
 
