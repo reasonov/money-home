@@ -25,6 +25,8 @@ VITE_SUPABASE_ANON_KEY=
 
 Шаблон: скопируй в `.env.local` (файл в `.gitignore` / `.cursorignore`). `service_role` в браузер не класть.
 
+Если с мобильного интернета `*.supabase.co` недоступен — прокси через Cloudflare Worker: [cloudflare/supabase-proxy/README.md](../cloudflare/supabase-proxy/README.md). В `VITE_SUPABASE_URL` кладётся URL воркера, anon key тот же.
+
 ## Figma MCP
 
 Уже доступен в Cursor для design-to-code. Для money-home не обязателен.
