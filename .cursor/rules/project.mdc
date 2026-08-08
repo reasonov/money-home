@@ -1,0 +1,13 @@
+---
+description: Core project invariants for money-home
+alwaysApply: true
+---
+
+# money-home
+
+- Product spec: `docs/SPEC.md`. Read it before domain work.
+- Stack: Vue 3 + Vite + TS + Pinia + Vue Router + PWA; FSD; Supabase (Auth, Postgres, RLS, Realtime).
+- Currency: RUB. UI copy: Russian. Code/DB identifiers: English.
+- Do not implement beyond the current task. No drive-by refactors.
+- One household per user (v1). Family shares balance, income rules, purchases.
+- Client env only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never ship `service_role`.

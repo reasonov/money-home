@@ -1,0 +1,20 @@
+---
+description: Balance projection and purchase affordability rules
+globs:
+  - "**/entities/**/*"
+  - "**/features/**/*"
+  - "**/shared/lib/**/*"
+alwaysApply: false
+---
+
+# Balance domain
+
+- Projection is a pure function (no I/O). Single helper used by UI and any API wrappers.
+- Spec + edge cases: `docs/SPEC.md` § Balance Projection Algorithm; skill `balance-projection`.
+- Purchases on `asOfDate` are already in manual balance — do not subtract again.
+- Interval for incomes and planned spend: `(asOfDate, targetDate]`.
+- Re-check projection on create and on edit of amount/date (exclude the edited purchase from planned spend).
+- Refuse create/update when `!canAfford`; short banner + drawer with breakdown (`plannedBeforeTarget`, incomes, `nextAffordableDate`).
+- Home «свободно до пополнения»: `balance − planned` with `planned_date < nextIncomeDate` (include today and overdue planned); no income rules → planned within 365 days.
+- Purchase `notes` are display-only; they do not affect projection or free-balance math.
+- History = `done`; total spent = sum of `done` amounts; on `planned` → `done` subtract `amount` from current balance once.

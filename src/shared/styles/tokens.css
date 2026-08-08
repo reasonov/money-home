@@ -1,0 +1,73 @@
+:root {
+  --color-bg: #f2f5f7;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d9488;
+  --color-accent-soft: #ccfbf1;
+  --color-on-accent: #ffffff;
+  --color-success: #15803d;
+  --color-success-bg: #dcfce7;
+  --color-warning: #c2410c;
+  --color-warning-bg: #ffedd5;
+  --color-warning-soft: #fffaf7;
+  --color-info: #075985;
+  --color-info-bg: #e0f2fe;
+  --color-border: #e2e8f0;
+  --color-danger: #b91c1c;
+  --color-skeleton-shine: #f8fafc;
+  --color-header-bg: color-mix(in srgb, var(--color-bg) 58%, transparent);
+  --color-header-bg-soft: color-mix(in srgb, var(--color-bg) 28%, transparent);
+  --color-overlay: rgb(15 23 42 / 40%);
+  --color-shadow: rgb(15 23 42 / 12%);
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+
+  --font-sans: 'Manrope', system-ui, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 4%);
+
+  --app-max-width: 430px;
+  --header-height: 56px;
+  --nav-height: 64px;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --color-bg: #14181c;
+  --color-surface: #1e242a;
+  --color-text: #e8eef2;
+  --color-text-muted: #9aa8b5;
+  --color-accent: #2a9b90;
+  --color-accent-hover: #34b3a6;
+  --color-accent-soft: rgb(42 155 144 / 18%);
+  --color-on-accent: #ffffff;
+  --color-success: #4ade80;
+  --color-success-bg: #14532d;
+  --color-warning: #fb923c;
+  --color-warning-bg: #431407;
+  --color-warning-soft: #2a2018;
+  --color-info: #7dd3fc;
+  --color-info-bg: #0c4a6e;
+  --color-border: #2d3640;
+  --color-danger: #f87171;
+  --color-skeleton-shine: #2a3440;
+  --color-header-bg: color-mix(in srgb, var(--color-bg) 58%, transparent);
+  --color-header-bg-soft: color-mix(in srgb, var(--color-bg) 28%, transparent);
+  --color-overlay: rgb(0 0 0 / 55%);
+  --color-shadow: rgb(0 0 0 / 36%);
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 28%);
+
+  color-scheme: dark;
+}

@@ -1,0 +1,320 @@
+import { addDays, compareDates, isAfter, parseLocalDate } from './dates'
+import { formatMoneyPlain } from './formatMoney'
+
+export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly'
+
+export interface ProjectionIncomeRule {
+  amount: number
+  frequency: IncomeFrequency
+  weekday?: number
+  monthDay?: number
+  anchorDate?: string
+  active: boolean
+}
+
+export interface ProjectionPurchase {
+  id?: string
+  title?: string
+  amount: number
+  plannedDate: string
+  status: 'planned' | 'done' | 'cancelled'
+}
+
+export interface ProjectBalanceInput {
+  currentBalance: number
+  asOfDate: Date
+  targetDate: Date
+  incomeRules: ProjectionIncomeRule[]
+  plannedPurchases: ProjectionPurchase[]
+  candidateAmount: number
+  excludePurchaseId?: string
+}
+
+export interface PlannedBeforeTargetItem {
+  title: string
+  amount: number
+  plannedDate: string
+}
+
+export interface ProjectBalanceResult {
+  projectedBalance: number
+  canAfford: boolean
+  shortfall: number
+  plannedBeforeTarget: PlannedBeforeTargetItem[]
+  incomeTotal: number
+  incomeOccurrencesCount: number
+  nextAffordableDate: Date | null
+  message: string | null
+}
+
+const NEXT_AFFORDABLE_HORIZON_DAYS = 365
+
+function collectMonthlyDates(monthDay: number, asOf: Date, target: Date): Date[] {
+  const dates: Date[] = []
+  let year = asOf.getFullYear()
+  let month = asOf.getMonth()
+
+  for (let i = 0; i < 48; i += 1) {
+    const candidate = new Date(year, month, monthDay)
+    if (isAfter(candidate, asOf) && compareDates(candidate, target) <= 0) {
+      dates.push(candidate)
+    }
+    if (compareDates(candidate, target) > 0 && month > target.getMonth() && year >= target.getFullYear()) {
+      break
+    }
+    month += 1
+    if (month > 11) {
+      month = 0
+      year += 1
+    }
+    if (year > target.getFullYear() + 1) {
+      break
+    }
+  }
+
+  return dates
+}
+
+function collectWeeklyDates(weekday: number, asOf: Date, target: Date): Date[] {
+  const dates: Date[] = []
+  let cursor = addDays(asOf, 1)
+
+  while (compareDates(cursor, target) <= 0) {
+    if (cursor.getDay() === weekday) {
+      dates.push(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()))
+    }
+    cursor = addDays(cursor, 1)
+  }
+
+  return dates
+}
+
+function collectBiweeklyDates(anchorDate: string, asOf: Date, target: Date): Date[] {
+  const dates: Date[] = []
+  let cursor = parseLocalDate(anchorDate)
+
+  while (compareDates(cursor, asOf) <= 0) {
+    cursor = addDays(cursor, 14)
+  }
+
+  while (compareDates(cursor, target) <= 0) {
+    dates.push(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()))
+    cursor = addDays(cursor, 14)
+  }
+
+  return dates
+}
+
+export function incomeOccurrences(
+  rule: ProjectionIncomeRule,
+  asOfDate: Date,
+  targetDate: Date,
+): Date[] {
+  if (!rule.active || rule.amount <= 0) {
+    return []
+  }
+
+  if (rule.frequency === 'monthly' && rule.monthDay != null) {
+    return collectMonthlyDates(rule.monthDay, asOfDate, targetDate)
+  }
+
+  if (rule.frequency === 'weekly' && rule.weekday != null) {
+    return collectWeeklyDates(rule.weekday, asOfDate, targetDate)
+  }
+
+  if (rule.frequency === 'biweekly' && rule.anchorDate) {
+    return collectBiweeklyDates(rule.anchorDate, asOfDate, targetDate)
+  }
+
+  return []
+}
+
+function sumIncomes(
+  incomeRules: ProjectionIncomeRule[],
+  asOfDate: Date,
+  targetDate: Date,
+): { incomeTotal: number; incomeOccurrencesCount: number } {
+  let incomeTotal = 0
+  let incomeOccurrencesCount = 0
+
+  for (const rule of incomeRules) {
+    const dates = incomeOccurrences(rule, asOfDate, targetDate)
+    incomeOccurrencesCount += dates.length
+    incomeTotal += dates.length * rule.amount
+  }
+
+  return { incomeTotal, incomeOccurrencesCount }
+}
+
+function collectPlannedBeforeTarget(
+  plannedPurchases: ProjectionPurchase[],
+  asOfDate: Date,
+  targetDate: Date,
+  excludePurchaseId?: string,
+): PlannedBeforeTargetItem[] {
+  const items: PlannedBeforeTargetItem[] = []
+
+  for (const purchase of plannedPurchases) {
+    if (purchase.status !== 'planned') {
+      continue
+    }
+    if (excludePurchaseId && purchase.id === excludePurchaseId) {
+      continue
+    }
+    const plannedDate = parseLocalDate(purchase.plannedDate)
+    if (isAfter(plannedDate, asOfDate) && compareDates(plannedDate, targetDate) <= 0) {
+      items.push({
+        title: purchase.title?.trim() || 'Покупка',
+        amount: purchase.amount,
+        plannedDate: purchase.plannedDate,
+      })
+    }
+  }
+
+  items.sort((a, b) => a.plannedDate.localeCompare(b.plannedDate))
+  return items
+}
+
+function formatTargetLabel(date: Date): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
+function computeProjectionCore(
+  input: ProjectBalanceInput,
+  targetDate: Date,
+): {
+  projectedBalance: number
+  canAfford: boolean
+  shortfall: number
+  plannedBeforeTarget: PlannedBeforeTargetItem[]
+  incomeTotal: number
+  incomeOccurrencesCount: number
+} {
+  const { currentBalance, asOfDate, incomeRules, plannedPurchases, candidateAmount, excludePurchaseId } =
+    input
+
+  const { incomeTotal, incomeOccurrencesCount } = sumIncomes(incomeRules, asOfDate, targetDate)
+  const plannedBeforeTarget = collectPlannedBeforeTarget(
+    plannedPurchases,
+    asOfDate,
+    targetDate,
+    excludePurchaseId,
+  )
+  const plannedSpend = plannedBeforeTarget.reduce((sum, item) => sum + item.amount, 0)
+  const projectedBalance = currentBalance + incomeTotal - plannedSpend
+  const canAfford = projectedBalance >= candidateAmount
+  const shortfall = canAfford ? 0 : candidateAmount - projectedBalance
+
+  return {
+    projectedBalance,
+    canAfford,
+    shortfall,
+    plannedBeforeTarget,
+    incomeTotal,
+    incomeOccurrencesCount,
+  }
+}
+
+export function findNextAffordableDate(input: ProjectBalanceInput): Date | null {
+  const horizonEnd = addDays(input.asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)
+  let cursor = new Date(
+    input.targetDate.getFullYear(),
+    input.targetDate.getMonth(),
+    input.targetDate.getDate(),
+  )
+
+  while (compareDates(cursor, horizonEnd) <= 0) {
+    const core = computeProjectionCore(input, cursor)
+    if (core.canAfford) {
+      return cursor
+    }
+    cursor = addDays(cursor, 1)
+  }
+
+  return null
+}
+
+export function projectBalance(input: ProjectBalanceInput): ProjectBalanceResult {
+  const core = computeProjectionCore(input, input.targetDate)
+  const nextAffordableDate = core.canAfford ? null : findNextAffordableDate(input)
+
+  return {
+    ...core,
+    nextAffordableDate,
+    message: core.canAfford
+      ? null
+      : `К ${formatTargetLabel(input.targetDate)} будет ${formatMoneyPlain(core.projectedBalance)} ₽ — не хватает ${formatMoneyPlain(core.shortfall)} ₽`,
+  }
+}
+
+export function formatProjectionDate(date: Date): string {
+  return formatTargetLabel(date)
+}
+
+export interface AvailableUntilNextIncomeInput {
+  currentBalance: number
+  asOfDate: Date
+  incomeRules: ProjectionIncomeRule[]
+  plannedPurchases: ProjectionPurchase[]
+}
+
+export interface AvailableUntilNextIncomeResult {
+  available: number
+  plannedSpend: number
+  nextIncomeDate: Date | null
+}
+
+export function findNextIncomeDate(
+  incomeRules: ProjectionIncomeRule[],
+  asOfDate: Date,
+): Date | null {
+  const horizonEnd = addDays(asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)
+  let earliest: Date | null = null
+
+  for (const rule of incomeRules) {
+    const dates = incomeOccurrences(rule, asOfDate, horizonEnd)
+    const first = dates[0]
+    if (!first) {
+      continue
+    }
+    if (!earliest || compareDates(first, earliest) < 0) {
+      earliest = first
+    }
+  }
+
+  return earliest
+}
+
+export function availableUntilNextIncome(
+  input: AvailableUntilNextIncomeInput,
+): AvailableUntilNextIncomeResult {
+  const { currentBalance, asOfDate, incomeRules, plannedPurchases } = input
+  const nextIncomeDate = findNextIncomeDate(incomeRules, asOfDate)
+
+  let plannedSpend = 0
+  for (const purchase of plannedPurchases) {
+    if (purchase.status !== 'planned') {
+      continue
+    }
+    const plannedDate = parseLocalDate(purchase.plannedDate)
+    if (nextIncomeDate) {
+      if (compareDates(plannedDate, nextIncomeDate) < 0) {
+        plannedSpend += purchase.amount
+      }
+      continue
+    }
+    if (compareDates(plannedDate, addDays(asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)) <= 0) {
+      plannedSpend += purchase.amount
+    }
+  }
+
+  return {
+    available: currentBalance - plannedSpend,
+    plannedSpend,
+    nextIncomeDate,
+  }
+}

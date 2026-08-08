@@ -1,0 +1,16 @@
+---
+description: Supabase client, RLS, and migrations conventions
+globs:
+  - "**/supabase/**/*"
+  - "**/shared/api/**/*"
+alwaysApply: false
+---
+
+# Supabase
+
+- Schema source of truth: SQL migrations under `supabase/migrations/`.
+- Every household-scoped table must have RLS: members of the same `household_id` only.
+- Join-by-invite via RPC or controlled path; do not weaken RLS for convenience.
+- Prefer generated/typed client usage; keep DB types in sync after migrations.
+- Realtime subscriptions scoped to the current household.
+- Never commit secrets. Anon key in Vite env is OK; service role is not for the SPA.

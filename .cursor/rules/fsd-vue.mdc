@@ -1,0 +1,15 @@
+---
+description: Feature-Sliced Design conventions for Vue src
+globs: src/**/*
+alwaysApply: false
+---
+
+# FSD (Vue)
+
+Layers (top → bottom): `app` → `pages` → `widgets` → `features` → `entities` → `shared`.
+
+- Import only downward. No cross-imports between slices of the same layer.
+- Public API of a slice: `index.ts` only. Do not deep-import internals from other slices.
+- Target layout: `src/{app,pages,widgets,features,entities,shared}/`.
+- Pinia stores live in the slice that owns the state (usually `entities` or `features`), not a global `src/stores/` dump.
+- UI composition: pages compose widgets/features; business actions in `features`; pure domain in `entities`/`shared`.
