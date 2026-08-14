@@ -1,7 +1,0 @@
-name = "money-home-supabase-proxy"
-main = "src/index.js"
-compatibility_date = "2025-10-01"
-workers_dev = true
-
-[vars]
-SUPABASE_HOSTNAME = "qegoivwsbvjhkemmcyqv.supabase.co"

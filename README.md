@@ -75,5 +75,4 @@ VITE_BASE_PATH=/money-home/ npm run build
 
 Версия в шапке (`v1`, `v2`, …) берётся из major в `package.json` (`1.0.0` → `v1`). Для следующего релиза подними major (`2.0.0` → `v2`).
 
-Secrets для сборки: `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY`.  
-Если `*.supabase.co` режется на мобильном интернете — задеплой прокси (`npm run proxy:deploy`) и в `VITE_SUPABASE_URL` укажи URL воркера: [cloudflare/supabase-proxy/README.md](cloudflare/supabase-proxy/README.md).
+Secrets для сборки: `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY`.
