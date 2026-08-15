@@ -2,6 +2,7 @@ import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
 
 import App from './App.vue'
+import { registerPwa } from './pwa'
 import router from './router'
 import { bootstrapAccountSession, resetAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
@@ -13,6 +14,7 @@ import '@/shared/styles/tokens.css'
 import '@/shared/styles/base.css'
 
 listenForInstallPrompt()
+registerPwa()
 
 async function bootstrap() {
   const app = createApp(App)

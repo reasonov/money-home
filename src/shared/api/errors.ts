@@ -62,5 +62,12 @@ function mapAuthMessage(message: string): string {
   if (lower.includes('not authenticated')) {
     return 'Войдите в аккаунт'
   }
+  if (
+    lower.includes('unable to preload') ||
+    lower.includes('failed to fetch dynamically imported module') ||
+    lower.includes('error loading dynamically imported module')
+  ) {
+    return 'Приложение обновилось. Обновите страницу'
+  }
   return message
 }
