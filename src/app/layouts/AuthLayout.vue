@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { APP_VERSION } from '@/shared'
 
 const route = useRoute()
 
@@ -12,10 +11,7 @@ const subtitle = computed(() => (route.meta.subtitle as string | undefined) ?? '
 <template>
   <div class="auth">
     <div class="auth__card">
-      <p class="auth__brand">
-        <span>Money Home</span>
-        <span class="auth__version">{{ APP_VERSION }}</span>
-      </p>
+      <p class="auth__brand">Money Home</p>
       <h1 class="auth__title">{{ title }}</h1>
       <p v-if="subtitle" class="auth__subtitle">{{ subtitle }}</p>
       <div class="auth__body">
@@ -55,14 +51,6 @@ const subtitle = computed(() => (route.meta.subtitle as string | undefined) ?? '
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-accent);
-}
-
-.auth__version {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--color-text-muted);
 }
 
 .auth__title {

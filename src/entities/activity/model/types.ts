@@ -3,8 +3,10 @@ export type ActivityKind =
   | 'purchase_updated'
   | 'purchase_done'
   | 'purchase_cancelled'
-  | 'balance_updated'
+  | 'account_updated'
   | 'income_rule_changed'
+  | 'transaction_created'
+  | 'income_auto_posted'
 
 export interface ActivityItem {
   id: string
@@ -12,6 +14,8 @@ export interface ActivityItem {
   actorId: string
   actorName: string
   purchaseId?: string
+  transactionId?: string
+  occurrenceId?: string
   summary: string
   createdAt: string
   seenAt: string | null

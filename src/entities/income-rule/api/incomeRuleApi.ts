@@ -3,63 +3,61 @@ import type { IncomeRule } from '../model/types'
 
 type IncomeRuleRow = {
   id: string
+  account_id: string
   amount: number
   frequency: string
   weekday: number | null
   month_day: number | null
   anchor_date: string | null
+  title: string | null
+  category_id: string | null
   active: boolean
 }
 
 export function mapIncomeRule(row: IncomeRuleRow): IncomeRule {
+  const title = row.title?.trim()
   return {
     id: row.id,
+    accountId: row.account_id,
     amount: Math.round(Number(row.amount)),
     frequency: row.frequency as IncomeFrequency,
     active: row.active,
     ...(row.weekday != null ? { weekday: row.weekday } : {}),
     ...(row.month_day != null ? { monthDay: row.month_day } : {}),
     ...(row.anchor_date ? { anchorDate: row.anchor_date } : {}),
+    ...(title ? { title } : {}),
+    ...(row.category_id ? { categoryId: row.category_id } : {}),
   }
 }
 
-export async function fetchIncomeRules(householdId: string): Promise<IncomeRule[]> {
-  const { data, error } = await supabase
-    .from('income_rules')
-    .select('id, amount, frequency, weekday, month_day, anchor_date, active')
-    .eq('household_id', householdId)
-    .order('created_at', { ascending: true })
+const SELECT =
+  'id, account_id, amount, frequency, weekday, month_day, anchor_date, title, category_id, active'
 
+export async function fetchIncomeRules(): Promise<IncomeRule[]> {
+  const { data, error } = await supabase.from('income_rules').select(SELECT).order('created_at')
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось загрузить пополнения'))
   }
   return (data ?? []).map(mapIncomeRule)
 }
 
-function toRow(input: Omit<IncomeRule, 'id'>, householdId: string, userId: string) {
+function toRow(input: Omit<IncomeRule, 'id'>, userId: string) {
   return {
-    household_id: householdId,
+    account_id: input.accountId,
     amount: Math.round(input.amount),
     frequency: input.frequency,
     weekday: input.weekday ?? null,
     month_day: input.monthDay ?? null,
     anchor_date: input.anchorDate ?? null,
+    title: input.title?.trim() || null,
+    category_id: input.categoryId ?? null,
     active: input.active,
     updated_by: userId,
   }
 }
 
-export async function insertIncomeRule(
-  householdId: string,
-  userId: string,
-  input: Omit<IncomeRule, 'id'>,
-): Promise<IncomeRule> {
-  const { data, error } = await supabase
-    .from('income_rules')
-    .insert(toRow(input, householdId, userId))
-    .select('id, amount, frequency, weekday, month_day, anchor_date, active')
-    .single()
-
+export async function insertIncomeRule(userId: string, input: Omit<IncomeRule, 'id'>): Promise<IncomeRule> {
+  const { data, error } = await supabase.from('income_rules').insert(toRow(input, userId)).select(SELECT).single()
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось добавить правило'))
   }
@@ -73,21 +71,25 @@ export async function updateIncomeRule(
 ): Promise<IncomeRule> {
   const payload: {
     updated_by: string
+    account_id?: string
     amount?: number
     frequency?: string
     active?: boolean
     weekday?: number | null
     month_day?: number | null
     anchor_date?: string | null
-  } = {
-    updated_by: userId,
-  }
+    title?: string | null
+    category_id?: string | null
+  } = { updated_by: userId }
+  if (patch.accountId != null) payload.account_id = patch.accountId
   if (patch.amount != null) payload.amount = Math.round(patch.amount)
   if (patch.frequency != null) payload.frequency = patch.frequency
   if (patch.active != null) payload.active = patch.active
   if ('weekday' in patch) payload.weekday = patch.weekday ?? null
   if ('monthDay' in patch) payload.month_day = patch.monthDay ?? null
   if ('anchorDate' in patch) payload.anchor_date = patch.anchorDate ?? null
+  if ('title' in patch) payload.title = patch.title?.trim() || null
+  if ('categoryId' in patch) payload.category_id = patch.categoryId ?? null
 
   if (patch.frequency === 'monthly') {
     payload.weekday = null
@@ -101,13 +103,7 @@ export async function updateIncomeRule(
     payload.month_day = null
   }
 
-  const { data, error } = await supabase
-    .from('income_rules')
-    .update(payload)
-    .eq('id', id)
-    .select('id, amount, frequency, weekday, month_day, anchor_date, active')
-    .single()
-
+  const { data, error } = await supabase.from('income_rules').update(payload).eq('id', id).select(SELECT).single()
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось обновить правило'))
   }
@@ -115,15 +111,10 @@ export async function updateIncomeRule(
 }
 
 export async function deleteIncomeRule(id: string, userId: string): Promise<void> {
-  const { error: touchError } = await supabase
-    .from('income_rules')
-    .update({ updated_by: userId })
-    .eq('id', id)
-
+  const { error: touchError } = await supabase.from('income_rules').update({ updated_by: userId }).eq('id', id)
   if (touchError) {
     throw new Error(getErrorMessage(touchError, 'Не удалось удалить правило'))
   }
-
   const { error } = await supabase.from('income_rules').delete().eq('id', id)
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось удалить правило'))

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CalendarCheck, House, PieChart } from '@lucide/vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -7,22 +8,20 @@ const links = [
   {
     to: '/',
     label: 'Главная',
-    icon: 'home',
+    icon: House,
+    tour: 'nav-home',
   },
   {
-    to: '/history',
-    label: 'История',
-    icon: 'history',
+    to: '/stats',
+    label: 'Статистика',
+    icon: PieChart,
+    tour: 'nav-stats',
   },
   {
-    to: '/income',
-    label: 'Доход',
-    icon: 'income',
-  },
-  {
-    to: '/settings',
-    label: 'Ещё',
-    icon: 'more',
+    to: '/calendar',
+    label: 'Планирование',
+    icon: CalendarCheck,
+    tour: 'nav-calendar',
   },
 ] as const
 
@@ -36,98 +35,52 @@ function isActive(path: string) {
 
 <template>
   <nav class="nav" aria-label="Основная навигация">
-    <RouterLink
-      v-for="link in links"
-      :key="link.to"
-      class="nav__link"
-      :class="{ 'is-active': isActive(link.to) }"
-      :to="link.to"
-    >
-      <span class="nav__icon" aria-hidden="true">
-        <svg v-if="link.icon === 'home'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M4.5 10.5 12 4l7.5 6.5V20a1 1 0 0 1-1 1h-4.5v-5.5h-4V21H5.5a1 1 0 0 1-1-1v-9.5Z"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <svg
-          v-else-if="link.icon === 'history'"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-        >
-          <path
-            d="M12 7v5l3 2"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 8.5"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <svg
-          v-else-if="link.icon === 'income'"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-        >
-          <path
-            d="M12 4v10m0 0 3.5-3.5M12 14l-3.5-3.5"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M5 18h14"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-          />
-        </svg>
-        <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M5 7h14M5 12h14M5 17h14"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-          />
-        </svg>
-      </span>
-      <span class="nav__label">{{ link.label }}</span>
-    </RouterLink>
+    <span v-for="link in links" :key="link.to" class="nav__hit" :data-tour="link.tour">
+      <RouterLink class="nav__link" :class="{ 'is-active': isActive(link.to) }" :to="link.to">
+        <span class="nav__icon" aria-hidden="true">
+          <component :is="link.icon" :size="22" :stroke-width="1.7" />
+        </span>
+        <span class="nav__label">{{ link.label }}</span>
+      </RouterLink>
+    </span>
   </nav>
 </template>
 
 <style scoped>
 .nav {
-  position: sticky;
+  position: fixed;
+  left: 50%;
   bottom: 0;
+  z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-1);
+  width: 100%;
+  max-width: var(--app-max-width);
   min-height: var(--nav-height);
   padding: var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom));
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  transform: translateX(-50%);
+}
+
+.nav.driver-active-element-parent {
+  z-index: 10001;
+}
+
+.nav__hit {
+  display: flex;
+  min-width: 0;
 }
 
 .nav__link {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
+  width: 100%;
   min-height: 44px;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;

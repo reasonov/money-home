@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatLocalDate, parseLocalDate } from '../dates'
-import { availableUntilNextIncome, projectBalance } from '../projectBalance'
+import { availableUntilNextIncome, projectBalance, suggestTransfer } from '../projectBalance'
 
 describe('projectBalance', () => {
   it('rejects curtain when projected balance is 1500', () => {
@@ -295,5 +295,72 @@ describe('availableUntilNextIncome', () => {
     expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
     expect(result.plannedSpend).toBe(5000)
     expect(result.available).toBe(5000)
+  })
+})
+
+describe('postedOccurrenceDates', () => {
+  it('does not count already posted income dates', () => {
+    const result = projectBalance({
+      currentBalance: 1500,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [
+        {
+          amount: 2500,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      postedOccurrenceDates: ['2026-08-10'],
+      plannedPurchases: [],
+      candidateAmount: 2300,
+    })
+
+    expect(result.incomeTotal).toBe(0)
+    expect(result.projectedBalance).toBe(1500)
+    expect(result.canAfford).toBe(false)
+  })
+})
+
+describe('suggestTransfer', () => {
+  it('picks another account with enough surplus', () => {
+    const suggestion = suggestTransfer(800, parseLocalDate('2026-08-04'), parseLocalDate('2026-08-25'), [
+      {
+        id: 'card',
+        name: 'Карта',
+        currentBalance: 500,
+        plannedPurchases: [],
+      },
+      {
+        id: 'cash',
+        name: 'Наличные',
+        currentBalance: 2000,
+        plannedPurchases: [
+          {
+            amount: 500,
+            plannedDate: '2026-08-10',
+            status: 'planned',
+          },
+        ],
+      },
+    ])
+
+    expect(suggestion).not.toBeNull()
+    expect(suggestion?.accountId).toBe('cash')
+    expect(suggestion?.amount).toBe(800)
+  })
+
+  it('returns null when no other account covers the shortfall', () => {
+    const suggestion = suggestTransfer(5000, parseLocalDate('2026-08-04'), parseLocalDate('2026-08-25'), [
+      {
+        id: 'card',
+        name: 'Карта',
+        currentBalance: 200,
+        plannedPurchases: [],
+      },
+    ])
+
+    expect(suggestion).toBeNull()
   })
 })

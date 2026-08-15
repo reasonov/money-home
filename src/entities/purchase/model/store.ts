@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { useBalanceStore } from '@/entities/balance'
+import { useAccountStore } from '@/entities/account'
 import {
   cancelPurchase,
   completePurchase,
@@ -13,7 +13,6 @@ import type { Purchase } from './types'
 
 export const usePurchaseStore = defineStore('purchase', () => {
   const items = ref<Purchase[]>([])
-  const householdId = ref<string | null>(null)
 
   const planned = computed(() => items.value.filter((item) => item.status === 'planned'))
 
@@ -44,25 +43,27 @@ export const usePurchaseStore = defineStore('purchase', () => {
     upsert(mapPurchase(row))
   }
 
-  async function load(nextHouseholdId: string) {
-    householdId.value = nextHouseholdId
-    items.value = await fetchPurchases(nextHouseholdId)
+  function plannedFor(accountId: string) {
+    return planned.value.filter((item) => item.accountId === accountId)
+  }
+
+  async function load() {
+    items.value = await fetchPurchases()
   }
 
   async function addPurchase(input: {
+    accountId: string
+    categoryId: string
+    categoryName: string
+    categoryColor: string
+    categoryIcon: string
     title: string
     amount: number
     plannedDate: string
     notes?: string
     createdBy: string
   }) {
-    if (!householdId.value) {
-      throw new Error('Семья не загружена')
-    }
-    const purchase = await insertPurchase({
-      householdId: householdId.value,
-      ...input,
-    })
+    const purchase = await insertPurchase(input)
     upsert(purchase)
     return purchase
   }
@@ -71,6 +72,11 @@ export const usePurchaseStore = defineStore('purchase', () => {
     id: string,
     userId: string,
     input: {
+      accountId: string
+      categoryId: string
+      categoryName: string
+      categoryColor: string
+      categoryIcon: string
       title: string
       amount: number
       plannedDate: string
@@ -91,8 +97,11 @@ export const usePurchaseStore = defineStore('purchase', () => {
   async function markDone(id: string) {
     const purchase = await completePurchase(id)
     upsert(purchase)
-    const balance = useBalanceStore()
-    balance.applyRemote(balance.amount - purchase.amount)
+    const accounts = useAccountStore()
+    const account = accounts.getById(purchase.accountId)
+    if (account) {
+      accounts.upsert({ ...account, amount: account.amount - purchase.amount })
+    }
     return purchase
   }
 
@@ -102,18 +111,17 @@ export const usePurchaseStore = defineStore('purchase', () => {
 
   function reset() {
     items.value = []
-    householdId.value = null
   }
 
   return {
     items,
-    householdId,
     planned,
     done,
     totalSpent,
     upsert,
     remove,
     applyRemoteRow,
+    plannedFor,
     load,
     addPurchase,
     updatePurchase,

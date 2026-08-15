@@ -1,4 +1,4 @@
-import { addDays, compareDates, isAfter, parseLocalDate } from './dates'
+import { addDays, compareDates, formatLocalDate, isAfter, parseLocalDate } from './dates'
 import { formatMoneyPlain } from './formatMoney'
 
 export type IncomeFrequency = 'weekly' | 'biweekly' | 'monthly'
@@ -28,6 +28,7 @@ export interface ProjectBalanceInput {
   plannedPurchases: ProjectionPurchase[]
   candidateAmount: number
   excludePurchaseId?: string
+  postedOccurrenceDates?: string[]
 }
 
 export interface PlannedBeforeTargetItem {
@@ -109,21 +110,26 @@ export function incomeOccurrences(
   rule: ProjectionIncomeRule,
   asOfDate: Date,
   targetDate: Date,
+  postedOccurrenceDates: string[] = [],
 ): Date[] {
   if (!rule.active || rule.amount <= 0) {
     return []
   }
 
+  const posted = new Set(postedOccurrenceDates)
+  const filterPosted = (dates: Date[]) =>
+    dates.filter((date) => !posted.has(formatLocalDate(date)))
+
   if (rule.frequency === 'monthly' && rule.monthDay != null) {
-    return collectMonthlyDates(rule.monthDay, asOfDate, targetDate)
+    return filterPosted(collectMonthlyDates(rule.monthDay, asOfDate, targetDate))
   }
 
   if (rule.frequency === 'weekly' && rule.weekday != null) {
-    return collectWeeklyDates(rule.weekday, asOfDate, targetDate)
+    return filterPosted(collectWeeklyDates(rule.weekday, asOfDate, targetDate))
   }
 
   if (rule.frequency === 'biweekly' && rule.anchorDate) {
-    return collectBiweeklyDates(rule.anchorDate, asOfDate, targetDate)
+    return filterPosted(collectBiweeklyDates(rule.anchorDate, asOfDate, targetDate))
   }
 
   return []
@@ -133,12 +139,13 @@ function sumIncomes(
   incomeRules: ProjectionIncomeRule[],
   asOfDate: Date,
   targetDate: Date,
+  postedOccurrenceDates: string[] = [],
 ): { incomeTotal: number; incomeOccurrencesCount: number } {
   let incomeTotal = 0
   let incomeOccurrencesCount = 0
 
   for (const rule of incomeRules) {
-    const dates = incomeOccurrences(rule, asOfDate, targetDate)
+    const dates = incomeOccurrences(rule, asOfDate, targetDate, postedOccurrenceDates)
     incomeOccurrencesCount += dates.length
     incomeTotal += dates.length * rule.amount
   }
@@ -194,10 +201,15 @@ function computeProjectionCore(
   incomeTotal: number
   incomeOccurrencesCount: number
 } {
-  const { currentBalance, asOfDate, incomeRules, plannedPurchases, candidateAmount, excludePurchaseId } =
+  const { currentBalance, asOfDate, incomeRules, plannedPurchases, candidateAmount, excludePurchaseId, postedOccurrenceDates } =
     input
 
-  const { incomeTotal, incomeOccurrencesCount } = sumIncomes(incomeRules, asOfDate, targetDate)
+  const { incomeTotal, incomeOccurrencesCount } = sumIncomes(
+    incomeRules,
+    asOfDate,
+    targetDate,
+    postedOccurrenceDates,
+  )
   const plannedBeforeTarget = collectPlannedBeforeTarget(
     plannedPurchases,
     asOfDate,
@@ -260,6 +272,7 @@ export interface AvailableUntilNextIncomeInput {
   asOfDate: Date
   incomeRules: ProjectionIncomeRule[]
   plannedPurchases: ProjectionPurchase[]
+  postedOccurrenceDates?: string[]
 }
 
 export interface AvailableUntilNextIncomeResult {
@@ -271,12 +284,13 @@ export interface AvailableUntilNextIncomeResult {
 export function findNextIncomeDate(
   incomeRules: ProjectionIncomeRule[],
   asOfDate: Date,
+  postedOccurrenceDates: string[] = [],
 ): Date | null {
   const horizonEnd = addDays(asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)
   let earliest: Date | null = null
 
   for (const rule of incomeRules) {
-    const dates = incomeOccurrences(rule, asOfDate, horizonEnd)
+    const dates = incomeOccurrences(rule, asOfDate, horizonEnd, postedOccurrenceDates)
     const first = dates[0]
     if (!first) {
       continue
@@ -292,8 +306,8 @@ export function findNextIncomeDate(
 export function availableUntilNextIncome(
   input: AvailableUntilNextIncomeInput,
 ): AvailableUntilNextIncomeResult {
-  const { currentBalance, asOfDate, incomeRules, plannedPurchases } = input
-  const nextIncomeDate = findNextIncomeDate(incomeRules, asOfDate)
+  const { currentBalance, asOfDate, incomeRules, plannedPurchases, postedOccurrenceDates } = input
+  const nextIncomeDate = findNextIncomeDate(incomeRules, asOfDate, postedOccurrenceDates)
 
   let plannedSpend = 0
   for (const purchase of plannedPurchases) {
@@ -318,3 +332,59 @@ export function availableUntilNextIncome(
     nextIncomeDate,
   }
 }
+
+export interface TransferCandidateAccount {
+  id: string
+  name: string
+  currentBalance: number
+  plannedPurchases: ProjectionPurchase[]
+  incomeRules?: ProjectionIncomeRule[]
+  postedOccurrenceDates?: string[]
+}
+
+export interface TransferSuggestion {
+  accountId: string
+  accountName: string
+  available: number
+  amount: number
+}
+
+export function suggestTransfer(
+  shortfall: number,
+  asOfDate: Date,
+  targetDate: Date,
+  otherAccounts: TransferCandidateAccount[],
+): TransferSuggestion | null {
+  if (shortfall <= 0) {
+    return null
+  }
+
+  const matches: TransferSuggestion[] = []
+
+  for (const account of otherAccounts) {
+    const core = computeProjectionCore(
+      {
+        currentBalance: account.currentBalance,
+        asOfDate,
+        targetDate,
+        incomeRules: account.incomeRules ?? [],
+        plannedPurchases: account.plannedPurchases,
+        candidateAmount: shortfall,
+        postedOccurrenceDates: account.postedOccurrenceDates,
+      },
+      targetDate,
+    )
+    if (core.projectedBalance >= shortfall) {
+      matches.push({
+        accountId: account.id,
+        accountName: account.name,
+        available: core.projectedBalance,
+        amount: shortfall,
+      })
+    }
+  }
+
+  matches.sort((a, b) => b.available - a.available)
+  return matches[0] ?? null
+}
+

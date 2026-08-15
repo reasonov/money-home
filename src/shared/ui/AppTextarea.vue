@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { NInput } from 'naive-ui'
+
 withDefaults(
   defineProps<{
     id?: string
@@ -15,42 +18,40 @@ withDefaults(
 )
 
 const model = defineModel<string>({ required: true })
+
+const value = computed({
+  get: () => model.value,
+  set: (next: string) => {
+    model.value = next
+  },
+})
 </script>
 
 <template>
-  <textarea
+  <NInput
+    v-model:value="value"
     class="app-textarea"
-    :id="id"
+    type="textarea"
+    size="large"
     :placeholder="placeholder"
-    :rows="rows"
-    :required="required"
     :disabled="disabled"
-    :value="model"
-    @input="model = ($event.target as HTMLTextAreaElement).value"
+    :rows="rows"
+    :input-props="{ id, required }"
   />
 </template>
 
 <style scoped>
 .app-textarea {
   width: 100%;
-  min-height: 96px;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+}
+
+.app-textarea :deep(.n-input-wrapper) {
+  width: 100%;
+}
+
+.app-textarea :deep(textarea) {
+  width: 100%;
+  min-width: 0;
   resize: vertical;
-  outline: none;
-  font: inherit;
-  line-height: 1.45;
-  transition: border-color 0.15s ease;
-}
-
-.app-textarea:focus {
-  border-color: var(--color-accent);
-}
-
-.app-textarea:disabled {
-  opacity: 0.6;
-  background: var(--color-bg);
 }
 </style>

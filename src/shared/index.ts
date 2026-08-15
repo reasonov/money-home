@@ -18,6 +18,7 @@ export {
   findNextIncomeDate,
   availableUntilNextIncome,
   formatProjectionDate,
+  suggestTransfer,
   type ProjectBalanceInput,
   type ProjectBalanceResult,
   type AvailableUntilNextIncomeInput,
@@ -26,9 +27,11 @@ export {
   type ProjectionIncomeRule,
   type ProjectionPurchase,
   type IncomeFrequency,
+  type TransferCandidateAccount,
+  type TransferSuggestion,
 } from './lib/projectBalance'
 export { createId, createInviteCode } from './lib/id'
-export { showToast, useToastState } from './lib/toast'
+export { showToast, hideToast, useToastState } from './lib/toast'
 export { confirmAction, useConfirmState, settleConfirm } from './lib/confirm'
 export {
   applyTheme,
@@ -38,9 +41,19 @@ export {
   type ThemePreference,
   type ResolvedTheme,
 } from './lib/theme'
+export { sidebarOpen, openSidebar, closeSidebar, toggleSidebar } from './lib/sidebar'
 export {
+  formDrawer,
+  formDrawerOpen,
+  openFormDrawer,
+  closeFormDrawer,
+  type FormDrawer,
+} from './lib/formDrawers'
+export {
+  naiveThemeOverrides,
   AppButton,
   AppInput,
+  AppInputNumber,
   AppTextarea,
   AppSelect,
   AppField,
@@ -49,5 +62,10 @@ export {
   AppSkeleton,
   AppToastHost,
   AppConfirmDialog,
+  AppEmpty,
+  AppTag,
+  AppCheckbox,
+  AppSwitch,
+  AppSegmented,
   SwipeReveal,
 } from './ui'

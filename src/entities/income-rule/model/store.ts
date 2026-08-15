@@ -11,7 +11,6 @@ import type { IncomeRule } from './types'
 
 export const useIncomeRuleStore = defineStore('income-rule', () => {
   const items = ref<IncomeRule[]>([])
-  const householdId = ref<string | null>(null)
 
   const active = computed(() => items.value.filter((item) => item.active))
 
@@ -34,16 +33,16 @@ export const useIncomeRuleStore = defineStore('income-rule', () => {
     upsert(mapIncomeRule(row))
   }
 
-  async function load(nextHouseholdId: string) {
-    householdId.value = nextHouseholdId
-    items.value = await fetchIncomeRules(nextHouseholdId)
+  function forAccount(accountId: string) {
+    return items.value.filter((item) => item.accountId === accountId)
+  }
+
+  async function load() {
+    items.value = await fetchIncomeRules()
   }
 
   async function addRule(userId: string, input: Omit<IncomeRule, 'id'>) {
-    if (!householdId.value) {
-      throw new Error('Семья не загружена')
-    }
-    const rule = await insertIncomeRule(householdId.value, userId, input)
+    const rule = await insertIncomeRule(userId, input)
     upsert(rule)
     return rule
   }
@@ -61,16 +60,15 @@ export const useIncomeRuleStore = defineStore('income-rule', () => {
 
   function reset() {
     items.value = []
-    householdId.value = null
   }
 
   return {
     items,
-    householdId,
     active,
     upsert,
     removeLocal,
     applyRemoteRow,
+    forAccount,
     load,
     addRule,
     updateRule,

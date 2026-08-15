@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { Bell } from '@lucide/vue'
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppDrawer } from '@/shared'
+import { AppDrawer, openFormDrawer } from '@/shared'
 import { formatRelativeTime, useActivityStore, type ActivityItem } from '@/entities/activity'
 import { usePurchaseStore } from '@/entities/purchase'
+import { AutoIncomeActions } from '@/features/review-auto-income'
 
 const router = useRouter()
 const store = useActivityStore()
@@ -37,12 +39,12 @@ function openActivity(item: ActivityItem) {
   }
 
   if (purchase.status === 'planned') {
-    void router.push({ name: 'purchase-edit', params: { id: purchase.id } })
+    openFormDrawer({ name: 'purchase-edit', purchaseId: purchase.id })
     return
   }
 
   if (purchase.status === 'done') {
-    void router.push({ name: 'history' })
+    void router.push({ name: 'home' })
   }
 }
 </script>
@@ -57,20 +59,7 @@ function openActivity(item: ActivityItem) {
       @click="openInbox"
     >
       <span class="inbox__icon" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M12 3.5c-2.8 0-5 2.1-5 4.8v2.2c0 .9-.3 1.7-.9 2.4l-.7.8c-.5.6-.1 1.6.7 1.6h12.8c.8 0 1.2-1 .7-1.6l-.7-.8c-.6-.7-.9-1.5-.9-2.4V8.3c0-2.7-2.2-4.8-5-4.8Z"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linejoin="round"
-          />
-          <path
-            d="M9.8 18.5a2.4 2.4 0 0 0 4.4 0"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-          />
-        </svg>
+        <Bell :size="22" :stroke-width="1.7" />
       </span>
       <span v-if="store.unseenCount" class="inbox__count">
         {{ store.unseenCount > 9 ? '9+' : store.unseenCount }}
@@ -85,7 +74,7 @@ function openActivity(item: ActivityItem) {
           class="feed__item"
           :class="{
             'is-unseen': highlightIds.has(item.id),
-            'is-clickable': Boolean(item.purchaseId),
+            'is-clickable': Boolean(item.purchaseId || item.transactionId),
           }"
         >
           <button
@@ -113,11 +102,15 @@ function openActivity(item: ActivityItem) {
                 <span aria-hidden="true">·</span>
                 <time :datetime="item.createdAt">{{ formatRelativeTime(item.createdAt) }}</time>
               </p>
+              <AutoIncomeActions
+                v-if="item.kind === 'income_auto_posted' && item.transactionId"
+                :transaction-id="item.transactionId"
+              />
             </div>
           </template>
         </li>
       </ul>
-      <p v-else class="feed__empty">Пока нет изменений от семьи</p>
+      <p v-else class="feed__empty">Пока нет изменений</p>
     </AppDrawer>
   </div>
 </template>

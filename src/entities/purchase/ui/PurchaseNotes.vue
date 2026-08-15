@@ -14,7 +14,7 @@ function toggle() {
 
 <template>
   <div class="notes">
-    <button type="button" class="notes__toggle" @click="toggle">
+    <button type="button" class="notes__toggle" @click.stop="toggle">
       {{ expanded ? 'Скрыть описание' : 'Показать описание' }}
     </button>
     <p v-if="expanded" class="notes__text">{{ notes }}</p>

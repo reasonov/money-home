@@ -26,11 +26,26 @@ function mapAuthMessage(message: string): string {
   if (lower.includes('already in a household')) {
     return 'Вы уже состоите в семье'
   }
-  if (lower.includes('household not found')) {
-    return 'Семья с таким кодом не найдена'
+  if (lower.includes('account not found')) {
+    return 'Счёт с таким кодом не найден'
   }
   if (lower.includes('invite code required')) {
-    return 'Введите код приглашения'
+    return 'Введите код счёта'
+  }
+  if (lower.includes('not an account member')) {
+    return 'Нет доступа к счёту'
+  }
+  if (lower.includes('owner cannot leave')) {
+    return 'Владелец не может покинуть счёт'
+  }
+  if (lower.includes('choose different accounts')) {
+    return 'Выберите разные счета'
+  }
+  if (lower.includes('opening amount')) {
+    return 'Стартовый баланс не может быть отрицательным'
+  }
+  if (lower.includes('category name required') || lower.includes('select at least one account')) {
+    return 'Укажите название и хотя бы один счёт'
   }
   if (lower.includes('purchase is not planned')) {
     return 'Покупка уже завершена или отменена'

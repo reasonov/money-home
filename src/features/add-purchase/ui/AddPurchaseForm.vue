@@ -1,12 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
+import { useAccountStore } from '@/entities/account'
+import { CategorySelect, useCategoryStore } from '@/entities/category'
+import { useIncomeRuleStore } from '@/entities/income-rule'
+import { usePurchaseStore } from '@/entities/purchase'
+import { useSessionStore } from '@/entities/session'
+import { useTransactionStore } from '@/entities/transaction'
 import {
   AppBanner,
   AppButton,
   AppDrawer,
+  AppEmpty,
   AppField,
   AppInput,
+  AppInputNumber,
+  AppSelect,
   AppTextarea,
   compareDates,
   formatLocalDate,
@@ -14,27 +23,44 @@ import {
   formatProjectionDate,
   parseLocalDate,
   getErrorMessage,
+  openFormDrawer,
   projectBalance,
+  suggestTransfer,
   todayLocal,
 } from '@/shared'
-import { useBalanceStore } from '@/entities/balance'
-import { useIncomeRuleStore } from '@/entities/income-rule'
-import { usePurchaseStore } from '@/entities/purchase'
-import { useSessionStore } from '@/entities/session'
 
-const router = useRouter()
+const emit = defineEmits<{
+  saved: []
+}>()
+
 const session = useSessionStore()
-const balance = useBalanceStore()
+const accounts = useAccountStore()
+const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
 const purchases = usePurchaseStore()
+const transactions = useTransactionStore()
 
 const title = ref('')
-const amount = ref('')
+const amount = ref<string | number>('')
 const plannedDate = ref(todayLocal())
 const notes = ref('')
+const accountId = ref(accounts.preferredAccountId)
+const categoryId = ref('')
 const error = ref('')
 const detailsOpen = ref(false)
 const pending = ref(false)
+const transferring = ref(false)
+
+watch(
+  () => categories.forAccount(accountId.value, 'expense').map((item) => item.id).join(),
+  () => {
+    const list = categories.forAccount(accountId.value, 'expense')
+    if (!list.some((item) => item.id === categoryId.value)) {
+      categoryId.value = list[0]?.id ?? ''
+    }
+  },
+  { immediate: true },
+)
 
 const projection = computed(() => {
   const candidateAmount = Number(amount.value)
@@ -49,26 +75,40 @@ const projection = computed(() => {
   }
 
   return projectBalance({
-    currentBalance: balance.amount,
+    currentBalance: accounts.getById(accountId.value)?.amount ?? 0,
     asOfDate: asOf,
     targetDate: target,
-    incomeRules: incomeRules.active.map((rule) => ({
-      amount: rule.amount,
-      frequency: rule.frequency,
-      weekday: rule.weekday,
-      monthDay: rule.monthDay,
-      anchorDate: rule.anchorDate,
-      active: rule.active,
-    })),
-    plannedPurchases: purchases.planned.map((item) => ({
-      id: item.id,
-      title: item.title,
-      amount: item.amount,
-      plannedDate: item.plannedDate,
-      status: item.status,
-    })),
+    incomeRules: incomeRules.forAccount(accountId.value).filter((rule) => rule.active),
+    plannedPurchases: purchases.plannedFor(accountId.value),
     candidateAmount,
+    postedOccurrenceDates: incomeRules
+      .forAccount(accountId.value)
+      .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
   })
+})
+
+const transferSuggestion = computed(() => {
+  const result = projection.value
+  if (!result || result.canAfford) return null
+  const asOf = parseLocalDate(todayLocal())
+  const target = parseLocalDate(plannedDate.value)
+  return suggestTransfer(
+    result.shortfall,
+    asOf,
+    target,
+    accounts.items
+      .filter((item) => item.id !== accountId.value)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        currentBalance: item.amount,
+        plannedPurchases: purchases.plannedFor(item.id),
+        incomeRules: incomeRules.forAccount(item.id).filter((rule) => rule.active),
+        postedOccurrenceDates: incomeRules
+          .forAccount(item.id)
+          .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
+      })),
+  )
 })
 
 const candidateAmountValue = computed(() => Number(amount.value))
@@ -111,7 +151,28 @@ function applyProjectedAmount() {
 
 function goIncome() {
   detailsOpen.value = false
-  void router.push('/income')
+  openFormDrawer({ name: 'income-rule' })
+}
+
+async function applyTransfer() {
+  const suggestion = transferSuggestion.value
+  const userId = session.user?.id
+  if (!suggestion || !userId || !accountId.value) return
+  transferring.value = true
+  error.value = ''
+  try {
+    await accounts.transfer({
+      fromAccountId: suggestion.accountId,
+      toAccountId: accountId.value,
+      amount: suggestion.amount,
+      occurredOn: todayLocal(),
+    })
+    detailsOpen.value = false
+  } catch (err) {
+    error.value = getErrorMessage(err, 'Не удалось перевести')
+  } finally {
+    transferring.value = false
+  }
 }
 
 async function onSubmit() {
@@ -146,16 +207,27 @@ async function onSubmit() {
     return
   }
 
+  const category = categories.getById(categoryId.value)
+  if (!accountId.value || !category) {
+    error.value = 'Выберите счёт и категорию'
+    return
+  }
+
   pending.value = true
   try {
     await purchases.addPurchase({
+      accountId: accountId.value,
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryColor: category.color,
+      categoryIcon: category.icon,
       title: title.value,
       amount: candidateAmount,
       plannedDate: plannedDate.value,
       notes: notes.value,
       createdBy: userId,
     })
-    await router.push('/')
+    emit('saved')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить покупку')
   } finally {
@@ -165,22 +237,40 @@ async function onSubmit() {
 </script>
 
 <template>
-  <form class="form" @submit.prevent="onSubmit">
-    <button type="button" class="form__back" @click="router.push('/')">← Назад к плану</button>
+  <AppEmpty v-if="!accounts.items.length" description="Сначала создайте счёт">
+    <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
+  </AppEmpty>
+
+  <form v-else class="form" data-tour="purchase-form" @submit.prevent="onSubmit">
+    <AppField label="Сумма, ₽" for-id="purchase-amount">
+      <AppInputNumber id="purchase-amount" v-model="amount" :min="1" placeholder="0" />
+    </AppField>
     <AppField label="Что купить" for-id="purchase-title">
       <AppInput id="purchase-title" v-model="title" placeholder="Штора" required />
     </AppField>
-    <AppField label="Сумма, ₽" for-id="purchase-amount">
-      <AppInput
-        id="purchase-amount"
-        v-model="amount"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
+    <AppField label="Счёт списания" for-id="purchase-account">
+      <AppSelect id="purchase-account" v-model="accountId" required>
+        <option v-for="account in accounts.items" :key="account.id" :value="account.id">
+          {{ account.name }} · {{ formatMoney(account.amount) }}
+        </option>
+      </AppSelect>
+    </AppField>
+    <AppField label="Категория" for-id="purchase-cat">
+      <CategorySelect
+        id="purchase-cat"
+        v-model="categoryId"
+        :categories="categories.forAccount(accountId, 'expense')"
         required
       />
     </AppField>
+    <AppEmpty
+      v-if="!categories.forAccount(accountId, 'expense').length"
+      description="Нет категорий расхода для этого счёта"
+    >
+      <RouterLink to="/categories" custom v-slot="{ navigate }">
+        <AppButton variant="secondary" block @click="navigate">Добавить категорию</AppButton>
+      </RouterLink>
+    </AppEmpty>
     <AppField label="Дата покупки" for-id="purchase-date">
       <AppInput id="purchase-date" v-model="plannedDate" type="date" required />
     </AppField>
@@ -224,7 +314,7 @@ async function onSubmit() {
     <AppButton
       type="submit"
       block
-      :disabled="pending || Boolean(projection && !projection.canAfford)"
+      :disabled="pending || Boolean(projection && !projection.canAfford) || !categories.forAccount(accountId, 'expense').length"
     >
       {{ pending ? 'Сохраняем…' : 'Добавить покупку' }}
     </AppButton>
@@ -290,6 +380,19 @@ async function onSubmit() {
 
       <div class="details__actions">
         <AppButton
+          v-if="transferSuggestion"
+          type="button"
+          block
+          :disabled="transferring"
+          @click="applyTransfer"
+        >
+          {{
+            transferring
+              ? 'Переводим…'
+              : `Перевести ${formatMoney(transferSuggestion.amount)} со счёта «${transferSuggestion.accountName}»`
+          }}
+        </AppButton>
+        <AppButton
           v-if="projection.nextAffordableDate"
           type="button"
           block
@@ -319,17 +422,6 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.form__back {
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-weight: 700;
-  color: var(--color-accent);
-  cursor: pointer;
 }
 
 .form__error {

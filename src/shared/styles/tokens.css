@@ -43,6 +43,14 @@
   color-scheme: light;
 }
 
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --app-max-width: min(840px, 100%);
+    --header-height: 48px;
+    --nav-height: 52px;
+  }
+}
+
 [data-theme='dark'] {
   --color-bg: #14181c;
   --color-surface: #1e242a;

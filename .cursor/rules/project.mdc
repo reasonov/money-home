@@ -9,5 +9,5 @@ alwaysApply: true
 - Stack: Vue 3 + Vite + TS + Pinia + Vue Router + PWA; FSD; Supabase (Auth, Postgres, RLS, Realtime).
 - Currency: RUB. UI copy: Russian. Code/DB identifiers: English.
 - Do not implement beyond the current task. No drive-by refactors.
-- One household per user (v1). Family shares balance, income rules, purchases.
+- User-centric accounts. Sharing is per account via invite code, not a global household.
 - Client env only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never ship `service_role`.

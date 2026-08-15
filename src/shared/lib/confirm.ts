@@ -1,15 +1,24 @@
 import { reactive } from 'vue'
 
+export type ConfirmKind = 'warning' | 'error' | 'success'
+
 export type ConfirmOptions = {
   title: string
   message: string
   confirmLabel?: string
-  cancelLabel?: string
+  cancelLabel?: string | null
   danger?: boolean
+  kind?: ConfirmKind
 }
 
-type ConfirmState = ConfirmOptions & {
+type ConfirmState = {
   open: boolean
+  title: string
+  message: string
+  confirmLabel: string
+  cancelLabel: string | null
+  danger: boolean
+  kind: ConfirmKind
   resolve: ((value: boolean) => void) | null
 }
 
@@ -20,6 +29,7 @@ const state = reactive<ConfirmState>({
   confirmLabel: 'Подтвердить',
   cancelLabel: 'Отмена',
   danger: false,
+  kind: 'warning',
   resolve: null,
 })
 
@@ -35,8 +45,9 @@ export function confirmAction(options: ConfirmOptions): Promise<boolean> {
   state.title = options.title
   state.message = options.message
   state.confirmLabel = options.confirmLabel ?? 'Подтвердить'
-  state.cancelLabel = options.cancelLabel ?? 'Отмена'
+  state.cancelLabel = options.cancelLabel === undefined ? 'Отмена' : options.cancelLabel
   state.danger = options.danger ?? false
+  state.kind = options.kind ?? (options.danger ? 'error' : 'warning')
   state.open = true
 
   return new Promise((resolve) => {

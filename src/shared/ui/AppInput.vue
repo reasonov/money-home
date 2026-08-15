@@ -1,5 +1,8 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+import { NDatePicker, NInput } from 'naive-ui'
+
+const props = defineProps<{
   id?: string
   type?: string
   placeholder?: string
@@ -13,66 +16,61 @@ defineProps<{
 }>()
 
 const model = defineModel<string | number>({ required: true })
+
+const isDate = computed(() => props.type === 'date')
+const inputType = computed(() => (props.type === 'password' ? 'password' : 'text'))
+
+const textValue = computed({
+  get: () => String(model.value ?? ''),
+  set: (value: string) => {
+    model.value = value
+  },
+})
+
+const dateValue = computed({
+  get: () => (model.value ? String(model.value) : null),
+  set: (value: string | null) => {
+    model.value = value ?? ''
+  },
+})
 </script>
 
 <template>
-  <input
-    class="app-input"
-    :id="id"
-    :type="type ?? 'text'"
-    :placeholder="placeholder"
-    :min="min"
-    :max="max"
-    :step="step"
-    :inputmode="inputmode"
-    :autocomplete="autocomplete"
-    :required="required"
+  <NDatePicker
+    v-if="isDate"
+    v-model:formatted-value="dateValue"
+    class="app-input-date"
+    type="date"
+    format="dd.MM.yyyy"
+    value-format="yyyy-MM-dd"
+    size="large"
     :disabled="disabled"
-    :value="model"
-    @input="model = ($event.target as HTMLInputElement).value"
+    :input-readonly="false"
+  />
+  <NInput
+    v-else
+    v-model:value="textValue"
+    size="large"
+    :id="id"
+    :type="inputType"
+    :placeholder="placeholder"
+    :disabled="disabled"
+    :show-password-on="type === 'password' ? 'click' : undefined"
+    :input-props="{
+      id,
+      type: type === 'password' || type === 'date' ? undefined : type,
+      min: min != null ? String(min) : undefined,
+      max: max != null ? String(max) : undefined,
+      step: step != null ? String(step) : undefined,
+      inputmode,
+      autocomplete,
+      required,
+    }"
   />
 </template>
 
 <style scoped>
-.app-input {
+.app-input-date {
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  min-height: 48px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.app-input[type='date'],
-.app-input[type='datetime-local'],
-.app-input[type='time'] {
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.app-input[type='date']::-webkit-date-and-time-value,
-.app-input[type='datetime-local']::-webkit-date-and-time-value {
-  text-align: left;
-}
-
-.app-input[type='date']::-webkit-datetime-edit,
-.app-input[type='datetime-local']::-webkit-datetime-edit,
-.app-input[type='time']::-webkit-datetime-edit {
-  min-width: 0;
-  padding: 0;
-}
-
-.app-input:focus {
-  border-color: var(--color-accent);
-}
-
-.app-input:disabled {
-  opacity: 0.6;
-  background: var(--color-bg);
 }
 </style>

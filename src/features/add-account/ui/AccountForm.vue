@@ -1,0 +1,149 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import {
+  AppButton,
+  AppField,
+  AppInput,
+  AppInputNumber,
+  AppSelect,
+  getErrorMessage,
+  showToast,
+} from '@/shared'
+import { useAccountStore } from '@/entities/account'
+import { useCategoryStore } from '@/entities/category'
+
+const props = withDefaults(
+  defineProps<{
+    initialMode?: 'create' | 'join'
+  }>(),
+  { initialMode: 'create' },
+)
+
+const emit = defineEmits<{
+  saved: []
+}>()
+
+const accounts = useAccountStore()
+const categories = useCategoryStore()
+
+const mode = ref<'create' | 'join'>(props.initialMode)
+const name = ref('')
+const opening = ref('0')
+const code = ref('')
+const selected = ref<string[]>(categories.items.map((item) => item.id))
+const error = ref('')
+const pending = ref(false)
+
+watch(
+  () => props.initialMode,
+  (value) => {
+    mode.value = value
+  },
+)
+
+async function onSubmit() {
+  error.value = ''
+  pending.value = true
+  try {
+    if (mode.value === 'join') {
+      await accounts.addByCode(code.value)
+      showToast('Счёт добавлен')
+    } else {
+      const amount = Number(opening.value)
+      if (!Number.isFinite(amount) || amount < 0) {
+        error.value = 'Укажите стартовый баланс'
+        return
+      }
+      await accounts.addAccount({
+        name: name.value,
+        openingAmount: amount,
+        categoryIds: selected.value,
+      })
+      showToast('Счёт создан')
+    }
+    await categories.load()
+    emit('saved')
+  } catch (err) {
+    error.value = getErrorMessage(err, 'Не удалось сохранить счёт')
+  } finally {
+    pending.value = false
+  }
+}
+</script>
+
+<template>
+  <form class="form" data-tour="account-form" @submit.prevent="onSubmit">
+    <div class="tabs">
+      <button type="button" :class="{ 'is-on': mode === 'create' }" @click="mode = 'create'">
+        Создать
+      </button>
+      <button type="button" :class="{ 'is-on': mode === 'join' }" @click="mode = 'join'">
+        По коду
+      </button>
+    </div>
+
+    <template v-if="mode === 'create'">
+      <AppField label="Название" for-id="acc-name">
+        <AppInput id="acc-name" v-model="name" placeholder="Наличные" required />
+      </AppField>
+      <AppField label="Стартовый баланс, ₽" for-id="acc-open">
+        <AppInputNumber id="acc-open" v-model="opening" :min="0" placeholder="0" />
+      </AppField>
+      <AppField v-if="categories.items.length" label="Категории" for-id="acc-cats">
+        <AppSelect
+          id="acc-cats"
+          v-model="selected"
+          multiple
+          filterable
+          clearable
+          placeholder="Выберите категории"
+        >
+          <option v-for="cat in categories.items" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </AppSelect>
+      </AppField>
+    </template>
+
+    <AppField v-else label="Код счёта" for-id="acc-code">
+      <AppInput id="acc-code" v-model="code" placeholder="ABCD2345" required />
+    </AppField>
+
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <AppButton type="submit" block :disabled="pending">
+      {{ pending ? 'Сохраняем…' : 'Сохранить' }}
+    </AppButton>
+  </form>
+</template>
+
+<style scoped>
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.tabs button {
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 700;
+}
+
+.tabs button.is-on {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.error {
+  color: var(--color-warning);
+}
+</style>

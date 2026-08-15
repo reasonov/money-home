@@ -1,23 +1,27 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
 import {
   AppButton,
+  AppTag,
   confirmAction,
   formatMoney,
   formatRelativeDisplayDate,
   getErrorMessage,
   isPastDate,
+  openFormDrawer,
   showToast,
   SwipeReveal,
   todayLocal,
 } from '@/shared'
+import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useActivityStore, UnseenPurchaseDot } from '@/entities/activity'
+import { CategoryIcon } from '@/entities/category'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
+import { useTransactionStore } from '@/entities/transaction'
 
-const router = useRouter()
 const store = usePurchaseStore()
+const accounts = useAccountStore()
 const session = useSessionStore()
 const activity = useActivityStore()
 const menuOpenId = ref<string | null>(null)
@@ -51,7 +55,11 @@ function onViewportChange() {
 const groups = computed(() => {
   const today = todayLocal()
   const map = new Map<string, Purchase[]>()
-  const sorted = [...store.planned].sort((a, b) => {
+  const source =
+    accounts.selectedAccountId === ALL_ACCOUNTS_ID
+      ? store.planned
+      : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
+  const sorted = [...source].sort((a, b) => {
     const aPast = isPastDate(a.plannedDate, today)
     const bPast = isPastDate(b.plannedDate, today)
     if (aPast !== bPast) {
@@ -124,7 +132,7 @@ async function markDone(id: string, options?: { confirm?: boolean; event?: Event
   if (options?.confirm !== false) {
     const ok = await confirmAction({
       title: 'Отметить готовым?',
-      message: `Списать ${formatMoney(purchase.amount)} с общего баланса и перенести «${purchase.title}» в историю.`,
+      message: `Списать ${formatMoney(purchase.amount)} со счёта и перенести «${purchase.title}» в историю.`,
       confirmLabel: 'Готово',
     })
     if (!ok) {
@@ -135,6 +143,7 @@ async function markDone(id: string, options?: { confirm?: boolean; event?: Event
   acknowledge(id)
   try {
     await store.markDone(id)
+    await useTransactionStore().load()
   } catch (err) {
     showToast(getErrorMessage(err, 'Не удалось завершить покупку'))
   }
@@ -175,16 +184,16 @@ function edit(id: string, event?: Event) {
   event?.stopPropagation()
   closeOverlays()
   acknowledge(id)
-  void router.push({ name: 'purchase-edit', params: { id } })
+  openFormDrawer({ name: 'purchase-edit', purchaseId: id })
+}
+
+function accountName(accountId: string) {
+  return accounts.getById(accountId)?.name ?? 'Счёт'
 }
 </script>
 
 <template>
   <section class="list">
-    <div class="list__head">
-      <h2 class="list__title">План покупок</h2>
-    </div>
-
     <div v-if="groups.length" class="list__groups" @click="closeOverlays">
       <section v-for="group in groups" :key="group.date" class="group">
         <h3 class="group__date" :class="{ 'is-overdue': group.overdue }">
@@ -201,7 +210,7 @@ function edit(id: string, event?: Event) {
               <div
                 class="item"
                 :class="{ 'is-overdue': group.overdue }"
-                @click="acknowledge(item.id)"
+                @click="edit(item.id, $event)"
               >
                 <div class="item__main">
                   <p class="item__title">
@@ -209,12 +218,31 @@ function edit(id: string, event?: Event) {
                       {{ item.title }}
                     </UnseenPurchaseDot>
                   </p>
+                  <p class="item__meta-row">
+                    <span>{{ accountName(item.accountId) }}</span>
+                    <AppTag v-if="item.categoryName" type="default">
+                      <CategoryIcon
+                        v-if="item.categoryIcon && item.categoryColor"
+                        :icon="item.categoryIcon"
+                        :color="item.categoryColor"
+                        :size="16"
+                      />
+                      {{ item.categoryName }}
+                    </AppTag>
+                  </p>
                   <PurchaseNotes v-if="item.notes" :notes="item.notes" />
                   <p v-if="group.overdue" class="item__meta">Просрочено</p>
                 </div>
                 <div class="item__side">
                   <p class="item__amount money money-soft">{{ formatMoney(item.amount) }}</p>
                   <div class="item__actions">
+                    <AppButton
+                      v-if="group.overdue"
+                      type="button"
+                      @click="markDone(item.id, { event: $event })"
+                    >
+                      Готово
+                    </AppButton>
                     <div class="item__menu">
                       <button
                         :ref="(el) => setMenuButton(item.id, el)"
@@ -239,12 +267,12 @@ function edit(id: string, event?: Event) {
     <div v-else class="list__empty">
       <p class="list__empty-text">Пока нет запланированных покупок</p>
       <div class="list__empty-actions">
-        <RouterLink to="/purchases/new" custom v-slot="{ navigate }">
-          <AppButton block @click="navigate">Добавить покупку</AppButton>
-        </RouterLink>
-        <RouterLink to="/income" custom v-slot="{ navigate }">
-          <AppButton variant="secondary" block @click="navigate">Настроить пополнение</AppButton>
-        </RouterLink>
+        <div data-tour="calendar-cta">
+          <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
+        </div>
+        <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income-rule' })">
+          Настроить пополнение
+        </AppButton>
       </div>
     </div>
 
@@ -286,10 +314,6 @@ function edit(id: string, event?: Event) {
   gap: var(--space-4);
 }
 
-.list__title {
-  font-size: 1.125rem;
-}
-
 .list__groups {
   display: flex;
   flex-direction: column;
@@ -323,6 +347,7 @@ function edit(id: string, event?: Event) {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
+  cursor: pointer;
 }
 
 .item.is-overdue {
@@ -345,6 +370,16 @@ function edit(id: string, event?: Event) {
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--color-warning);
+}
+
+.item__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
 }
 
 .item__side {

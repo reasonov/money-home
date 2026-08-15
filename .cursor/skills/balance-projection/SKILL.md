@@ -1,13 +1,13 @@
 ---
 name: balance-projection
-description: Implements and tests household balance projection for purchase affordability by date. Use when working on canAfford, projected balance, income rules, planned purchases, or the curtain/date example from the spec.
+description: Implements and tests per-account balance projection for purchase affordability by date. Use when working on canAfford, projected balance, income rules, planned purchases, or transfer suggestions.
 ---
 
 # Balance projection
 
 ## When
 
-Any change to affordability, income schedules, planned purchases calendar, or balance math.
+Any change to affordability, income schedules, planned purchases calendar, auto-income occurrences, or transfer suggestions.
 
 ## Spec source
 
@@ -17,20 +17,21 @@ Read `docs/SPEC.md` § Balance Projection Algorithm first.
 
 ```
 projected = currentBalance
-           + sum(incomes on d where asOf < d <= target)
+           + sum(future incomes on d where asOf < d <= target and no occurrence)
            - sum(planned purchases on d where asOf < d <= target)
 canAfford = projected >= candidateAmount
 ```
 
-Purchases dated `asOfDate` are excluded (already in manual balance).
+Purchases dated `asOfDate` are excluded (already in account balance). Posted auto-income is already in `currentBalance`.
 
 ## Implementation checklist
 
-1. Keep logic pure in `shared` or `entities` (no Supabase calls inside).
+1. Keep logic pure in `shared` (no Supabase calls inside). Scope one account.
 2. Cover frequencies: `weekly`, `biweekly` (+ anchor), `monthly` (day 1–28).
-3. On fail, return breakdown: `shortfall`, `plannedBeforeTarget`, `incomeTotal`, `incomeOccurrencesCount`, `nextAffordableDate` (scan day-by-day, horizon 365 days from `asOfDate`).
-4. UI: short `message` in banner; full refusal in bottom drawer.
-5. Add/update Vitest cases for the helper (including edit flow excluding self, nextAffordableDate, empty horizon).
+3. Exclude `postedOccurrenceDates` from future income sums.
+4. On fail, return breakdown plus `suggestTransfer` candidates from other accounts the user can spend from.
+5. UI: short `message` in banner; full refusal in bottom drawer; transfer CTA when surplus ≥ shortfall.
+6. Add/update Vitest cases (curtain fixture, exclude self, skipped dates, transfer suggestion).
 
 ## Fixture
 

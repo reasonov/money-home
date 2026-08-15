@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useHouseholdStore } from '@/entities/household'
 import { useSessionStore } from '@/entities/session'
 
 const router = createRouter({
@@ -16,7 +15,7 @@ const router = createRouter({
           component: () => import('@/pages/login/ui/LoginPage.vue'),
           meta: {
             title: 'Вход',
-            subtitle: 'Планируйте покупки семьи из общего бюджета',
+            subtitle: 'Учёт расходов и доходов по счетам',
             guestOnly: true,
           },
         },
@@ -33,25 +32,8 @@ const router = createRouter({
           component: () => import('@/pages/register/ui/RegisterPage.vue'),
           meta: {
             title: 'Регистрация',
-            subtitle: 'Создайте аккаунт и соберите семью в одном плане',
+            subtitle: 'Создайте аккаунт и начните вести счета',
             guestOnly: true,
-          },
-        },
-      ],
-    },
-    {
-      path: '/onboarding',
-      component: () => import('@/app/layouts/AuthLayout.vue'),
-      meta: { requiresAuth: true },
-      children: [
-        {
-          path: '',
-          name: 'onboarding',
-          component: () => import('@/pages/onboarding/ui/OnboardingPage.vue'),
-          meta: {
-            title: 'Ваша семья',
-            subtitle: 'Создайте семью или войдите по коду приглашения',
-            requiresAuth: true,
           },
         },
       ],
@@ -59,37 +41,77 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/app/layouts/MainLayout.vue'),
-      meta: { requiresAuth: true, requiresHousehold: true },
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
           name: 'home',
           component: () => import('@/pages/home/ui/HomePage.vue'),
-          meta: { title: 'Календарь покупок' },
+          meta: { title: 'Главная', tab: true, accountSelect: true },
+        },
+        {
+          path: 'accounts',
+          name: 'accounts',
+          component: () => import('@/pages/accounts/ui/AccountsPage.vue'),
+          meta: { title: 'Счета' },
+        },
+        {
+          path: 'accounts/new',
+          redirect: { name: 'accounts' },
+        },
+        {
+          path: 'accounts/:id',
+          name: 'account-detail',
+          component: () => import('@/pages/account-detail/ui/AccountDetailPage.vue'),
+          meta: { title: 'Счёт' },
+        },
+        {
+          path: 'expense/new',
+          redirect: { name: 'home' },
+        },
+        {
+          path: 'income/new',
+          redirect: { name: 'home' },
+        },
+        {
+          path: 'transfer',
+          redirect: { name: 'home' },
         },
         {
           path: 'purchases/new',
-          name: 'purchase-new',
-          component: () => import('@/pages/purchase-new/ui/PurchaseNewPage.vue'),
-          meta: { title: 'Новая покупка' },
+          redirect: { name: 'calendar' },
         },
         {
           path: 'purchases/:id/edit',
-          name: 'purchase-edit',
-          component: () => import('@/pages/purchase-edit/ui/PurchaseEditPage.vue'),
-          meta: { title: 'Изменить покупку' },
+          redirect: { name: 'calendar' },
         },
         {
           path: 'history',
-          name: 'history',
-          component: () => import('@/pages/history/ui/HistoryPage.vue'),
-          meta: { title: 'История покупок' },
+          redirect: { name: 'home' },
+        },
+        {
+          path: 'calendar',
+          name: 'calendar',
+          component: () => import('@/pages/calendar/ui/CalendarPage.vue'),
+          meta: { title: 'Планирование', tab: true, accountSelect: true },
         },
         {
           path: 'income',
           name: 'income',
           component: () => import('@/pages/income/ui/IncomePage.vue'),
-          meta: { title: 'Пополнения' },
+          meta: { title: 'Авто-пополнения' },
+        },
+        {
+          path: 'categories',
+          name: 'categories',
+          component: () => import('@/pages/categories/ui/CategoriesPage.vue'),
+          meta: { title: 'Категории' },
+        },
+        {
+          path: 'stats',
+          name: 'stats',
+          component: () => import('@/pages/stats/ui/StatsPage.vue'),
+          meta: { title: 'Статистика', tab: true, accountSelect: true },
         },
         {
           path: 'settings',
@@ -108,10 +130,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const session = useSessionStore()
-  const household = useHouseholdStore()
-
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
-  const requiresHousehold = to.matched.some((record) => record.meta.requiresHousehold)
   const guestOnly = to.matched.some((record) => record.meta.guestOnly)
 
   if (requiresAuth && !session.isAuthenticated) {
@@ -119,14 +138,6 @@ router.beforeEach((to) => {
   }
 
   if (guestOnly && session.isAuthenticated) {
-    return household.hasHousehold ? { name: 'home' } : { name: 'onboarding' }
-  }
-
-  if (requiresHousehold && session.isAuthenticated && !household.hasHousehold) {
-    return { name: 'onboarding' }
-  }
-
-  if (to.name === 'onboarding' && session.isAuthenticated && household.hasHousehold) {
     return { name: 'home' }
   }
 

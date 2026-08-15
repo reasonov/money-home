@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   AppBanner,
   AppButton,
   AppDrawer,
+  AppEmpty,
   AppField,
   AppInput,
+  AppInputNumber,
+  AppSelect,
   AppSkeleton,
   AppTextarea,
   compareDates,
@@ -15,27 +18,41 @@ import {
   formatProjectionDate,
   parseLocalDate,
   getErrorMessage,
+  openFormDrawer,
   projectBalance,
   todayLocal,
 } from '@/shared'
-import { useBalanceStore } from '@/entities/balance'
+import { useAccountStore } from '@/entities/account'
+import { CategorySelect, useCategoryStore } from '@/entities/category'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
+import { useTransactionStore } from '@/entities/transaction'
 
-const route = useRoute()
-const router = useRouter()
+const props = defineProps<{
+  purchaseId: string
+}>()
+
+const emit = defineEmits<{
+  saved: []
+  cancel: []
+}>()
+
 const session = useSessionStore()
-const balance = useBalanceStore()
+const accounts = useAccountStore()
+const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
 const purchases = usePurchaseStore()
+const transactions = useTransactionStore()
 
-const purchaseId = computed(() => String(route.params.id ?? ''))
+const purchaseId = computed(() => props.purchaseId)
 
 const title = ref('')
 const amount = ref('')
 const plannedDate = ref(todayLocal())
 const notes = ref('')
+const accountId = ref('')
+const categoryId = ref('')
 const error = ref('')
 const detailsOpen = ref(false)
 const ready = ref(false)
@@ -44,7 +61,7 @@ const pending = ref(false)
 onMounted(() => {
   const purchase = purchases.getById(purchaseId.value)
   if (!purchase || purchase.status !== 'planned') {
-    void router.replace('/')
+    emit('cancel')
     return
   }
 
@@ -52,8 +69,21 @@ onMounted(() => {
   amount.value = String(purchase.amount)
   plannedDate.value = purchase.plannedDate
   notes.value = purchase.notes ?? ''
+  accountId.value = purchase.accountId
+  categoryId.value = purchase.categoryId ?? ''
   ready.value = true
 })
+
+watch(
+  () => categories.forAccount(accountId.value, 'expense').map((item) => item.id).join(),
+  () => {
+    if (!ready.value) return
+    const list = categories.forAccount(accountId.value, 'expense')
+    if (!list.some((item) => item.id === categoryId.value)) {
+      categoryId.value = list[0]?.id ?? ''
+    }
+  },
+)
 
 const projection = computed(() => {
   if (!ready.value) {
@@ -72,26 +102,16 @@ const projection = computed(() => {
   }
 
   return projectBalance({
-    currentBalance: balance.amount,
+    currentBalance: accounts.getById(accountId.value)?.amount ?? 0,
     asOfDate: asOf,
     targetDate: target,
-    incomeRules: incomeRules.active.map((rule) => ({
-      amount: rule.amount,
-      frequency: rule.frequency,
-      weekday: rule.weekday,
-      monthDay: rule.monthDay,
-      anchorDate: rule.anchorDate,
-      active: rule.active,
-    })),
-    plannedPurchases: purchases.planned.map((item) => ({
-      id: item.id,
-      title: item.title,
-      amount: item.amount,
-      plannedDate: item.plannedDate,
-      status: item.status,
-    })),
+    incomeRules: incomeRules.forAccount(accountId.value).filter((rule) => rule.active),
+    plannedPurchases: purchases.plannedFor(accountId.value),
     candidateAmount,
     excludePurchaseId: purchaseId.value,
+    postedOccurrenceDates: incomeRules
+      .forAccount(accountId.value)
+      .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
   })
 })
 
@@ -135,7 +155,7 @@ function applyProjectedAmount() {
 
 function goIncome() {
   detailsOpen.value = false
-  void router.push('/income')
+  openFormDrawer({ name: 'income-rule' })
 }
 
 async function onSubmit() {
@@ -172,7 +192,18 @@ async function onSubmit() {
 
   pending.value = true
   try {
+    const category = categories.getById(categoryId.value)
+    if (!accountId.value || !category) {
+      error.value = 'Выберите счёт и категорию'
+      return
+    }
+
     const updated = await purchases.updatePurchase(purchaseId.value, userId, {
+      accountId: accountId.value,
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryColor: category.color,
+      categoryIcon: category.icon,
       title: title.value,
       amount: candidateAmount,
       plannedDate: plannedDate.value,
@@ -184,7 +215,7 @@ async function onSubmit() {
       return
     }
 
-    await router.push('/')
+    emit('saved')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось изменить покупку')
   } finally {
@@ -197,21 +228,35 @@ async function onSubmit() {
   <AppSkeleton v-if="!ready" :rows="5" />
 
   <form v-else class="form" @submit.prevent="onSubmit">
-    <button type="button" class="form__back" @click="router.push('/')">← Назад к плану</button>
+    <AppField label="Сумма, ₽" for-id="edit-purchase-amount">
+      <AppInputNumber id="edit-purchase-amount" v-model="amount" :min="1" placeholder="0" />
+    </AppField>
     <AppField label="Что купить" for-id="edit-purchase-title">
       <AppInput id="edit-purchase-title" v-model="title" placeholder="Штора" required />
     </AppField>
-    <AppField label="Сумма, ₽" for-id="edit-purchase-amount">
-      <AppInput
-        id="edit-purchase-amount"
-        v-model="amount"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
+    <AppField label="Счёт списания" for-id="edit-account">
+      <AppSelect id="edit-account" v-model="accountId" required>
+        <option v-for="account in accounts.items" :key="account.id" :value="account.id">
+          {{ account.name }} · {{ formatMoney(account.amount) }}
+        </option>
+      </AppSelect>
+    </AppField>
+    <AppField label="Категория" for-id="edit-cat">
+      <CategorySelect
+        id="edit-cat"
+        v-model="categoryId"
+        :categories="categories.forAccount(accountId, 'expense')"
         required
       />
     </AppField>
+    <AppEmpty
+      v-if="!categories.forAccount(accountId, 'expense').length"
+      description="Нет категорий расхода для этого счёта"
+    >
+      <RouterLink to="/categories" custom v-slot="{ navigate }">
+        <AppButton variant="secondary" block @click="navigate">Добавить категорию</AppButton>
+      </RouterLink>
+    </AppEmpty>
     <AppField label="Дата покупки" for-id="edit-purchase-date">
       <AppInput id="edit-purchase-date" v-model="plannedDate" type="date" required />
     </AppField>
@@ -255,7 +300,7 @@ async function onSubmit() {
     <AppButton
       type="submit"
       block
-      :disabled="pending || Boolean(projection && !projection.canAfford)"
+      :disabled="pending || Boolean(projection && !projection.canAfford) || !categories.forAccount(accountId, 'expense').length"
     >
       {{ pending ? 'Сохраняем…' : 'Сохранить' }}
     </AppButton>
@@ -350,17 +395,6 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.form__back {
-  align-self: flex-start;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-weight: 700;
-  color: var(--color-accent);
-  cursor: pointer;
 }
 
 .form__error {

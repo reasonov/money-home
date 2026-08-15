@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AppButton, AppField, AppInput, getErrorMessage } from '@/shared'
-import { bootstrapHouseholdSession } from '@/entities/household'
+import { bootstrapAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 
 const router = useRouter()
@@ -23,8 +23,8 @@ async function onSubmit() {
   pending.value = true
   try {
     await session.login(email.value, password.value)
-    const household = await bootstrapHouseholdSession()
-    await router.push(household ? '/' : '/onboarding')
+    await bootstrapAccountSession()
+    await router.push('/')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось войти')
   } finally {

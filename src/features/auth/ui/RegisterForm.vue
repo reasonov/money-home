@@ -27,7 +27,7 @@ async function onSubmit() {
   pending.value = true
   try {
     await session.register(email.value, password.value, displayName.value)
-    await router.push('/onboarding')
+    await router.push('/')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось создать аккаунт')
   } finally {

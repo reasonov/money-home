@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import { AppButton, formatDisplayDate, formatMoney } from '@/shared'
+import { AppButton, formatDisplayDate, formatMoney, openFormDrawer } from '@/shared'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 
 const store = usePurchaseStore()
@@ -52,9 +52,7 @@ const groups = computed(() => {
         <RouterLink to="/" custom v-slot="{ navigate }">
           <AppButton variant="secondary" block @click="navigate">К плану покупок</AppButton>
         </RouterLink>
-        <RouterLink to="/purchases/new" custom v-slot="{ navigate }">
-          <AppButton block @click="navigate">Новая покупка</AppButton>
-        </RouterLink>
+        <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
       </div>
     </div>
   </section>

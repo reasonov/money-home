@@ -1,30 +1,40 @@
 <script setup lang="ts">
-import { APP_VERSION } from '@/shared'
+import { Menu } from '@lucide/vue'
+import HeaderAccountSelect from './HeaderAccountSelect.vue'
 
 withDefaults(
   defineProps<{
+    showAccountSelect?: boolean
     title?: string
-    showBrand?: boolean
   }>(),
   {
+    showAccountSelect: false,
     title: '',
-    showBrand: true,
   },
 )
+
+const emit = defineEmits<{
+  menu: []
+}>()
 </script>
 
 <template>
   <header class="header">
     <div class="header__inner">
-      <div class="header__text">
-        <p v-if="showBrand" class="header__brand">
-          <span>Money Home</span>
-          <span class="header__version">{{ APP_VERSION }}</span>
-        </p>
-        <h1 v-if="title" class="header__title">{{ title }}</h1>
-        <slot />
+      <button
+        type="button"
+        class="header__icon"
+        data-tour="nav-settings"
+        aria-label="Открыть меню"
+        @click="emit('menu')"
+      >
+        <Menu :size="22" :stroke-width="1.8" />
+      </button>
+      <div class="header__center">
+        <HeaderAccountSelect v-if="showAccountSelect" />
+        <h1 v-else-if="title" class="header__title">{{ title }}</h1>
       </div>
-      <div v-if="$slots.actions" class="header__actions">
+      <div class="header__actions">
         <slot name="actions" />
       </div>
     </div>
@@ -57,49 +67,48 @@ withDefaults(
 
 .header__inner {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-3);
   min-height: var(--header-height);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  padding: var(--space-2) var(--space-4);
 }
 
-.header__text {
+.header__center {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  justify-content: center;
   min-width: 0;
+}
+
+.header__title {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header__actions {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  margin-top: 2px;
+  justify-content: flex-end;
+  width: 44px;
 }
 
-.header__brand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.header__icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--color-accent);
-}
-
-.header__version {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--color-text-muted);
-}
-
-.header__title {
-  font-size: 1.375rem;
-  font-weight: 700;
-  line-height: 1.2;
+  cursor: pointer;
 }
 </style>

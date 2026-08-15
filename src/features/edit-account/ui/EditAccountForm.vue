@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { AppButton, AppField, AppInput, getErrorMessage, showToast } from '@/shared'
-import { useHouseholdStore } from '@/entities/household'
+import { updateProfileName } from '@/entities/profile'
 import { useSessionStore } from '@/entities/session'
 
 const session = useSessionStore()
-const household = useHouseholdStore()
 const value = ref(session.user?.displayName ?? '')
 const error = ref('')
 const pending = ref(false)
@@ -30,8 +29,8 @@ async function onSubmit() {
   pending.value = true
   try {
     await session.updateDisplayName(name)
-    if (household.hasHousehold) {
-      await household.updateOwnDisplayName(name)
+    if (session.user?.id) {
+      await updateProfileName(session.user.id, name)
     }
     showToast('Имя обновлено')
   } catch (err) {

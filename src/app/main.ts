@@ -3,8 +3,9 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-import { bootstrapHouseholdSession, resetHouseholdSession } from '@/entities/household'
+import { bootstrapAccountSession, resetAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
+import { resetProductTour } from '@/features/product-tour'
 import { useThemeStore } from '@/features/theme-switch'
 
 import '@/shared/styles/tokens.css'
@@ -21,14 +22,18 @@ async function bootstrap() {
   const session = useSessionStore(pinia)
   await session.init()
   if (session.isAuthenticated) {
-    await bootstrapHouseholdSession()
+    await bootstrapAccountSession()
   }
 
   watch(
     () => session.isAuthenticated,
     (isAuth, wasAuth) => {
       if (wasAuth && !isAuth) {
-        resetHouseholdSession()
+        resetAccountSession()
+        resetProductTour()
+      }
+      if (!wasAuth && isAuth) {
+        void bootstrapAccountSession()
       }
     },
   )

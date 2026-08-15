@@ -1,20 +1,45 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { closeSidebar, toggleSidebar } from '@/shared'
+import { useAccountStore } from '@/entities/account'
+import { useProductTour } from '@/features/product-tour'
 import { AppHeader } from '@/widgets/app-header'
+import { AppSidebar } from '@/widgets/app-sidebar'
+import { AppFormDrawers } from '@/widgets/app-drawers'
 import { ActivityInbox } from '@/widgets/activity-inbox'
 import { BottomNav } from '@/widgets/bottom-nav'
 
 const route = useRoute()
+const accounts = useAccountStore()
 
-const title = computed(() => (route.meta.title as string | undefined) ?? '')
+const showAccountSelect = computed(() => route.meta.accountSelect === true)
+const pageTitle = computed(() => {
+  if (route.name === 'account-detail') {
+    const id = String(route.params.id ?? '')
+    return accounts.getById(id)?.name ?? 'Счёт'
+  }
+  return typeof route.meta.title === 'string' ? route.meta.title : ''
+})
 const showNav = computed(() => route.meta.showNav !== false)
-const showBrand = computed(() => route.meta.showBrand !== false)
+
+useProductTour()
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeSidebar()
+  },
+)
 </script>
 
 <template>
   <div class="shell">
-    <AppHeader :title="title" :show-brand="showBrand">
+    <AppHeader
+      :show-account-select="showAccountSelect"
+      :title="pageTitle"
+      @menu="toggleSidebar"
+    >
       <template #actions>
         <ActivityInbox />
       </template>
@@ -23,6 +48,8 @@ const showBrand = computed(() => route.meta.showBrand !== false)
       <RouterView />
     </main>
     <BottomNav v-if="showNav" />
+    <AppSidebar />
+    <AppFormDrawers />
   </div>
 </template>
 

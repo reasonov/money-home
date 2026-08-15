@@ -52,6 +52,8 @@ export const useActivityStore = defineStore('activity', () => {
     actorName: string
     summary: string
     purchaseId?: string
+    transactionId?: string
+    occurrenceId?: string
     createdAt?: string
     seenAt?: string | null
   }) {
@@ -64,6 +66,8 @@ export const useActivityStore = defineStore('activity', () => {
       createdAt: input.createdAt ?? new Date().toISOString(),
       seenAt: input.seenAt === undefined ? null : input.seenAt,
       ...(input.purchaseId ? { purchaseId: input.purchaseId } : {}),
+      ...(input.transactionId ? { transactionId: input.transactionId } : {}),
+      ...(input.occurrenceId ? { occurrenceId: input.occurrenceId } : {}),
     }
     items.value = [item, ...items.value].slice(0, MAX_ITEMS)
     persist()
