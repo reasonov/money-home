@@ -24,14 +24,16 @@ const emit = defineEmits<{
       <button
         type="button"
         class="header__icon"
-        data-tour="nav-settings"
+        data-tour="header-menu"
         aria-label="Открыть меню"
         @click="emit('menu')"
       >
         <Menu :size="22" :stroke-width="1.8" />
       </button>
       <div class="header__center">
-        <HeaderAccountSelect v-if="showAccountSelect" />
+        <div v-if="showAccountSelect" class="header__select" data-tour="header-account">
+          <HeaderAccountSelect />
+        </div>
         <h1 v-else-if="title" class="header__title">{{ title }}</h1>
       </div>
       <div class="header__actions">
@@ -78,6 +80,11 @@ const emit = defineEmits<{
   display: flex;
   justify-content: center;
   min-width: 0;
+}
+
+.header__select {
+  width: 100%;
+  max-width: 280px;
 }
 
 .header__title {

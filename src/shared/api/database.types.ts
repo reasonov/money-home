@@ -355,6 +355,10 @@ export type Database = {
         Args: { p_as_of?: string }
         Returns: Database['public']['Tables']['transactions']['Row'][]
       }
+      cancel_posted_transaction: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       complete_purchase: {
         Args: { p_purchase_id: string }
         Returns: Database['public']['Tables']['purchases']['Row']
@@ -390,6 +394,19 @@ export type Database = {
       skip_income_occurrence: {
         Args: { p_occurrence_id: string }
         Returns: undefined
+      }
+      update_posted_transaction: {
+        Args: {
+          p_account_id: string
+          p_amount: number
+          p_category_id?: string
+          p_counterparty_account_id?: string
+          p_id: string
+          p_notes?: string
+          p_occurred_on: string
+          p_title?: string
+        }
+        Returns: Database['public']['Tables']['transactions']['Row']
       }
       transfer_between_accounts: {
         Args: {

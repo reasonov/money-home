@@ -1,10 +1,8 @@
 import { nextTick, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { closeFormDrawer, closeSidebar, confirmAction, hideToast, openSidebar } from '@/shared'
+import { closeFormDrawer, closeSidebar, confirmAction, hideToast } from '@/shared'
 import { useAccountStore } from '@/entities/account'
-import { useCategoryStore } from '@/entities/category'
 import { useSessionStore } from '@/entities/session'
-import { useTransactionStore } from '@/entities/transaction'
 import { TOUR_STEPS } from '../model/steps'
 import { useProductTourStore } from '../model/store'
 import type { TourContext, TourStepDef } from '../model/types'
@@ -13,23 +11,9 @@ import { destroyTourUi, showTourHighlight } from './runTour'
 function makeContext(
   path: string,
   accountCount: number,
-  expenseCategoryCount: number,
-  incomeCategoryCount: number,
-  expenseCount: number,
-  incomeCount: number,
   firstAccountId: string | null,
-  mode: TourContext['mode'],
 ): TourContext {
-  return {
-    path,
-    accountCount,
-    expenseCategoryCount,
-    incomeCategoryCount,
-    expenseCount,
-    incomeCount,
-    firstAccountId,
-    mode,
-  }
+  return { path, accountCount, firstAccountId }
 }
 
 function firstOpenStep(fromId: string, ctx: TourContext): TourStepDef | null {
@@ -55,11 +39,47 @@ function nextOpenStep(fromId: string, ctx: TourContext): TourStepDef | null {
   return null
 }
 
+function prevOpenStep(fromId: string, ctx: TourContext): TourStepDef | null {
+  const from = TOUR_STEPS.findIndex((step) => step.id === fromId)
+  for (let i = from - 1; i >= 0; i--) {
+    const step = TOUR_STEPS[i]
+    if (step && !step.skipIf(ctx)) {
+      return step
+    }
+  }
+  return null
+}
+
 function stepTarget(step: TourStepDef, ctx: TourContext): string | undefined {
   if (!step.to) {
     return undefined
   }
   return typeof step.to === 'function' ? step.to(ctx) : step.to
+}
+
+function visibleSteps(ctx: TourContext) {
+  return TOUR_STEPS.filter((step) => !step.skipIf(ctx))
+}
+
+function waitForElement(selector: string, ms = 2000) {
+  return new Promise<boolean>((resolve) => {
+    if (document.querySelector(selector)) {
+      resolve(true)
+      return
+    }
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(selector)) {
+        observer.disconnect()
+        window.clearTimeout(timer)
+        resolve(true)
+      }
+    })
+    const timer = window.setTimeout(() => {
+      observer.disconnect()
+      resolve(Boolean(document.querySelector(selector)))
+    }, ms)
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
 }
 
 export function useProductTour() {
@@ -68,23 +88,13 @@ export function useProductTour() {
   const router = useRouter()
   const session = useSessionStore()
   const accounts = useAccountStore()
-  const categories = useCategoryStore()
-  const transactions = useTransactionStore()
 
   function ctx() {
-    return makeContext(
-      route.path,
-      accounts.items.length,
-      categories.expense.length,
-      categories.income.length,
-      transactions.posted.filter((item) => item.kind === 'expense').length,
-      transactions.posted.filter((item) => item.kind === 'income').length,
-      accounts.items[0]?.id ?? null,
-      tour.mode,
-    )
+    return makeContext(route.path, accounts.items.length, accounts.items[0]?.id ?? null)
   }
 
   let celebrating = false
+  let syncGen = 0
 
   async function celebrateDone() {
     if (celebrating) {
@@ -97,8 +107,8 @@ export function useProductTour() {
     tour.complete()
     await confirmAction({
       title: 'Обучение пройдено',
-      message: 'Поздравляем! Можно вести счета, записывать операции и планировать покупки.',
-      confirmLabel: 'Приступить к работе',
+      message: 'Гайд можно снова включить в настройках.',
+      confirmLabel: 'Понятно',
       cancelLabel: null,
       kind: 'success',
     })
@@ -117,7 +127,16 @@ export function useProductTour() {
     tour.setStep(step.id)
   }
 
+  function goPrev() {
+    const step = prevOpenStep(tour.stepId, ctx())
+    if (!step) {
+      return
+    }
+    tour.setStep(step.id)
+  }
+
   async function sync() {
+    const gen = ++syncGen
     if (!session.user?.id || !accounts.loaded) {
       destroyTourUi()
       return
@@ -156,50 +175,48 @@ export function useProductTour() {
     }
 
     await nextTick()
+    if (gen !== syncGen) {
+      return
+    }
+
     hideToast()
+    closeSidebar()
+    closeFormDrawer()
 
-    if (step.openSidebar) {
-      openSidebar()
-      await nextTick()
-    } else {
-      closeSidebar()
+    const found = await waitForElement(step.selector)
+    if (gen !== syncGen) {
+      return
+    }
+    if (!found) {
+      goNext()
+      return
     }
 
-    if (step.advanceOn !== 'submit' && step.id !== 'purchase-form') {
-      closeFormDrawer()
-    }
-
-    const stepIndex = TOUR_STEPS.findIndex((item) => item.id === step.id) + 1
-    const advanceOn = tour.mode === 'replay' && step.advanceOn === 'submit' ? 'next' : step.advanceOn
+    const visible = visibleSteps(current)
+    const stepIndex = visible.findIndex((item) => item.id === step.id) + 1
 
     showTourHighlight({
-      key: `${tour.mode}:${step.id}:${advanceOn}`,
+      key: step.id,
       selector: step.selector,
       title: step.title,
       description: step.description,
-      showNext: advanceOn !== 'submit',
-      nextLabel: step.nextLabel,
+      showPrev: stepIndex > 1,
+      nextLabel: stepIndex === visible.length ? (step.nextLabel ?? 'Готово') : step.nextLabel,
       stepIndex,
-      stepTotal: TOUR_STEPS.length,
+      stepTotal: visible.length,
       side: step.side,
       align: step.align,
-      dock: step.dock,
       onSkip: () => {
         closeFormDrawer()
         closeSidebar()
         tour.skip()
       },
-      onSkipStep: () => {
-        goNext()
-      },
       onNext: () => {
-        if (step.id === 'purchase-form') {
-          void celebrateDone()
-          return
-        }
         goNext()
       },
-      onTargetClick: advanceOn === 'click' ? () => goNext() : undefined,
+      onPrev: () => {
+        goPrev()
+      },
     })
   }
 
@@ -222,12 +239,8 @@ export function useProductTour() {
       accounts.loaded,
       tour.status,
       tour.stepId,
-      tour.mode,
       route.path,
       accounts.items.length,
-      categories.expense.length,
-      categories.income.length,
-      transactions.posted.length,
     ],
     () => {
       void sync()

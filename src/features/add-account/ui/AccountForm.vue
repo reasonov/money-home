@@ -72,7 +72,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <form class="form" data-tour="account-form" @submit.prevent="onSubmit">
+  <form class="form" @submit.prevent="onSubmit">
     <div class="tabs">
       <button type="button" :class="{ 'is-on': mode === 'create' }" @click="mode = 'create'">
         Создать

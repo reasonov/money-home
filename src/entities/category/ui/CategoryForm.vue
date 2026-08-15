@@ -103,7 +103,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <form class="form" data-tour="category-form" @submit.prevent="onSubmit">
+  <form class="form" @submit.prevent="onSubmit">
     <AppField v-if="!lockedKind" label="Тип" for-id="cat-kind">
       <AppSelect id="cat-kind" v-model="kind">
         <option value="expense">Расход</option>

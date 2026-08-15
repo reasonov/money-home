@@ -8,6 +8,7 @@ export type FormDrawer =
   | { name: 'purchase-new' }
   | { name: 'purchase-edit'; purchaseId: string }
   | { name: 'income-rule'; ruleId?: string; accountId?: string }
+  | { name: 'transaction-edit'; transactionId: string }
 
 export const formDrawer = ref<FormDrawer | null>(null)
 

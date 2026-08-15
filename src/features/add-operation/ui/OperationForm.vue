@@ -127,7 +127,7 @@ async function onSubmit() {
     <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
   </AppEmpty>
 
-  <form v-else class="form" :data-tour="kind === 'expense' ? 'expense-form' : 'income-form'" @submit.prevent="onSubmit">
+  <form v-else class="form" @submit.prevent="onSubmit">
     <AppField label="Сумма, ₽" for-id="op-amount">
       <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>

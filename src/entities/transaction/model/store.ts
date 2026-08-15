@@ -4,11 +4,13 @@ import { useAccountStore } from '@/entities/account'
 import {
   adjustIncomeOccurrence,
   applyDueIncomeRules,
+  cancelPostedTransaction,
   fetchOccurrences,
   fetchTransactions,
   insertTransaction,
   mapTransaction,
   skipIncomeOccurrence,
+  updatePostedTransaction,
   type OccurrenceRow,
 } from '../api/transactionApi'
 import type { Transaction } from './types'
@@ -100,6 +102,34 @@ export const useTransactionStore = defineStore('transaction', () => {
     return tx
   }
 
+  function getById(id: string) {
+    return items.value.find((item) => item.id === id)
+  }
+
+  async function updatePosted(input: {
+    id: string
+    accountId: string
+    amount: number
+    occurredOn: string
+    counterpartyAccountId?: string
+    categoryId?: string
+    title?: string
+    notes?: string
+  }) {
+    const tx = await updatePostedTransaction(input)
+    upsert(tx)
+    if (tx.source === 'income_rule') {
+      occurrences.value = await fetchOccurrences()
+    }
+    await useAccountStore().load()
+    return tx
+  }
+
+  async function cancelPosted(id: string) {
+    await cancelPostedTransaction(id)
+    await Promise.all([load(), useAccountStore().load()])
+  }
+
   function reset() {
     items.value = []
     occurrences.value = []
@@ -114,8 +144,11 @@ export const useTransactionStore = defineStore('transaction', () => {
     applyRemoteRow,
     occurrenceDatesFor,
     occurrenceByTransaction,
+    getById,
     load,
     addManual,
+    updatePosted,
+    cancelPosted,
     applyDue,
     skipOccurrence,
     adjustOccurrence,

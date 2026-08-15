@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { AppDrawer, closeFormDrawer, formDrawer, formDrawerOpen } from '@/shared'
-
-const open = formDrawerOpen
 import { OperationForm } from '@/features/add-operation'
 import { AccountForm } from '@/features/add-account'
 import { TransferForm } from '@/features/add-transfer'
 import { AddPurchaseForm } from '@/features/add-purchase'
 import { EditPurchaseForm } from '@/features/edit-purchase'
 import { IncomeRuleForm } from '@/features/manage-income'
-import { useProductTourStore } from '@/features/product-tour'
+import { EditOperationForm } from '@/features/edit-operation'
 
-const tour = useProductTourStore()
+const open = formDrawerOpen
 
 const title = computed(() => {
   const current = formDrawer.value
@@ -33,32 +31,12 @@ const title = computed(() => {
       return 'Изменить покупку'
     case 'income-rule':
       return current.ruleId ? 'Изменить правило' : 'Новое правило'
+    case 'transaction-edit':
+      return 'Изменить операцию'
     default:
       return ''
   }
 })
-
-watch(
-  () => tour.stepId,
-  (id) => {
-    if (tour.status !== 'active') {
-      return
-    }
-    if (id === 'account-form' && formDrawer.value?.name !== 'account') {
-      formDrawer.value = { name: 'account' }
-    }
-    if (id === 'expense-form' && formDrawer.value?.name !== 'expense') {
-      formDrawer.value = { name: 'expense' }
-    }
-    if (id === 'income-form' && formDrawer.value?.name !== 'income') {
-      formDrawer.value = { name: 'income' }
-    }
-    if (id === 'purchase-form' && formDrawer.value?.name !== 'purchase-new') {
-      formDrawer.value = { name: 'purchase-new' }
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
@@ -97,6 +75,13 @@ watch(
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       @saved="closeFormDrawer"
+    />
+    <EditOperationForm
+      v-else-if="formDrawer?.name === 'transaction-edit'"
+      :key="formDrawer.transactionId"
+      :transaction-id="formDrawer.transactionId"
+      @saved="closeFormDrawer"
+      @cancel="closeFormDrawer"
     />
   </AppDrawer>
 </template>

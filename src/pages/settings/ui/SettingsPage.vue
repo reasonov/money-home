@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
 import { EditAccountForm } from '@/features/edit-account'
 import { replayProductTour } from '@/features/product-tour'

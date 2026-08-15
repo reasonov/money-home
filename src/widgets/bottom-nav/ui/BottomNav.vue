@@ -9,19 +9,16 @@ const links = [
     to: '/',
     label: 'Главная',
     icon: House,
-    tour: 'nav-home',
   },
   {
     to: '/stats',
     label: 'Статистика',
     icon: PieChart,
-    tour: 'nav-stats',
   },
   {
     to: '/calendar',
     label: 'Планирование',
     icon: CalendarCheck,
-    tour: 'nav-calendar',
   },
 ] as const
 
@@ -35,7 +32,7 @@ function isActive(path: string) {
 
 <template>
   <nav class="nav" aria-label="Основная навигация">
-    <span v-for="link in links" :key="link.to" class="nav__hit" :data-tour="link.tour">
+    <span v-for="link in links" :key="link.to" class="nav__hit">
       <RouterLink class="nav__link" :class="{ 'is-active': isActive(link.to) }" :to="link.to">
         <span class="nav__icon" aria-hidden="true">
           <component :is="link.icon" :size="22" :stroke-width="1.7" />
@@ -62,10 +59,6 @@ function isActive(path: string) {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   transform: translateX(-50%);
-}
-
-.nav.driver-active-element-parent {
-  z-index: 10001;
 }
 
 .nav__hit {

@@ -28,8 +28,8 @@ const open = computed({
 const previewAccounts = computed(() => accounts.items.slice(0, 3))
 
 const links = [
-  { to: '/categories', label: 'Категории', icon: FolderTree, tour: 'settings-categories' },
-  { to: '/income', label: 'Авто-пополнения', icon: CalendarClock, tour: 'settings-income' },
+  { to: '/categories', label: 'Категории', icon: FolderTree },
+  { to: '/income', label: 'Авто-пополнения', icon: CalendarClock },
 ]
 
 function go(path: string) {
@@ -71,10 +71,9 @@ function openAccount(id: string) {
           <h2 class="sidebar__heading">Счета</h2>
           <p v-if="!accounts.items.length" class="sidebar__empty">Пока нет счетов</p>
           <button
-            v-for="(account, index) in previewAccounts"
+            v-for="account in previewAccounts"
             :key="account.id"
             class="sidebar__account"
-            :data-tour="index === 0 ? 'home-account' : undefined"
             type="button"
             :aria-label="`Открыть счёт «${account.name}»`"
             @click="openAccount(account.id)"
@@ -111,7 +110,6 @@ function openAccount(id: string) {
             v-for="link in links"
             :key="link.to"
             class="sidebar__link"
-            :data-tour="link.tour || undefined"
             type="button"
             @click="go(link.to)"
           >

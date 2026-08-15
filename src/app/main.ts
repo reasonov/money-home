@@ -5,11 +5,14 @@ import App from './App.vue'
 import router from './router'
 import { bootstrapAccountSession, resetAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
+import { listenForInstallPrompt } from '@/features/install-pwa'
 import { resetProductTour } from '@/features/product-tour'
 import { useThemeStore } from '@/features/theme-switch'
 
 import '@/shared/styles/tokens.css'
 import '@/shared/styles/base.css'
+
+listenForInstallPrompt()
 
 async function bootstrap() {
   const app = createApp(App)

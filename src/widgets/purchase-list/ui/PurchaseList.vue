@@ -268,7 +268,9 @@ function accountName(accountId: string) {
       <p class="list__empty-text">Пока нет запланированных покупок</p>
       <div class="list__empty-actions">
         <div data-tour="calendar-cta">
-          <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
+          <AppButton block @click="openFormDrawer({ name: 'purchase-new' })"
+            >Новая покупка</AppButton
+          >
         </div>
         <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income-rule' })">
           Настроить пополнение
@@ -277,29 +279,12 @@ function accountName(accountId: string) {
     </div>
 
     <Teleport to="body">
-      <div
-        v-if="menuOpenId"
-        class="item__dropdown"
-        role="menu"
-        :style="menuStyle"
-        @click.stop
-      >
-        <button
-          type="button"
-          role="menuitem"
-          @click="markDone(menuOpenId, { event: $event })"
-        >
+      <div v-if="menuOpenId" class="item__dropdown" role="menu" :style="menuStyle" @click.stop>
+        <button type="button" role="menuitem" @click="markDone(menuOpenId, { event: $event })">
           Готово
         </button>
-        <button type="button" role="menuitem" @click="edit(menuOpenId, $event)">
-          Изменить
-        </button>
-        <button
-          type="button"
-          class="is-muted"
-          role="menuitem"
-          @click="cancel(menuOpenId, $event)"
-        >
+        <button type="button" role="menuitem" @click="edit(menuOpenId, $event)">Изменить</button>
+        <button type="button" class="is-muted" role="menuitem" @click="cancel(menuOpenId, $event)">
           Отмена
         </button>
       </div>

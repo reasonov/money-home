@@ -1,28 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { ref } from 'vue'
 import { AppButton, AppDrawer, AppEmpty, confirmAction, getErrorMessage, showToast } from '@/shared'
 import { useAccountStore } from '@/entities/account'
-import {
-  CategoryForm,
-  CategoryIcon,
-  useCategoryStore,
-  type Category,
-  type CategoryKind,
-} from '@/entities/category'
-import { useProductTourStore } from '@/features/product-tour'
+import { CategoryForm, CategoryIcon, useCategoryStore, type Category } from '@/entities/category'
 
 const accounts = useAccountStore()
 const categories = useCategoryStore()
-const tour = useProductTourStore()
 
 const drawerOpen = ref(false)
 const editing = ref<Category | null>(null)
-
-const tourKind = computed<CategoryKind | undefined>(() => {
-  if (tour.stepId === 'category-income') return 'income'
-  if (tour.stepId === 'category-expense') return 'expense'
-  return undefined
-})
 
 function openCreate() {
   editing.value = null
@@ -38,18 +24,6 @@ function closeDrawer() {
   drawerOpen.value = false
   editing.value = null
 }
-
-watch(
-  () => tour.stepId,
-  (id) => {
-    if (id === 'category-expense' || id === 'category-income') {
-      if (!drawerOpen.value) {
-        openCreate()
-      }
-    }
-  },
-  { immediate: true },
-)
 
 function onSaved() {
   showToast(editing.value ? 'Категория сохранена' : 'Категория создана')
@@ -79,7 +53,9 @@ async function remove(category: Category) {
 <template>
   <div class="page">
     <AppEmpty v-if="!categories.items.length" description="Пока нет категорий">
-      <AppButton block @click="openCreate">Новая категория</AppButton>
+      <div data-tour="categories">
+        <AppButton block @click="openCreate">Новая категория</AppButton>
+      </div>
     </AppEmpty>
 
     <template v-else>
@@ -96,7 +72,9 @@ async function remove(category: Category) {
         </div>
       </section>
 
-      <AppButton variant="secondary" block @click="openCreate">Новая категория</AppButton>
+      <div data-tour="categories">
+        <AppButton variant="secondary" block @click="openCreate">Новая категория</AppButton>
+      </div>
     </template>
 
     <AppDrawer
@@ -108,7 +86,6 @@ async function remove(category: Category) {
         v-if="drawerOpen"
         :category="editing"
         :accounts="accounts.items"
-        :initial-kind="tourKind"
         @saved="onSaved"
         @cancel="closeDrawer"
       />

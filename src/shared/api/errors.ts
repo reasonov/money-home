@@ -50,6 +50,15 @@ function mapAuthMessage(message: string): string {
   if (lower.includes('purchase is not planned')) {
     return 'Покупка уже завершена или отменена'
   }
+  if (lower.includes('transaction not found')) {
+    return 'Операция не найдена'
+  }
+  if (lower.includes('amount must be positive')) {
+    return 'Сумма должна быть больше нуля'
+  }
+  if (lower.includes('category not found')) {
+    return 'Категория недоступна'
+  }
   if (lower.includes('not authenticated')) {
     return 'Войдите в аккаунт'
   }

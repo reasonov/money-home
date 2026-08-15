@@ -35,11 +35,7 @@ watch(
 
 <template>
   <div class="shell">
-    <AppHeader
-      :show-account-select="showAccountSelect"
-      :title="pageTitle"
-      @menu="toggleSidebar"
-    >
+    <AppHeader :show-account-select="showAccountSelect" :title="pageTitle" @menu="toggleSidebar">
       <template #actions>
         <ActivityInbox />
       </template>

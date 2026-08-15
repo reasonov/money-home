@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { AppEmpty, AppField, AppInput, AppSegmented, AppSelect, formatMoney, todayLocal } from '@/shared'
+import {
+  AppEmpty,
+  AppField,
+  AppInput,
+  AppSegmented,
+  AppSelect,
+  formatMoney,
+  todayLocal,
+} from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
   averageDailyExpense,
@@ -83,7 +91,9 @@ const filtered = computed(() =>
 
 const range = computed(() => statsDateRange(period.value, undefined, customRange.value))
 const summary = computed(() => statsSummary(filtered.value))
-const previousRange = computed(() => previousStatsDateRange(period.value, undefined, customRange.value))
+const previousRange = computed(() =>
+  previousStatsDateRange(period.value, undefined, customRange.value),
+)
 const previousSummary = computed(() => {
   const prev = previousRange.value
   if (!prev?.from || !prev.to) {
@@ -164,16 +174,18 @@ function deltaClass(current: number, previous: number, invert = false) {
         </AppField>
       </div>
 
-      <AppField label="График" for-id="stats-chart">
-        <AppSelect id="stats-chart" v-model="chart">
-          <option value="category">По категориям</option>
-          <option value="weekday">По дням недели</option>
-          <option value="heatmap">Тепловая карта</option>
-          <option value="trend">Динамика</option>
-          <option value="top">Топ операций</option>
-          <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
-        </AppSelect>
-      </AppField>
+      <div data-tour="stats-chart">
+        <AppField label="График" for-id="stats-chart">
+          <AppSelect id="stats-chart" v-model="chart">
+            <option value="category">По категориям</option>
+            <option value="weekday">По дням недели</option>
+            <option value="heatmap">Тепловая карта</option>
+            <option value="trend">Динамика</option>
+            <option value="top">Топ операций</option>
+            <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
+          </AppSelect>
+        </AppField>
+      </div>
     </div>
 
     <AppEmpty v-if="!filtered.length" description="Нет операций за период" />
@@ -230,7 +242,12 @@ function deltaClass(current: number, previous: number, invert = false) {
         </section>
       </div>
 
-      <AppSegmented v-if="showKind" v-model="kind" :options="kindOptions" aria-label="Тип операций" />
+      <AppSegmented
+        v-if="showKind"
+        v-model="kind"
+        :options="kindOptions"
+        aria-label="Тип операций"
+      />
 
       <CategorySpendChart
         v-if="chart === 'category' && categorySlices.length"
@@ -240,7 +257,10 @@ function deltaClass(current: number, previous: number, invert = false) {
       />
       <AppEmpty v-else-if="chart === 'category'" :description="kindEmpty" />
 
-      <WeekdaySpendChart v-else-if="chart === 'weekday' && hasWeekdayExpenses" :slices="weekdaySlices" />
+      <WeekdaySpendChart
+        v-else-if="chart === 'weekday' && hasWeekdayExpenses"
+        :slices="weekdaySlices"
+      />
       <AppEmpty v-else-if="chart === 'weekday'" description="Нет расходов за период" />
 
       <HeatmapChart
@@ -254,7 +274,10 @@ function deltaClass(current: number, previous: number, invert = false) {
       <TopOperationsList v-else-if="chart === 'top' && topItems.length" :items="topItems" />
       <AppEmpty v-else-if="chart === 'top'" :description="kindEmpty" />
 
-      <AccountSpendChart v-else-if="chart === 'accounts' && accountSlices.length" :slices="accountSlices" />
+      <AccountSpendChart
+        v-else-if="chart === 'accounts' && accountSlices.length"
+        :slices="accountSlices"
+      />
       <AppEmpty v-else-if="chart === 'accounts'" description="Нет операций за период" />
     </template>
   </div>

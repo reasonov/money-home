@@ -161,7 +161,9 @@ async function leave() {
       </p>
       <div data-tour="account-share">
         <template v-if="account.inviteCode">
-          <p class="share-hint">Отправьте этот код человеку — он добавит тот же счёт у себя, не копию.</p>
+          <p class="share-hint">
+            Отправьте этот код человеку — он добавит тот же счёт у себя, не копию.
+          </p>
           <p class="code">{{ account.inviteCode }}</p>
           <div class="share-actions">
             <AppButton variant="secondary" block @click="copyCode()">Скопировать код</AppButton>

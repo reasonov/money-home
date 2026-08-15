@@ -19,6 +19,7 @@ watch(
       closable: true,
       maskClosable: true,
       autoFocus: true,
+      zIndex: 2000000100,
       onPositiveClick: () => {
         settleConfirm(true)
       },

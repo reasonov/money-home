@@ -87,7 +87,9 @@ const router = createRouter({
         },
         {
           path: 'history',
-          redirect: { name: 'home' },
+          name: 'history',
+          component: () => import('@/pages/history/ui/HistoryPage.vue'),
+          meta: { title: 'История', accountSelect: true },
         },
         {
           path: 'calendar',

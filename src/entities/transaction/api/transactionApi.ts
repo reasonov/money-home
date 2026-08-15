@@ -149,3 +149,39 @@ export async function fetchOccurrences(): Promise<OccurrenceRow[]> {
   }
   return data ?? []
 }
+
+export async function updatePostedTransaction(input: {
+  id: string
+  accountId: string
+  amount: number
+  occurredOn: string
+  counterpartyAccountId?: string
+  categoryId?: string
+  title?: string
+  notes?: string
+}): Promise<Transaction> {
+  const { data, error } = await supabase
+    .rpc('update_posted_transaction', {
+      p_id: input.id,
+      p_account_id: input.accountId,
+      p_amount: Math.round(input.amount),
+      p_occurred_on: input.occurredOn,
+      p_counterparty_account_id: input.counterpartyAccountId,
+      p_category_id: input.categoryId,
+      p_title: input.title,
+      p_notes: input.notes,
+    })
+    .single()
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось сохранить операцию'))
+  }
+  return mapTransaction(data)
+}
+
+export async function cancelPostedTransaction(id: string): Promise<void> {
+  const { error } = await supabase.rpc('cancel_posted_transaction', { p_id: id })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось удалить операцию'))
+  }
+}
