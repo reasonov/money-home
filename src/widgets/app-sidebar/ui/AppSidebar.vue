@@ -2,10 +2,13 @@
 import { computed } from 'vue'
 import {
   ArrowLeftRight,
+  CalendarCheck,
   CalendarClock,
   ChevronRight,
   FolderTree,
+  House,
   List,
+  PieChart,
   Plus,
   Settings,
   Wallet,
@@ -28,6 +31,9 @@ const open = computed({
 const previewAccounts = computed(() => accounts.items.slice(0, 3))
 
 const links = [
+  { to: '/', label: 'Главная', icon: House },
+  { to: '/stats', label: 'Статистика', icon: PieChart },
+  { to: '/calendar', label: 'Планирование', icon: CalendarCheck },
   { to: '/categories', label: 'Категории', icon: FolderTree },
   { to: '/income', label: 'Авто-пополнения', icon: CalendarClock },
 ]
@@ -62,7 +68,14 @@ function openAccount(id: string) {
     :trap-focus="true"
     :z-index="2000000000"
   >
-    <NDrawerContent closable :native-scrollbar="false" header-style="padding-bottom: 8px">
+    <NDrawerContent
+      closable
+      :native-scrollbar="false"
+      :header-style="{
+        paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+        paddingBottom: '8px',
+      }"
+    >
       <template #header>
         <p class="sidebar__brand">Money Home</p>
       </template>
@@ -81,11 +94,13 @@ function openAccount(id: string) {
             <span class="sidebar__icon" aria-hidden="true">
               <Wallet :size="18" :stroke-width="1.8" />
             </span>
-            <span class="sidebar__account-name">
-              {{ account.name }}
-              <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
+            <span class="sidebar__account-body">
+              <span class="sidebar__account-name">
+                <span class="sidebar__account-title">{{ account.name }}</span>
+                <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
+              </span>
+              <span class="sidebar__account-amount">{{ formatMoney(account.amount) }}</span>
             </span>
-            <span class="sidebar__account-amount">{{ formatMoney(account.amount) }}</span>
             <span class="sidebar__chevron" aria-hidden="true">
               <ChevronRight :size="18" :stroke-width="1.8" />
             </span>
@@ -140,6 +155,10 @@ function openAccount(id: string) {
 </template>
 
 <style scoped>
+:deep(.n-drawer-header) {
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+
 .sidebar__brand {
   margin: 0;
   font-size: 0.8125rem;
@@ -194,15 +213,36 @@ function openAccount(id: string) {
   border-top: 1px solid var(--color-border);
 }
 
-.sidebar__account-name {
+.sidebar__account-body {
   display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar__account-name {
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
 
+.sidebar__account-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__account-name :deep(.n-tag) {
+  flex-shrink: 0;
+}
+
 .sidebar__account-amount {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
 }

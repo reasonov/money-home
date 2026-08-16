@@ -39,6 +39,84 @@
   </head>
   <body>
     <div id="app"></div>
+    <div id="boot-fallback" hidden>
+      <p class="boot-fallback__brand">Money Home</p>
+      <p class="boot-fallback__title">Не удалось открыть приложение</p>
+      <p class="boot-fallback__text">Нет соединения с интернетом. Проверьте сеть и попробуйте снова</p>
+      <button type="button" onclick="location.reload()">Повторить</button>
+    </div>
+    <style>
+      #boot-fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-width: 430px;
+        margin: 0 auto;
+        padding: calc(24px + env(safe-area-inset-top, 0px)) 16px
+          calc(24px + env(safe-area-inset-bottom, 0px));
+        font-family: Manrope, system-ui, sans-serif;
+        color: #0f172a;
+        background: #f2f5f7;
+      }
+      #boot-fallback[hidden] {
+        display: none !important;
+      }
+      .boot-fallback__brand {
+        margin: 0;
+        font-size: 0.8125rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #0f766e;
+      }
+      .boot-fallback__title {
+        margin: 12px 0 0;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .boot-fallback__text {
+        margin: 12px 0 24px;
+        color: #64748b;
+      }
+      #boot-fallback button {
+        width: 100%;
+        min-height: 48px;
+        border: 0;
+        border-radius: 12px;
+        background: #0f766e;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+      }
+    </style>
+    <script>
+      window.addEventListener(
+        'error',
+        function (event) {
+          var target = event.target
+          if (
+            !target ||
+            (target.tagName !== 'SCRIPT' &&
+              !(target.tagName === 'LINK' && target.rel === 'modulepreload'))
+          ) {
+            return
+          }
+          var app = document.getElementById('app')
+          if (app && app.childElementCount > 0) {
+            return
+          }
+          var fallback = document.getElementById('boot-fallback')
+          if (fallback) {
+            fallback.hidden = false
+          }
+        },
+        true,
+      )
+    </script>
     <script type="module" src="/src/app/main.ts"></script>
   </body>
 </html>

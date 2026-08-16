@@ -219,7 +219,7 @@ function accountName(accountId: string) {
                     </UnseenPurchaseDot>
                   </p>
                   <p class="item__meta-row">
-                    <span>{{ accountName(item.accountId) }}</span>
+                    <span class="item__account">{{ accountName(item.accountId) }}</span>
                     <AppTag v-if="item.categoryName" type="default">
                       <CategoryIcon
                         v-if="item.categoryIcon && item.categoryColor"
@@ -236,13 +236,6 @@ function accountName(accountId: string) {
                 <div class="item__side">
                   <p class="item__amount money money-soft">{{ formatMoney(item.amount) }}</p>
                   <div class="item__actions">
-                    <AppButton
-                      v-if="group.overdue"
-                      type="button"
-                      @click="markDone(item.id, { event: $event })"
-                    >
-                      Готово
-                    </AppButton>
                     <div class="item__menu">
                       <button
                         :ref="(el) => setMenuButton(item.id, el)"
@@ -347,7 +340,9 @@ function accountName(accountId: string) {
 
 .item__title {
   font-weight: 700;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item__meta {
@@ -359,12 +354,24 @@ function accountName(accountId: string) {
 
 .item__meta-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
+  min-width: 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+}
+
+.item__account {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item__meta-row :deep(.n-tag) {
+  flex-shrink: 0;
 }
 
 .item__side {

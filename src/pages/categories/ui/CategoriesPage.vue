@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { EllipsisVertical } from '@lucide/vue'
+import { NDropdown, type DropdownOption } from 'naive-ui'
 import { AppButton, AppDrawer, AppEmpty, confirmAction, getErrorMessage, showToast } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { CategoryForm, CategoryIcon, useCategoryStore, type Category } from '@/entities/category'
@@ -9,6 +11,15 @@ const categories = useCategoryStore()
 
 const drawerOpen = ref(false)
 const editing = ref<Category | null>(null)
+
+const menuOptions: DropdownOption[] = [
+  { label: 'Изменить', key: 'edit' },
+  {
+    label: 'Удалить',
+    key: 'remove',
+    props: { style: { color: 'var(--color-danger)' } },
+  },
+]
 
 function openCreate() {
   editing.value = null
@@ -48,6 +59,16 @@ async function remove(category: Category) {
     showToast(getErrorMessage(err, 'Не удалось удалить категорию'))
   }
 }
+
+function onMenu(category: Category, key: string | number) {
+  if (key === 'edit') {
+    openEdit(category)
+    return
+  }
+  if (key === 'remove') {
+    void remove(category)
+  }
+}
 </script>
 
 <template>
@@ -63,12 +84,21 @@ async function remove(category: Category) {
         <div v-for="item in categories.items" :key="item.id" class="row">
           <button type="button" class="row__main" @click="openEdit(item)">
             <CategoryIcon :icon="item.icon" :color="item.color" :size="32" />
-            <span>
+            <span class="row__text">
               <span class="row__name">{{ item.name }}</span>
               <span class="row__meta">{{ item.kind === 'income' ? 'Доход' : 'Расход' }}</span>
             </span>
           </button>
-          <AppButton variant="ghost" @click="remove(item)">Удалить</AppButton>
+          <NDropdown
+            trigger="click"
+            placement="bottom-end"
+            :options="menuOptions"
+            @select="(key) => onMenu(item, key)"
+          >
+            <button type="button" class="row__more" aria-label="Ещё действия">
+              <EllipsisVertical :size="16" :stroke-width="2" />
+            </button>
+          </NDropdown>
         </div>
       </section>
 
@@ -110,7 +140,6 @@ async function remove(category: Category) {
 .row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
   min-height: 56px;
   border-top: 1px solid var(--color-border);
@@ -122,8 +151,10 @@ async function remove(category: Category) {
 
 .row__main {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
   min-height: 44px;
   padding: 0;
   border: 0;
@@ -133,13 +164,40 @@ async function remove(category: Category) {
   color: inherit;
 }
 
+.row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .row__name {
-  display: block;
+  overflow: hidden;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row__meta {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+}
+
+.row__more {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.row__more:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 </style>

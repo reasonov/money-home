@@ -9,9 +9,15 @@ import { useChartTheme } from '../lib/useChartTheme'
 
 registerStatsCharts()
 
-const props = defineProps<{
-  slices: TrendSlice[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    slices: TrendSlice[]
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const theme = useChartTheme()
 
@@ -85,7 +91,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
 </script>
 
 <template>
-  <section class="card">
+  <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">Динамика</h2>
     <div class="card__chart">
       <Line :data="chartData" :options="chartOptions" />
@@ -109,6 +115,13 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.card.is-embedded {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .card__title {

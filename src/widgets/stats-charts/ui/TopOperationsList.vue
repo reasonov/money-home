@@ -4,9 +4,15 @@ import { useAccountStore } from '@/entities/account'
 import { CategoryIcon } from '@/entities/category'
 import type { Transaction } from '@/entities/transaction'
 
-defineProps<{
-  items: Transaction[]
-}>()
+withDefaults(
+  defineProps<{
+    items: Transaction[]
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const accounts = useAccountStore()
 
@@ -20,7 +26,7 @@ function sign(kind: Transaction['kind']) {
 </script>
 
 <template>
-  <section class="card">
+  <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">Топ операций</h2>
     <ol class="list">
       <li v-for="item in items" :key="item.id" class="row">
@@ -50,6 +56,13 @@ function sign(kind: Transaction['kind']) {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.card.is-embedded {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .card__title {

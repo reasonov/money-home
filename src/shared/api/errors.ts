@@ -1,4 +1,10 @@
+export const NETWORK_ERROR_MESSAGE =
+  'Нет соединения с интернетом. Проверьте сеть и попробуйте снова'
+
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return NETWORK_ERROR_MESSAGE
+  }
   if (error && typeof error === 'object' && 'message' in error) {
     const message = String((error as { message: unknown }).message)
     return mapAuthMessage(message) || fallback
@@ -7,6 +13,20 @@ export function getErrorMessage(error: unknown, fallback = 'Что-то пошл
     return mapAuthMessage(error) || fallback
   }
   return fallback
+}
+
+function isNetworkMessage(lower: string): boolean {
+  return (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('network request failed') ||
+    lower.includes('load failed') ||
+    lower.includes('internet connection') ||
+    lower.includes('err_internet') ||
+    lower.includes('err_network') ||
+    lower.includes('err_name_not_resolved') ||
+    lower.includes('net::err')
+  )
 }
 
 function mapAuthMessage(message: string): string {
@@ -68,6 +88,9 @@ function mapAuthMessage(message: string): string {
     lower.includes('error loading dynamically imported module')
   ) {
     return 'Приложение обновилось. Обновите страницу'
+  }
+  if (isNetworkMessage(lower)) {
+    return NETWORK_ERROR_MESSAGE
   }
   return message
 }

@@ -19,11 +19,8 @@ const options = computed<AccountOption[]>(() => [
   })),
 ])
 
-function renderLabel(option: SelectOption, selected: boolean) {
+function renderLabel(option: SelectOption) {
   const amountLabel = (option as AccountOption).amountLabel ?? ''
-  if (selected) {
-    return `${option.label} · ${amountLabel}`
-  }
   return h('span', { class: 'header-select-option' }, [
     h('span', { class: 'header-select-option__name' }, String(option.label ?? '')),
     h('span', { class: 'header-select-option__amount' }, amountLabel),
@@ -48,6 +45,10 @@ function renderLabel(option: SelectOption, selected: boolean) {
   width: 100%;
   max-width: 280px;
 }
+
+.header-select :deep(.n-base-selection-label) {
+  overflow: hidden;
+}
 </style>
 
 <style>
@@ -63,6 +64,7 @@ function renderLabel(option: SelectOption, selected: boolean) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-select-option__amount {

@@ -2,23 +2,46 @@
 import { computed } from 'vue'
 import { NDatePicker, NInput } from 'naive-ui'
 
-const props = defineProps<{
-  id?: string
-  type?: string
-  placeholder?: string
-  min?: number | string
-  max?: number | string
-  step?: number | string
-  inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
-  autocomplete?: string
-  required?: boolean
-  disabled?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    id?: string
+    type?: string
+    placeholder?: string
+    min?: number | string
+    max?: number | string
+    step?: number | string
+    inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
+    autocomplete?: string
+    required?: boolean
+    disabled?: boolean
+    size?: 'medium' | 'large'
+  }>(),
+  {
+    size: 'large',
+  },
+)
 
 const model = defineModel<string | number>({ required: true })
 
 const isDate = computed(() => props.type === 'date')
-const inputType = computed(() => (props.type === 'password' ? 'password' : 'text'))
+const isPassword = computed(() => props.type === 'password')
+const inputType = computed(() => (isPassword.value ? 'password' : 'text'))
+
+const nativeInputProps = computed(() => {
+  const attrs: Record<string, string | boolean | undefined> = {
+    id: props.id,
+    min: props.min != null ? String(props.min) : undefined,
+    max: props.max != null ? String(props.max) : undefined,
+    step: props.step != null ? String(props.step) : undefined,
+    inputmode: props.inputmode,
+    autocomplete: props.autocomplete,
+    required: props.required,
+  }
+  if (props.type && props.type !== 'password' && props.type !== 'date') {
+    attrs.type = props.type
+  }
+  return attrs
+})
 
 const textValue = computed({
   get: () => String(model.value ?? ''),
@@ -43,29 +66,20 @@ const dateValue = computed({
     type="date"
     format="dd.MM.yyyy"
     value-format="yyyy-MM-dd"
-    size="large"
+    :size="size"
     :disabled="disabled"
     :input-readonly="false"
   />
   <NInput
     v-else
     v-model:value="textValue"
-    size="large"
+    :size="size"
     :id="id"
     :type="inputType"
     :placeholder="placeholder"
     :disabled="disabled"
-    :show-password-on="type === 'password' ? 'click' : undefined"
-    :input-props="{
-      id,
-      type: type === 'password' || type === 'date' ? undefined : type,
-      min: min != null ? String(min) : undefined,
-      max: max != null ? String(max) : undefined,
-      step: step != null ? String(step) : undefined,
-      inputmode,
-      autocomplete,
-      required,
-    }"
+    :show-password-on="isPassword ? 'click' : undefined"
+    :input-props="nativeInputProps"
   />
 </template>
 

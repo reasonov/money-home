@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { todayLocal } from '@/shared'
 import type { Transaction } from '../../model/types'
 import {
   averageDailyExpense,
@@ -7,6 +8,7 @@ import {
   expensesByWeekday,
   expenseShare,
   filterStatsTransactions,
+  formatPeriodLabel,
   heatmapWeeks,
   heatmapWindow,
   periodDayCount,
@@ -465,5 +467,41 @@ describe('heatmapWeeks', () => {
 
     const future = weeks.flatMap((week) => week.days).find((day) => day.date === '2026-08-15')
     expect(future).toMatchObject({ inPeriod: false, amount: 0 })
+  })
+})
+
+describe('formatPeriodLabel', () => {
+  it('uses Сегодня for the current day', () => {
+    expect(formatPeriodLabel('day', todayLocal())).toBe('Сегодня')
+  })
+
+  it('formats another day without a trailing dot', () => {
+    expect(formatPeriodLabel('day', '2026-08-14')).toBe('14 авг')
+  })
+
+  it('uses Эта неделя for the current week', () => {
+    expect(formatPeriodLabel('week', todayLocal())).toBe('Эта неделя')
+  })
+
+  it('formats another week as a short range', () => {
+    expect(formatPeriodLabel('week', '2026-01-15')).toBe('12–18 янв')
+  })
+
+  it('uses the month name', () => {
+    expect(formatPeriodLabel('month', '2026-08-14')).toBe('Август')
+  })
+
+  it('uses the calendar year', () => {
+    expect(formatPeriodLabel('year', '2026-08-14')).toBe('2026')
+  })
+
+  it('formats a custom range in the same month', () => {
+    expect(formatPeriodLabel('custom', '2026-08-14', { from: '2026-08-12', to: '2026-08-20' })).toBe(
+      '12–20 авг',
+    )
+  })
+
+  it('falls back to Период without custom dates', () => {
+    expect(formatPeriodLabel('custom', '2026-08-14', {})).toBe('Период')
   })
 })

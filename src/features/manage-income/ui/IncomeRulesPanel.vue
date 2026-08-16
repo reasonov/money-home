@@ -204,12 +204,18 @@ function onMenu(rule: IncomeRule, key: string | number) {
 }
 
 .income__title {
+  overflow: hidden;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .income__meta {
+  overflow: hidden;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .income__controls {
@@ -222,8 +228,8 @@ function onMenu(rule: IncomeRule, key: string | number) {
 .income__more {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;

@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useSessionStore } from '@/entities/session'
+import { getErrorMessage, NETWORK_ERROR_MESSAGE } from '@/shared'
+import { setBootError } from '../boot'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -144,6 +146,10 @@ router.beforeEach((to) => {
   }
 
   return true
+})
+
+router.onError((error) => {
+  setBootError(getErrorMessage(error, NETWORK_ERROR_MESSAGE))
 })
 
 export default router

@@ -9,9 +9,11 @@ const props = withDefaults(
   defineProps<{
     weeks: HeatmapWeek[]
     capped?: boolean
+    embedded?: boolean
   }>(),
   {
     capped: false,
+    embedded: false,
   },
 )
 
@@ -71,7 +73,7 @@ function label(day: HeatmapDay) {
 </script>
 
 <template>
-  <section class="card">
+  <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">Расходы по дням</h2>
     <p v-if="capped" class="card__hint">Показаны последние 90 дней</p>
 
@@ -129,6 +131,13 @@ function label(day: HeatmapDay) {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.card.is-embedded {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .card__title {

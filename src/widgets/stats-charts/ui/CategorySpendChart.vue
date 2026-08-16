@@ -14,9 +14,10 @@ const props = withDefaults(
     slices: CategorySpendSlice[]
     title?: string
     centerLabel?: string
+    embedded?: boolean
   }>(),
   {
-    title: 'Расходы по категориям',
+    embedded: false,
   },
 )
 
@@ -59,7 +60,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 </script>
 
 <template>
-  <section class="card">
+  <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 v-if="title" class="card__title">{{ title }}</h2>
     <div class="card__body">
       <div class="card__chart">
@@ -90,6 +91,13 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.card.is-embedded {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .card__title {

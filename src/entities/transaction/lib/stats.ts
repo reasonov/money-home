@@ -455,6 +455,64 @@ function formatMonthLabel(date: Date): string {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
+function formatDayMonthPlain(date: Date): string {
+  return formatDayMonth(date).replace(/\./g, '').replace(/\u00a0/g, ' ')
+}
+
+function formatRangeLabel(fromIso: string, toIso: string): string {
+  const from = parseLocalDate(fromIso)
+  const to = parseLocalDate(toIso)
+  if (fromIso === toIso) {
+    return formatDayMonthPlain(from)
+  }
+  if (from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth()) {
+    return `${from.getDate()}–${formatDayMonthPlain(to)}`
+  }
+  if (from.getFullYear() === to.getFullYear()) {
+    return `${formatDayMonthPlain(from)} – ${formatDayMonthPlain(to)}`
+  }
+  return `${formatDayMonthPlain(from)} ${from.getFullYear()} – ${formatDayMonthPlain(to)} ${to.getFullYear()}`
+}
+
+export function formatPeriodLabel(
+  period: ChartPeriod,
+  asOf = todayLocal(),
+  custom?: DateRange,
+): string {
+  if (period === 'day') {
+    return asOf === todayLocal() ? 'Сегодня' : formatDayMonthPlain(parseLocalDate(asOf))
+  }
+
+  if (period === 'week') {
+    const range = statsDateRange('week', asOf)
+    const current = statsDateRange('week')
+    if (range.from && range.to && range.from === current.from && range.to === current.to) {
+      return 'Эта неделя'
+    }
+    if (range.from && range.to) {
+      return formatRangeLabel(range.from, range.to)
+    }
+    return 'Эта неделя'
+  }
+
+  if (period === 'month') {
+    return formatMonthLabel(parseLocalDate(asOf))
+  }
+
+  if (period === 'year') {
+    return String(parseLocalDate(asOf).getFullYear())
+  }
+
+  const range = statsDateRange('custom', asOf, custom)
+  if (range.from && range.to) {
+    return formatRangeLabel(range.from, range.to)
+  }
+  if (range.from || range.to) {
+    return formatDayMonthPlain(parseLocalDate(range.from ?? range.to!))
+  }
+  return 'Период'
+}
+
 export function expensesByDay(items: Transaction[]): Record<string, number> {
   const totals: Record<string, number> = {}
   for (const item of items) {

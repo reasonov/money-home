@@ -3,8 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   AppEmpty,
-  AppField,
-  AppInput,
+  AppPeriodSelect,
   AppSegmented,
   AppSelect,
   formatMoney,
@@ -16,6 +15,7 @@ import {
   expensesByWeekday,
   expenseShare,
   filterStatsTransactions,
+  formatPeriodLabel,
   heatmapWeeks,
   periodDayCount,
   previousStatsDateRange,
@@ -49,25 +49,17 @@ const kind = ref<'expense' | 'income'>('expense')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 
-const periodOptions: { value: ChartPeriod; label: string }[] = [
-  { value: 'day', label: 'День' },
-  { value: 'week', label: 'Неделя' },
-  { value: 'month', label: 'Месяц' },
-  { value: 'year', label: 'Год' },
-  { value: 'custom', label: 'Период' },
-]
-
 const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'expense', label: 'Расходы' },
   { value: 'income', label: 'Доходы' },
 ]
 
-watch(period, (value) => {
-  if (value === 'custom' && !customFrom.value) {
-    customFrom.value = todayLocal().slice(0, 8) + '01'
-    customTo.value = todayLocal()
-  }
-})
+const periodLabel = computed(() =>
+  formatPeriodLabel(period.value, undefined, {
+    from: customFrom.value,
+    to: customTo.value,
+  }),
+)
 
 watch(selectedAccountId, (id) => {
   if (id !== ALL_ACCOUNTS_ID && chart.value === 'accounts') {
@@ -162,37 +154,30 @@ function deltaClass(current: number, previous: number, invert = false) {
 
 <template>
   <div class="stats">
-    <div class="filters">
-      <AppSegmented v-model="period" :options="periodOptions" aria-label="Период" />
-
-      <div v-if="period === 'custom'" class="range">
-        <AppField label="С" for-id="stats-from">
-          <AppInput id="stats-from" v-model="customFrom" type="date" />
-        </AppField>
-        <AppField label="По" for-id="stats-to">
-          <AppInput id="stats-to" v-model="customTo" type="date" />
-        </AppField>
-      </div>
-
+    <div class="stats__toolbar">
       <div data-tour="stats-chart">
-        <AppField label="График" for-id="stats-chart">
-          <AppSelect id="stats-chart" v-model="chart">
-            <option value="category">По категориям</option>
-            <option value="weekday">По дням недели</option>
-            <option value="heatmap">Тепловая карта</option>
-            <option value="trend">Динамика</option>
-            <option value="top">Топ операций</option>
-            <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
-          </AppSelect>
-        </AppField>
+        <AppSelect id="stats-chart" v-model="chart" size="medium" aria-label="График">
+          <option value="category">По категориям</option>
+          <option value="weekday">По дням недели</option>
+          <option value="heatmap">Тепловая карта</option>
+          <option value="trend">Динамика</option>
+          <option value="top">Топ операций</option>
+          <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
+        </AppSelect>
       </div>
+      <AppPeriodSelect
+        v-model="period"
+        v-model:from="customFrom"
+        v-model:to="customTo"
+        :label="periodLabel"
+      />
     </div>
 
     <AppEmpty v-if="!filtered.length" description="Нет операций за период" />
 
     <template v-else>
-      <div class="kpis">
-        <section class="summary" aria-label="Сводка">
+      <section class="summary" aria-label="Сводка">
+        <div class="summary__row">
           <div class="summary__item">
             <p class="summary__label">Расходы</p>
             <p class="summary__value is-out">{{ formatMoney(summary.expenseTotal) }}</p>
@@ -228,9 +213,8 @@ function deltaClass(current: number, previous: number, invert = false) {
               {{ formatDelta(summary.net, previousSummary.net) }}
             </p>
           </div>
-        </section>
-
-        <section class="summary summary--rates" aria-label="Средние">
+        </div>
+        <div class="summary__row summary__row--rates">
           <div class="summary__item">
             <p class="summary__label">Средний расход в день</p>
             <p class="summary__value">{{ formatMoney(dailyExpense) }}</p>
@@ -239,46 +223,57 @@ function deltaClass(current: number, previous: number, invert = false) {
             <p class="summary__label">Доля доходов на расходы</p>
             <p class="summary__value">{{ formatShare(share) }}</p>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      <AppSegmented
-        v-if="showKind"
-        v-model="kind"
-        :options="kindOptions"
-        aria-label="Тип операций"
-      />
+      <section class="stats__chart">
+        <AppSegmented
+          v-if="showKind"
+          v-model="kind"
+          compact
+          :options="kindOptions"
+          aria-label="Тип операций"
+        />
 
-      <CategorySpendChart
-        v-if="chart === 'category' && categorySlices.length"
-        :slices="categorySlices"
-        :title="chartTitle"
-        :center-label="centerLabel"
-      />
-      <AppEmpty v-else-if="chart === 'category'" :description="kindEmpty" />
+        <CategorySpendChart
+          v-if="chart === 'category' && categorySlices.length"
+          embedded
+          :slices="categorySlices"
+          :title="chartTitle"
+          :center-label="centerLabel"
+        />
+        <AppEmpty v-else-if="chart === 'category'" :description="kindEmpty" />
 
-      <WeekdaySpendChart
-        v-else-if="chart === 'weekday' && hasWeekdayExpenses"
-        :slices="weekdaySlices"
-      />
-      <AppEmpty v-else-if="chart === 'weekday'" description="Нет расходов за период" />
+        <WeekdaySpendChart
+          v-else-if="chart === 'weekday' && hasWeekdayExpenses"
+          embedded
+          :slices="weekdaySlices"
+        />
+        <AppEmpty v-else-if="chart === 'weekday'" description="Нет расходов за период" />
 
-      <HeatmapChart
-        v-else-if="chart === 'heatmap'"
-        :weeks="heatmap.weeks"
-        :capped="heatmap.capped"
-      />
+        <HeatmapChart
+          v-else-if="chart === 'heatmap'"
+          embedded
+          :weeks="heatmap.weeks"
+          :capped="heatmap.capped"
+        />
 
-      <TrendChart v-else-if="chart === 'trend'" :slices="trendSlices" />
+        <TrendChart v-else-if="chart === 'trend'" embedded :slices="trendSlices" />
 
-      <TopOperationsList v-else-if="chart === 'top' && topItems.length" :items="topItems" />
-      <AppEmpty v-else-if="chart === 'top'" :description="kindEmpty" />
+        <TopOperationsList
+          v-else-if="chart === 'top' && topItems.length"
+          embedded
+          :items="topItems"
+        />
+        <AppEmpty v-else-if="chart === 'top'" :description="kindEmpty" />
 
-      <AccountSpendChart
-        v-else-if="chart === 'accounts' && accountSlices.length"
-        :slices="accountSlices"
-      />
-      <AppEmpty v-else-if="chart === 'accounts'" description="Нет операций за период" />
+        <AccountSpendChart
+          v-else-if="chart === 'accounts' && accountSlices.length"
+          embedded
+          :slices="accountSlices"
+        />
+        <AppEmpty v-else-if="chart === 'accounts'" description="Нет операций за период" />
+      </section>
     </template>
   </div>
 </template>
@@ -290,33 +285,40 @@ function deltaClass(current: number, previous: number, invert = false) {
   gap: var(--space-4);
 }
 
-.filters,
-.range {
+.stats__toolbar {
   display: grid;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) 9.75rem;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.range {
-  grid-template-columns: 1fr 1fr;
-}
-
-.kpis {
+.stats__chart {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
+  gap: var(--space-4);
   padding: var(--space-4);
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
 }
 
-.summary--rates {
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+.summary__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.summary__row--rates {
   grid-template-columns: 1fr 1fr;
 }
 

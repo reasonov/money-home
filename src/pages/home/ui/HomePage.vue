@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ChevronRight, Plus } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 import {
   AppButton,
   AppEmpty,
-  AppField,
-  AppInput,
+  AppPeriodSelect,
   AppSegmented,
   formatMoney,
   openFormDrawer,
@@ -16,6 +15,7 @@ import {
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
   filterStatsTransactions,
+  formatPeriodLabel,
   totalsByCategory,
   useTransactionStore,
   type ChartPeriod,
@@ -32,25 +32,17 @@ const kind = ref<'expense' | 'income'>('expense')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 
-const periodOptions: { value: ChartPeriod; label: string }[] = [
-  { value: 'day', label: 'День' },
-  { value: 'week', label: 'Неделя' },
-  { value: 'month', label: 'Месяц' },
-  { value: 'year', label: 'Год' },
-  { value: 'custom', label: 'Период' },
-]
-
 const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'expense', label: 'Расходы' },
   { value: 'income', label: 'Доходы' },
 ]
 
-watch(period, (value) => {
-  if (value === 'custom' && !customFrom.value) {
-    customFrom.value = todayLocal().slice(0, 8) + '01'
-    customTo.value = todayLocal()
-  }
-})
+const periodLabel = computed(() =>
+  formatPeriodLabel(period.value, undefined, {
+    from: customFrom.value,
+    to: customTo.value,
+  }),
+)
 
 const filtered = computed(() =>
   filterStatsTransactions(transactions.posted, {
@@ -62,9 +54,6 @@ const filtered = computed(() =>
 )
 
 const slices = computed(() => totalsByCategory(filtered.value, kind.value))
-const chartTitle = computed(() =>
-  kind.value === 'expense' ? 'Расходы по категориям' : 'Доходы по категориям',
-)
 const centerLabel = computed(() => (kind.value === 'expense' ? 'Потрачено' : 'Получено'))
 const emptyText = computed(() =>
   kind.value === 'expense' ? 'Нет расходов за период' : 'Нет доходов за период',
@@ -97,55 +86,50 @@ const totalLabel = computed(() =>
       <section class="hero" data-tour="home-balance">
         <p class="hero__label">{{ totalLabel }}</p>
         <p class="hero__total">{{ formatMoney(accounts.displayedTotal) }}</p>
+        <div class="hero__cta" data-tour="home-cta">
+          <AppButton block @click="openFormDrawer({ name: 'expense' })">
+            <template #icon>
+              <Plus :size="18" :stroke-width="2" />
+            </template>
+            Расход
+          </AppButton>
+          <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income' })">
+            <template #icon>
+              <Plus :size="18" :stroke-width="2" />
+            </template>
+            Доход
+          </AppButton>
+        </div>
       </section>
 
-      <div class="cta" data-tour="home-cta">
-        <AppButton block @click="openFormDrawer({ name: 'expense' })">
-          <template #icon>
-            <Plus :size="18" :stroke-width="2" />
-          </template>
-          Расход
-        </AppButton>
-        <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income' })">
-          <template #icon>
-            <Plus :size="18" :stroke-width="2" />
-          </template>
-          Доход
-        </AppButton>
-      </div>
-
-      <div class="home__chart" data-tour="home-chart">
-        <AppSegmented v-model="period" :options="periodOptions" aria-label="Период" />
-
-        <div v-if="period === 'custom'" class="range">
-          <AppField label="С" for-id="home-from">
-            <AppInput id="home-from" v-model="customFrom" type="date" />
-          </AppField>
-          <AppField label="По" for-id="home-to">
-            <AppInput id="home-to" v-model="customTo" type="date" />
-          </AppField>
+      <section class="home__chart" data-tour="home-chart">
+        <div class="home__toolbar">
+          <AppSegmented
+            v-model="kind"
+            compact
+            :options="kindOptions"
+            aria-label="Тип операций"
+          />
+          <AppPeriodSelect
+            v-model="period"
+            v-model:from="customFrom"
+            v-model:to="customTo"
+            :label="periodLabel"
+          />
         </div>
-
-        <AppSegmented v-model="kind" :options="kindOptions" aria-label="Тип операций" />
 
         <CategorySpendChart
           v-if="slices.length"
+          embedded
           :slices="slices"
-          :title="chartTitle"
           :center-label="centerLabel"
         />
         <AppEmpty v-else :description="emptyText" />
-      </div>
+      </section>
 
       <RouterLink class="history-link" to="/history" aria-label="Открыть историю операций">
-        <span class="history-link__text">
-          <span class="history-link__title">История операций</span>
-          <span class="history-link__hint">Расходы, доходы и переводы</span>
-        </span>
-        <span class="history-link__action">
-          Открыть
-          <ChevronRight :size="18" :stroke-width="1.8" />
-        </span>
+        История операций
+        <ChevronRight :size="18" :stroke-width="1.8" />
       </RouterLink>
     </template>
   </div>
@@ -176,23 +160,32 @@ const totalLabel = computed(() =>
   font-variant-numeric: tabular-nums;
 }
 
-.range {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
-.cta,
+.hero__cta,
 .empty-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
 }
 
+.hero__cta {
+  margin-top: var(--space-4);
+}
+
 .home__chart {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+.home__toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.75rem;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .empty-actions {
@@ -201,47 +194,18 @@ const totalLabel = computed(() =>
 }
 
 .history-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  align-self: flex-start;
+  gap: 2px;
   min-height: 44px;
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-accent);
   text-decoration: none;
-  color: inherit;
 }
 
 .history-link:hover {
   text-decoration: none;
-}
-
-.history-link__text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.history-link__title {
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.history-link__hint {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-}
-
-.history-link__action {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--color-accent);
 }
 </style>

@@ -1,3 +1,3 @@
 export { supabase } from './supabase'
 export type { Database } from './database.types'
-export { getErrorMessage } from './errors'
+export { getErrorMessage, NETWORK_ERROR_MESSAGE } from './errors'

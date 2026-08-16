@@ -36,7 +36,7 @@ function openAccount(id: string) {
           <Wallet :size="18" :stroke-width="1.8" />
         </span>
         <span class="row__name">
-          {{ account.name }}
+          <span class="row__title">{{ account.name }}</span>
           <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
         </span>
         <span class="row__amount">{{ formatMoney(account.amount) }}</span>
@@ -108,7 +108,19 @@ function openAccount(id: string) {
   min-width: 0;
 }
 
+.row__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__name :deep(.n-tag) {
+  flex-shrink: 0;
+}
+
 .row__amount {
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
 }

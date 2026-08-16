@@ -15,9 +15,15 @@ export interface AccountChartSlice {
   incomeTotal: number
 }
 
-const props = defineProps<{
-  slices: AccountChartSlice[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    slices: AccountChartSlice[]
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const theme = useChartTheme()
 
@@ -82,7 +88,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
 </script>
 
 <template>
-  <section class="card">
+  <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">По счетам</h2>
     <div class="card__chart">
       <Bar :data="chartData" :options="chartOptions" />
@@ -106,6 +112,13 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.card.is-embedded {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .card__title {

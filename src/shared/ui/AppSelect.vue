@@ -2,16 +2,22 @@
 import { computed, Fragment, useSlots, type VNode } from 'vue'
 import { NSelect, type SelectRenderLabel } from 'naive-ui'
 
-const props = defineProps<{
-  id?: string
-  required?: boolean
-  disabled?: boolean
-  multiple?: boolean
-  filterable?: boolean
-  clearable?: boolean
-  placeholder?: string
-  renderLabel?: SelectRenderLabel
-}>()
+const props = withDefaults(
+  defineProps<{
+    id?: string
+    required?: boolean
+    disabled?: boolean
+    multiple?: boolean
+    filterable?: boolean
+    clearable?: boolean
+    placeholder?: string
+    renderLabel?: SelectRenderLabel
+    size?: 'medium' | 'large'
+  }>(),
+  {
+    size: 'large',
+  },
+)
 
 const model = defineModel<string | number | string[]>({ required: true })
 const slots = useSlots()
@@ -131,7 +137,7 @@ function isSelected(optionValue: string) {
       :placeholder="placeholder"
       :render-label="renderLabel"
       :max-tag-count="multiple ? 'responsive' : undefined"
-      size="large"
+      :size="size"
     />
     <div class="app-select__slot" hidden><slot /></div>
   </div>

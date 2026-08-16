@@ -1,14 +1,20 @@
 <script setup lang="ts" generic="T extends string">
-defineProps<{
-  options: { value: T; label: string }[]
-  ariaLabel?: string
-}>()
+withDefaults(
+  defineProps<{
+    options: { value: T; label: string }[]
+    ariaLabel?: string
+    compact?: boolean
+  }>(),
+  {
+    compact: false,
+  },
+)
 
 const model = defineModel<T>({ required: true })
 </script>
 
 <template>
-  <div class="segmented" role="tablist" :aria-label="ariaLabel">
+  <div class="segmented" :class="{ 'is-compact': compact }" role="tablist" :aria-label="ariaLabel">
     <button
       v-for="option in options"
       :key="option.value"
@@ -58,5 +64,16 @@ const model = defineModel<T>({ required: true })
   background: var(--color-surface);
   color: var(--color-text);
   box-shadow: var(--shadow-soft);
+}
+
+.segmented.is-compact {
+  padding: 2px;
+}
+
+.segmented.is-compact .segmented__item {
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  font-size: 0.75rem;
+  border-radius: 8px;
 }
 </style>

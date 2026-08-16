@@ -12,6 +12,7 @@ export {
   expensesByWeekday,
   expenseShare,
   filterStatsTransactions,
+  formatPeriodLabel,
   heatmapWeeks,
   heatmapWindow,
   periodDayCount,

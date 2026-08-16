@@ -125,7 +125,7 @@ async function leave() {
   <div v-if="account" class="page">
     <section class="hero">
       <p class="hero__name">
-        {{ account.name }}
+        <span class="hero__title">{{ account.name }}</span>
         <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
       </p>
       <p class="hero__total">{{ formatMoney(account.amount) }}</p>
@@ -155,7 +155,7 @@ async function leave() {
     <section class="block">
       <h2>Участники</h2>
       <p v-for="member in members" :key="member.userId" class="member">
-        {{ member.displayName }}
+        <span class="member__name">{{ member.displayName }}</span>
         <AppTag v-if="member.userId === session.user?.id" type="info">вы</AppTag>
         <AppTag v-if="member.userId === account.ownerId" type="default">владелец</AppTag>
       </p>
@@ -232,7 +232,19 @@ async function leave() {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   font-weight: 700;
+}
+
+.hero__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero__name :deep(.n-tag) {
+  flex-shrink: 0;
 }
 
 .hero__total {
@@ -258,7 +270,19 @@ async function leave() {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
   min-height: 44px;
+}
+
+.member__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member :deep(.n-tag) {
+  flex-shrink: 0;
 }
 
 .share-hint {

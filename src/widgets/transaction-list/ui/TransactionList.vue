@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { AppField, AppInput, AppSelect, formatDisplayDate, formatMoney, openFormDrawer } from '@/shared'
+import {
+  AppInput,
+  AppSegmented,
+  AppSelect,
+  formatDisplayDate,
+  formatMoney,
+  openFormDrawer,
+} from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { CategoryIcon, useCategoryStore } from '@/entities/category'
 import { type Transaction, type TransactionKind } from '@/entities/transaction'
@@ -17,6 +24,14 @@ const categories = useCategoryStore()
 const kind = ref<'all' | TransactionKind | 'income_rule'>('all')
 const categoryId = ref('all')
 const query = ref('')
+
+const kindOptions: { value: 'all' | TransactionKind | 'income_rule'; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'expense', label: 'Расходы' },
+  { value: 'income', label: 'Доходы' },
+  { value: 'transfer', label: 'Переводы' },
+  { value: 'income_rule', label: 'Пополнения' },
+]
 
 const categoryOptions = computed(() => {
   const map = new Map<string, string>()
@@ -127,27 +142,17 @@ function openItem(item: Transaction) {
 <template>
   <div class="list">
     <div class="filters">
-      <AppField label="Тип" for-id="tx-kind">
-        <AppSelect id="tx-kind" v-model="kind">
-          <option value="all">Все</option>
-          <option value="expense">Расходы</option>
-          <option value="income">Доходы</option>
-          <option value="transfer">Переводы</option>
-          <option value="income_rule">Пополнения</option>
-        </AppSelect>
-      </AppField>
-      <AppField label="Категория" for-id="tx-category">
-        <AppSelect id="tx-category" v-model="categoryId" filterable>
-          <option value="all">Все</option>
+      <AppSegmented v-model="kind" compact :options="kindOptions" aria-label="Тип операций" />
+      <div class="filters__row">
+        <AppSelect id="tx-category" v-model="categoryId" size="medium" filterable aria-label="Категория">
+          <option value="all">Все категории</option>
           <option value="none">Без категории</option>
           <option v-for="cat in categoryOptions" :key="cat.id" :value="cat.id">
             {{ cat.name }}
           </option>
         </AppSelect>
-      </AppField>
-      <AppField label="Поиск" for-id="tx-query">
-        <AppInput id="tx-query" v-model="query" placeholder="Название" />
-      </AppField>
+        <AppInput id="tx-query" v-model="query" size="medium" placeholder="Поиск" />
+      </div>
     </div>
 
     <p v-if="!groups.length" class="empty">{{ emptyText }}</p>
@@ -192,13 +197,15 @@ function openItem(item: Transaction) {
 }
 
 .filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
 }
 
-.filters > :last-child {
-  grid-column: 1 / -1;
+.filters__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
 .group {
