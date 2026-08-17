@@ -51,7 +51,7 @@ const router = createRouter({
           component: () => import('@/pages/register/ui/RegisterPage.vue'),
           meta: {
             title: 'Регистрация',
-            subtitle: 'Создайте аккаунт и начните вести счета',
+            subtitle: 'Создайте аккаунт и начните вести счёта',
             guestOnly: true,
           },
         },
@@ -120,7 +120,7 @@ const router = createRouter({
           path: 'income',
           name: 'income',
           component: () => import('@/pages/income/ui/IncomePage.vue'),
-          meta: { title: 'Регулярные' },
+          meta: { title: 'Регулярные операции' },
         },
         {
           path: 'categories',

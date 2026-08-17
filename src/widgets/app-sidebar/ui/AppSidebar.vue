@@ -35,7 +35,7 @@ const links = [
   { to: '/stats', label: 'Статистика', icon: PieChart },
   { to: '/calendar', label: 'Планирование', icon: CalendarCheck },
   { to: '/categories', label: 'Категории', icon: FolderTree },
-  { to: '/income', label: 'Регулярные', icon: CalendarClock },
+  { to: '/income', label: 'Регулярные операции', icon: CalendarClock },
 ]
 
 function go(path: string) {
@@ -97,7 +97,7 @@ function openAccount(id: string) {
             <span class="sidebar__account-body">
               <span class="sidebar__account-name">
                 <span class="sidebar__account-title">{{ account.name }}</span>
-                <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
+                <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
               </span>
               <span class="sidebar__account-amount">{{ formatMoney(account.amount) }}</span>
             </span>

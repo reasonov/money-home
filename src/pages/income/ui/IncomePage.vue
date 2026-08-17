@@ -6,11 +6,11 @@ import { ExpenseRulesPanel } from '@/features/manage-expense'
 <template>
   <div class="page">
     <section class="section">
-      <h2 class="section__title">Пополнения</h2>
+      <h2 class="section__title">Регулярные пополнения</h2>
       <IncomeRulesPanel />
     </section>
     <section class="section">
-      <h2 class="section__title">Расходы</h2>
+      <h2 class="section__title">Регулярные расходы</h2>
       <ExpenseRulesPanel />
     </section>
   </div>

@@ -32,19 +32,19 @@ function isNetworkMessage(lower: string): boolean {
 function mapAuthMessage(message: string): string {
   const lower = message.toLowerCase()
   if (lower.includes('invalid login credentials')) {
-    return 'Неверный email или пароль'
+    return 'Неверная почта или пароль'
   }
   if (lower.includes('user already registered')) {
-    return 'Этот email уже зарегистрирован'
+    return 'Эта почта уже зарегистрирована'
   }
   if (lower.includes('email not confirmed')) {
-    return 'Подтвердите email по ссылке из письма'
+    return 'Подтвердите почту по ссылке из письма'
   }
   if (lower.includes('password should be at least')) {
     return 'Пароль слишком короткий'
   }
   if (lower.includes('already in a household')) {
-    return 'Вы уже состоите в семье'
+    return 'Вы уже подключены к этому счёту'
   }
   if (lower.includes('account not found')) {
     return 'Счёт с таким кодом не найден'
@@ -92,5 +92,5 @@ function mapAuthMessage(message: string): string {
   if (isNetworkMessage(lower)) {
     return NETWORK_ERROR_MESSAGE
   }
-  return message
+  return ''
 }

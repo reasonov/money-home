@@ -70,7 +70,7 @@ const totalLabel = computed(() =>
   <div class="home">
     <InstallHint />
 
-    <AppEmpty v-if="!accounts.items.length" description="Пока нет счетов">
+    <AppEmpty v-if="!accounts.items.length" description="Создайте счёт для учёта денег или подключитесь к общему счёту по коду">
       <div class="empty-actions" data-tour="home-create">
         <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
         <AppButton
@@ -78,7 +78,7 @@ const totalLabel = computed(() =>
           block
           @click="openFormDrawer({ name: 'account', mode: 'join' })"
         >
-          Ввести код
+          Подключиться по коду
         </AppButton>
       </div>
     </AppEmpty>

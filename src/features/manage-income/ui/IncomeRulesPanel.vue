@@ -62,8 +62,8 @@ function openCreate() {
 
 async function onRemove(id: string) {
   const ok = await confirmAction({
-    title: 'Удалить правило?',
-    message: 'Оно перестанет учитываться в прогнозе баланса.',
+    title: 'Удалить регулярное пополнение?',
+    message: 'Будущие пополнения по этому расписанию не будут зачисляться и учитываться в прогнозе.',
     confirmLabel: 'Удалить',
     danger: true,
   })
@@ -156,7 +156,7 @@ function onMenu(rule: IncomeRule, key: string | number) {
     </div>
 
     <p v-if="error" class="income__error" role="alert">{{ error }}</p>
-    <AppButton variant="secondary" block @click="openCreate">Добавить правило</AppButton>
+    <AppButton variant="secondary" block @click="openCreate">Добавить пополнение</AppButton>
   </div>
 </template>
 

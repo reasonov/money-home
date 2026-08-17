@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
-import { usePurchaseStore } from '@/entities/purchase'
 import { AppButton, AppSegmented, openFormDrawer } from '@/shared'
 import { PurchaseList } from '@/widgets/purchase-list'
 import { PlanningCalendar } from '@/widgets/planning-calendar'
 
 const accounts = useAccountStore()
-const purchases = usePurchaseStore()
 const view = ref<'list' | 'month'>('list')
 
 const viewOptions: { value: 'list' | 'month'; label: string }[] = [
@@ -23,12 +21,6 @@ function openIncomeRule() {
   })
 }
 
-const hasPlanned = computed(() => {
-  if (accounts.selectedAccountId === ALL_ACCOUNTS_ID) {
-    return purchases.planned.length > 0
-  }
-  return purchases.planned.some((item) => item.accountId === accounts.selectedAccountId)
-})
 </script>
 
 <template>
@@ -36,9 +28,9 @@ const hasPlanned = computed(() => {
     <div class="calendar__toolbar">
       <AppSegmented v-model="view" compact :options="viewOptions" aria-label="Вид планирования" />
     </div>
-    <div v-if="hasPlanned || view === 'month'" class="calendar__cta" data-tour="calendar-cta">
+    <div class="calendar__cta" data-tour="calendar-cta">
       <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
-      <AppButton variant="secondary" block @click="openIncomeRule">Авто-пополнение</AppButton>
+      <AppButton variant="secondary" block @click="openIncomeRule">Регулярное пополнение</AppButton>
     </div>
     <PlanningCalendar v-if="view === 'month'" />
     <PurchaseList v-else />

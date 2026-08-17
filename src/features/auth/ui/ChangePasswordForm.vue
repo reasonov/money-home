@@ -43,7 +43,7 @@ async function onSubmit() {
         autocomplete="new-password"
       />
     </AppField>
-    <AppField label="Ещё раз" for-id="settings-password-confirm">
+    <AppField label="Подтвердите пароль" for-id="settings-password-confirm">
       <AppInput
         id="settings-password-confirm"
         v-model="confirm"

@@ -31,9 +31,9 @@ const title = computed(() => {
     case 'purchase-edit':
       return 'Изменить покупку'
     case 'income-rule':
-      return current.ruleId ? 'Изменить правило' : 'Новое правило'
+      return current.ruleId ? 'Изменить регулярное пополнение' : 'Регулярное пополнение'
     case 'expense-rule':
-      return current.ruleId ? 'Изменить расход' : 'Регулярный расход'
+      return current.ruleId ? 'Изменить регулярный расход' : 'Регулярный расход'
     case 'transaction-edit':
       return 'Изменить операцию'
     default:

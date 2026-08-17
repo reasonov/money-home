@@ -54,12 +54,16 @@ function swap() {
 async function onSubmit() {
   error.value = ''
   const value = Number(amount.value)
-  if (fromId.value === toId.value || !Number.isFinite(value) || value <= 0) {
-    error.value = 'Выберите разные счета и сумму'
+  if (fromId.value === toId.value) {
+    error.value = 'Выберите разные счета'
+    return
+  }
+  if (!Number.isFinite(value) || value <= 0) {
+    error.value = 'Укажите сумму больше 0 ₽'
     return
   }
   if (fromAccount.value && value > fromAccount.value.amount) {
-    error.value = `На счёте ${formatMoney(fromAccount.value.amount)}`
+    error.value = `Недостаточно средств. Доступно: ${formatMoney(fromAccount.value.amount)}`
     return
   }
   pending.value = true

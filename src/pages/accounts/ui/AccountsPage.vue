@@ -14,11 +14,11 @@ function openAccount(id: string) {
 </script>
 
 <template>
-  <AppEmpty v-if="!accounts.items.length" description="Пока нет счетов">
+  <AppEmpty v-if="!accounts.items.length" description="Создайте счёт для учёта денег или подключитесь к общему счёту по коду">
     <div class="empty-actions">
       <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
       <AppButton variant="secondary" block @click="openFormDrawer({ name: 'account', mode: 'join' })">
-        Ввести код
+        Подключиться по коду
       </AppButton>
     </div>
   </AppEmpty>
@@ -38,7 +38,7 @@ function openAccount(id: string) {
         </span>
         <span class="row__name">
           <span class="row__title">{{ account.name }}</span>
-          <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
+          <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
         </span>
         <span class="row__amounts">
           <span class="row__amount">{{ formatMoney(account.amount) }}</span>

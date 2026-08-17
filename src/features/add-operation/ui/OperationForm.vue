@@ -114,7 +114,7 @@ async function onSubmit() {
   const value = Number(amount.value)
   const category = categories.getById(categoryId.value)
   if (!accountId.value || !category || !Number.isFinite(value) || value <= 0) {
-    error.value = 'Выберите счёт, категорию и сумму'
+    error.value = 'Выберите счёт и категорию, затем укажите сумму больше 0 ₽'
     return
   }
   pending.value = true
@@ -157,7 +157,7 @@ async function onSubmit() {
       block
       @click="repeatLast"
     >
-      Повторить прошлый
+      Повторить последнюю операцию
     </AppButton>
     <AppField label="Сумма, ₽" for-id="op-amount">
       <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
@@ -182,7 +182,10 @@ async function onSubmit() {
         </AppButton>
       </div>
     </AppField>
-    <AppEmpty v-if="!availableCats.length" description="Нет категорий для этого счёта">
+    <AppEmpty
+      v-if="!availableCats.length"
+      :description="`Нет категорий ${props.kind === 'expense' ? 'расходов' : 'доходов'} для этого счёта`"
+    >
       <AppButton variant="secondary" block @click="createOpen = true">Добавить категорию</AppButton>
     </AppEmpty>
     <AppField label="Дата" for-id="op-date">

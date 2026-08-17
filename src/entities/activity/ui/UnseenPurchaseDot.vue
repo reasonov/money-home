@@ -16,7 +16,7 @@ const active = computed(() => store.hasUnseenForPurchase(props.purchaseId))
       class="mark__dot"
       :class="{ 'is-on': active }"
       :aria-hidden="!active"
-      :aria-label="active ? 'Есть изменения' : undefined"
+      :aria-label="active ? 'Покупка изменена' : undefined"
     />
     <slot />
   </span>

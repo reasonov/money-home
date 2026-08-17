@@ -193,7 +193,7 @@ async function onSubmit() {
   error.value = ''
   const candidateAmount = Number(amount.value)
   if (!title.value.trim() || !Number.isFinite(candidateAmount) || candidateAmount <= 0) {
-    error.value = 'Укажите название и сумму'
+    error.value = 'Укажите название и сумму больше 0 ₽'
     return
   }
 
@@ -206,12 +206,12 @@ async function onSubmit() {
 
   const result = projection.value
   if (!result) {
-    error.value = 'Проверьте сумму и дату'
+    error.value = 'Укажите корректные сумму и дату покупки'
     return
   }
 
   if (!result.canAfford) {
-    error.value = 'К выбранной дате денег не хватает — посмотрите детали'
+    error.value = 'К выбранной дате на покупку не хватит денег. Посмотрите варианты ниже.'
     openDetails()
     return
   }
@@ -289,7 +289,7 @@ async function onSubmit() {
       <AppInput id="purchase-date" v-model="plannedDate" type="date" required />
     </AppField>
     <AppField
-      label="Описание"
+      label="Комментарий"
       for-id="purchase-notes"
       hint="Необязательно. Можно перечислить позиции заказа"
     >
@@ -302,7 +302,7 @@ async function onSubmit() {
     </AppField>
 
     <AppBanner v-if="projection?.canAfford" variant="success">
-      Хватит — к дате на счету будет
+      На покупку хватит: к этой дате на счёте будет
       <span class="money">{{ formatMoney(projection.projectedBalance) }}</span>
     </AppBanner>
     <AppBanner v-else-if="projection && !projection.canAfford" variant="warning">
@@ -337,7 +337,7 @@ async function onSubmit() {
   <AppDrawer v-model:open="detailsOpen" title="Не хватает денег к выбранной дате">
     <div v-if="projection && !projection.canAfford" class="details">
       <p class="details__lead">
-        К дате на счету будет
+        К этой дате на счёте будет
         <span class="money">{{ formatMoney(projection.projectedBalance) }}</span>
         — не хватает
         <span class="money">{{ formatMoney(projection.shortfall) }}</span>
@@ -367,9 +367,9 @@ async function onSubmit() {
           {{
             pluralizeRu(
               projection.incomeOccurrencesCount,
-              'начисление',
-              'начисления',
-              'начислений',
+              'пополнение',
+              'пополнения',
+              'пополнений',
             )
           }})
         </p>
@@ -412,7 +412,7 @@ async function onSubmit() {
           block
           @click="applyAffordableDate"
         >
-          Поставить на эту дату
+          Перенести на {{ formatProjectionDate(projection.nextAffordableDate) }}
         </AppButton>
         <AppButton
           v-if="projection.projectedBalance > 0"
@@ -421,7 +421,7 @@ async function onSubmit() {
           block
           @click="applyProjectedAmount"
         >
-          Уменьшить сумму до {{ formatMoney(Math.floor(projection.projectedBalance)) }}
+          Изменить сумму покупки на {{ formatMoney(Math.floor(projection.projectedBalance)) }}
         </AppButton>
         <AppButton type="button" variant="ghost" block @click="detailsOpen = false">
           Понятно

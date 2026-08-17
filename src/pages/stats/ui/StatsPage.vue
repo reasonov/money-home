@@ -204,7 +204,7 @@ function formatShare(value: number | null) {
 function formatDelta(current: number, previous: number) {
   const delta = current - previous
   if (delta === 0) {
-    return 'как раньше'
+    return 'без изменений к прошлому периоду'
   }
   return `${delta > 0 ? '+' : '−'}${formatMoney(Math.abs(delta))}`
 }
@@ -223,10 +223,10 @@ function deltaClass(current: number, previous: number, invert = false) {
   <div class="stats">
     <div class="stats__toolbar">
       <div data-tour="stats-chart">
-        <AppSelect id="stats-chart" v-model="chart" size="medium" aria-label="График">
+        <AppSelect id="stats-chart" v-model="chart" size="medium" aria-label="Вид статистики">
           <option value="category">По категориям</option>
           <option value="weekday">По дням недели</option>
-          <option value="heatmap">Тепловая карта</option>
+          <option value="heatmap">Календарь расходов</option>
           <option value="trend">Динамика</option>
           <option value="top">Топ операций</option>
           <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
@@ -270,7 +270,7 @@ function deltaClass(current: number, previous: number, invert = false) {
             </p>
           </div>
           <div class="summary__item">
-            <p class="summary__label">Разница</p>
+            <p class="summary__label">Итого</p>
             <p class="summary__value" :class="summary.net >= 0 ? 'is-in' : 'is-out'">
               {{ formatMoney(summary.net) }}
             </p>
@@ -289,7 +289,7 @@ function deltaClass(current: number, previous: number, invert = false) {
             <p class="summary__value">{{ formatMoney(dailyExpense) }}</p>
           </div>
           <div class="summary__item">
-            <p class="summary__label">Доля доходов на расходы</p>
+            <p class="summary__label">Расходы от доходов</p>
             <p class="summary__value">{{ formatShare(share) }}</p>
           </div>
         </div>
@@ -359,7 +359,7 @@ function deltaClass(current: number, previous: number, invert = false) {
             aria-label="Горизонт прогноза"
           />
           <ForecastChart v-if="forecastSlices.length" embedded :slices="forecastSlices" />
-          <AppEmpty v-else description="Нет счетов для прогноза" />
+          <AppEmpty v-else description="Создайте счёт, чтобы увидеть прогноз баланса" />
         </template>
       </section>
     </template>

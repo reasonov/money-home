@@ -26,7 +26,7 @@ const groups = computed(() => {
     <div class="history__head">
       <h2 class="history__title">История покупок</h2>
       <p class="history__total">
-        Всего потрачено
+        Всего потрачено на покупки
         <span class="money money-soft">{{ formatMoney(store.totalSpent) }}</span>
       </p>
     </div>
@@ -49,8 +49,8 @@ const groups = computed(() => {
     <div v-else class="history__empty">
       <p class="history__empty-text">Пока нет завершённых покупок</p>
       <div class="history__empty-actions">
-        <RouterLink to="/" custom v-slot="{ navigate }">
-          <AppButton variant="secondary" block @click="navigate">К плану покупок</AppButton>
+        <RouterLink to="/calendar" custom v-slot="{ navigate }">
+          <AppButton variant="secondary" block @click="navigate">К планированию</AppButton>
         </RouterLink>
         <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
       </div>

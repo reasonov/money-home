@@ -11,7 +11,7 @@ const store = usePurchaseStore()
     <div class="teaser__text">
       <p class="teaser__title">История покупок</p>
       <p class="teaser__total">
-        Всего потрачено
+        Всего потрачено на покупки
         <span class="money money-soft">{{ formatMoney(store.totalSpent) }}</span>
       </p>
     </div>

@@ -77,7 +77,7 @@ export function startAccountRealtime() {
         kind: 'account_updated',
         actorId,
         actorName: accounts.memberName(actorId),
-        summary: `${accounts.memberName(actorId)} обновил(а) счёт «${row.name}»: ${formatAmount(row.amount)}`,
+        summary: `Счёт «${row.name}» обновлён пользователем ${accounts.memberName(actorId)}: ${formatAmount(row.amount)}`,
       })
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'account_members' }, () => {
@@ -121,7 +121,7 @@ export function startAccountRealtime() {
           actorId,
           actorName,
           purchaseId: row.id,
-          summary: `${actorName} добавил(а) покупку «${row.title}» на ${formatAmount(row.amount)}`,
+          summary: `${actorName}: новая покупка «${row.title}» на ${formatAmount(row.amount)}`,
         })
         return
       }
@@ -131,7 +131,7 @@ export function startAccountRealtime() {
           actorId,
           actorName,
           purchaseId: row.id,
-          summary: `${actorName} отметил(а) «${row.title}» готовым`,
+          summary: `${actorName}: покупка «${row.title}» отмечена как купленная`,
         })
         return
       }
@@ -141,7 +141,7 @@ export function startAccountRealtime() {
           actorId,
           actorName,
           purchaseId: row.id,
-          summary: `${actorName} отменил(а) покупку «${row.title}»`,
+          summary: `${actorName}: покупка «${row.title}» убрана из плана`,
         })
         return
       }
@@ -150,7 +150,7 @@ export function startAccountRealtime() {
         actorId,
         actorName,
         purchaseId: row.id,
-        summary: `${actorName} изменил(а) покупку «${row.title}»`,
+        summary: `${actorName}: покупка «${row.title}» изменена`,
       })
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'income_rules' }, (payload) => {
@@ -183,8 +183,8 @@ export function startAccountRealtime() {
         actorName,
         summary:
           eventType === 'DELETE'
-            ? `${actorName} удалил(а) правило пополнения`
-            : `${actorName} изменил(а) правила пополнения`,
+            ? `${actorName}: регулярное пополнение удалено`
+            : `${actorName}: регулярное пополнение изменено`,
       })
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_rules' }, (payload) => {
@@ -217,8 +217,8 @@ export function startAccountRealtime() {
         actorName,
         summary:
           eventType === 'DELETE'
-            ? `${actorName} удалил(а) правило расхода`
-            : `${actorName} изменил(а) регулярные расходы`,
+            ? `${actorName}: регулярный расход удалён`
+            : `${actorName}: регулярный расход изменён`,
       })
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
@@ -285,7 +285,7 @@ export function startAccountRealtime() {
           actorId,
           actorName,
           transactionId: row.id,
-          summary: `${actorName} добавил(а) ${row.kind === 'income' ? 'доход' : row.kind === 'transfer' ? 'перевод' : 'расход'} «${label}» на ${formatAmount(row.amount)}`,
+          summary: `${actorName}: добавлена операция «${label}» на ${formatAmount(row.amount)}`,
         })
       }
     })
@@ -320,17 +320,17 @@ function notifyRecentAutoRules() {
       activity.push({
         kind: 'income_auto_posted',
         actorId: tx.createdBy,
-        actorName: 'Авто-пополнение',
+        actorName: 'Автоматически',
         transactionId: tx.id,
         occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
-        summary: `На счёт зачислено ${formatAmount(tx.amount)} — ${tx.title || 'Авто-пополнение'}`,
+        summary: `На счёт зачислено ${formatAmount(tx.amount)} — ${tx.title || 'Регулярное пополнение'}`,
       })
     }
     if (tx.source === 'expense_rule' && !knownExpense.has(tx.id)) {
       activity.push({
         kind: 'expense_auto_posted',
         actorId: tx.createdBy,
-        actorName: 'Регулярный расход',
+        actorName: 'Автоматически',
         transactionId: tx.id,
         occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
         summary: `Со счёта списано ${formatAmount(tx.amount)} — ${tx.title || 'Регулярный расход'}`,

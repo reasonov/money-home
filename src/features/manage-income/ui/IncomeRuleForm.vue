@@ -56,7 +56,7 @@ const submitLabel = computed(() => {
   if (pending.value) {
     return existing ? 'Сохраняем…' : 'Добавляем…'
   }
-  return existing ? 'Сохранить правило' : 'Добавить правило'
+  return existing ? 'Сохранить пополнение' : 'Добавить пополнение'
 })
 
 function buildPayload(): Omit<IncomeRule, 'id'> | null {
@@ -67,7 +67,7 @@ function buildPayload(): Omit<IncomeRule, 'id'> | null {
 
   const value = Number(amount.value)
   if (!Number.isFinite(value) || value <= 0) {
-    error.value = 'Укажите сумму'
+    error.value = 'Укажите сумму больше 0 ₽'
     return null
   }
 
@@ -83,7 +83,7 @@ function buildPayload(): Omit<IncomeRule, 'id'> | null {
   if (frequency.value === 'monthly') {
     const day = Number(monthDay.value)
     if (day < 1 || day > 28) {
-      error.value = 'День месяца: 1–28'
+      error.value = 'Выберите день месяца от 1 до 28'
       return null
     }
     payload.monthDay = day
@@ -160,7 +160,12 @@ async function onSubmit() {
         <option value="biweekly">Раз в две недели</option>
       </AppSelect>
     </AppField>
-    <AppField v-if="frequency === 'monthly'" label="День месяца" for-id="income-month-day">
+    <AppField
+      v-if="frequency === 'monthly'"
+      label="День месяца"
+      for-id="income-month-day"
+      hint="До 28-го числа, чтобы дата была в каждом месяце"
+    >
       <AppInput
         id="income-month-day"
         v-model="monthDay"
@@ -181,7 +186,12 @@ async function onSubmit() {
         </option>
       </AppSelect>
     </AppField>
-    <AppField v-if="frequency === 'biweekly'" label="Дата отсчёта" for-id="income-anchor">
+    <AppField
+      v-if="frequency === 'biweekly'"
+      label="Первая дата пополнения"
+      for-id="income-anchor"
+      hint="Дальше пополнение будет повторяться каждые две недели"
+    >
       <AppInput id="income-anchor" v-model="anchorDate" type="date" required />
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>

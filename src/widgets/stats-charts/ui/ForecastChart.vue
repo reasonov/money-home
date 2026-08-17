@@ -81,6 +81,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
 <template>
   <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">Прогноз баланса</h2>
+    <p class="card__hint">Учитывает текущий баланс, плановые покупки и регулярные операции</p>
     <div class="card__chart">
       <Line :data="chartData" :options="chartOptions" />
     </div>
@@ -103,8 +104,14 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
 }
 
 .card__title {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-1);
   font-size: 1.125rem;
+}
+
+.card__hint {
+  margin: 0 0 var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
 }
 
 .card__chart {

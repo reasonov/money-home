@@ -73,7 +73,10 @@ function onMenu(category: Category, key: string | number) {
 
 <template>
   <div class="page">
-    <AppEmpty v-if="!categories.items.length" description="Пока нет категорий">
+    <AppEmpty
+      v-if="!categories.items.length"
+      description="Категории помогают группировать расходы и доходы в статистике"
+    >
       <div data-tour="categories">
         <AppButton block @click="openCreate">Новая категория</AppButton>
       </div>

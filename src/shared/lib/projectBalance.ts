@@ -291,7 +291,7 @@ export function projectBalance(input: ProjectBalanceInput): ProjectBalanceResult
     nextAffordableDate,
     message: core.canAfford
       ? null
-      : `К ${formatTargetLabel(input.targetDate)} будет ${formatMoneyPlain(core.projectedBalance)} ₽ — не хватает ${formatMoneyPlain(core.shortfall)} ₽`,
+      : `К ${formatTargetLabel(input.targetDate)} на счёте будет ${formatMoneyPlain(core.projectedBalance)} ₽ — не хватает ${formatMoneyPlain(core.shortfall)} ₽.`,
   }
 }
 

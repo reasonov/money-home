@@ -114,13 +114,13 @@ function label(day: HeatmapDay) {
     </p>
 
     <div class="legend" aria-hidden="true">
-      <span>Меньше</span>
+      <span>Меньше расходов</span>
       <span class="legend__swatch level-0" />
       <span class="legend__swatch level-1" />
       <span class="legend__swatch level-2" />
       <span class="legend__swatch level-3" />
       <span class="legend__swatch level-4" />
-      <span>Больше</span>
+      <span>Больше расходов</span>
     </div>
   </section>
 </template>

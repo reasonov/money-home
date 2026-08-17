@@ -132,7 +132,7 @@ async function onSubmit() {
       return
     }
     if (value > transferAvailable.value) {
-      error.value = `На счёте ${formatMoney(transferAvailable.value)}`
+      error.value = `Недостаточно средств. Доступно: ${formatMoney(transferAvailable.value)}`
       return
     }
   } else if (!accountId.value || !categoryId.value) {
@@ -173,8 +173,8 @@ async function onDelete() {
         : 'Удалить операцию?',
     message: isAutoRule.value
       ? isExpenseRule
-        ? 'Сумма вернётся на счёт. За этот день правило больше не спишет.'
-        : 'Сумма будет списана со счёта. За этот день правило больше не начислит.'
+        ? 'Сумма вернётся на счёт. Этот регулярный расход больше не будет списан за эту дату.'
+        : 'Сумма будет списана со счёта. Это пополнение больше не будет зачислено за эту дату.'
       : isTransfer.value
         ? 'Суммы вернутся на счета.'
         : 'Сумма вернётся на счёт.',
@@ -208,7 +208,7 @@ async function onDelete() {
 
   <form v-else-if="ready" class="form" @submit.prevent="onSubmit">
     <p v-if="isAutoRule" class="hint">
-      {{ source === 'expense_rule' ? 'Регулярный расход' : 'Авто-пополнение' }} — счёт и дата не меняются
+      {{ source === 'expense_rule' ? 'Регулярный расход' : 'Регулярное пополнение' }}: можно изменить только сумму
     </p>
 
     <AppField label="Сумма, ₽" for-id="edit-amount">

@@ -18,13 +18,13 @@ async function onSubmit() {
   error.value = ''
   if (resetMode.value) {
     if (!email.value.trim()) {
-      error.value = 'Введите email'
+      error.value = 'Введите почту'
       return
     }
     pending.value = true
     try {
       await session.requestPasswordReset(email.value)
-      showToast('Письмо отправлено')
+      showToast('Проверьте почту: мы отправили ссылку для сброса пароля')
       resetMode.value = false
     } catch (err) {
       error.value = getErrorMessage(err, 'Не удалось отправить письмо')
@@ -35,7 +35,7 @@ async function onSubmit() {
   }
 
   if (!email.value.trim() || !password.value) {
-    error.value = 'Введите email и пароль'
+    error.value = 'Введите почту и пароль'
     return
   }
 
@@ -86,7 +86,7 @@ async function onSubmit() {
       }}
     </AppButton>
     <button type="button" class="form__link" @click="resetMode = !resetMode">
-      {{ resetMode ? 'К входу' : 'Забыли пароль?' }}
+      {{ resetMode ? 'Вернуться ко входу' : 'Забыли пароль?' }}
     </button>
   </form>
 </template>

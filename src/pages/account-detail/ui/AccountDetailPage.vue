@@ -55,7 +55,7 @@ async function save() {
   if (!userId || !account.value) return
   const value = Number(amount.value)
   if (!name.value.trim() || !Number.isFinite(value)) {
-    error.value = 'Проверьте название и баланс'
+    error.value = 'Укажите название и корректную сумму баланса'
     return
   }
   pending.value = true
@@ -127,7 +127,7 @@ async function leave() {
     <section class="hero">
       <p class="hero__name">
         <span class="hero__title">{{ account.name }}</span>
-        <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
+        <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
       </p>
       <p class="hero__total">{{ formatMoney(account.amount) }}</p>
       <AccountAvailableHint :account-id="account.id" :balance="account.amount" />
@@ -151,7 +151,7 @@ async function leave() {
       block
       @click="openFormDrawer({ name: 'transfer', fromAccountId: account.id })"
     >
-      Перевести средства
+      Перевод между счетами
     </AppButton>
 
     <section class="block">
@@ -169,7 +169,7 @@ async function leave() {
           <p class="code">{{ account.inviteCode }}</p>
           <div class="share-actions">
             <AppButton variant="secondary" block @click="copyCode()">Скопировать код</AppButton>
-            <AppButton variant="ghost" block @click="nativeShare">Отправить</AppButton>
+            <AppButton variant="ghost" block @click="nativeShare">Поделиться кодом</AppButton>
           </div>
         </template>
         <AppButton v-else variant="secondary" block @click="share">Поделиться счётом</AppButton>
@@ -183,7 +183,7 @@ async function leave() {
       </button>
       <div v-if="settingsOpen" class="settings">
         <p class="share-hint">
-          Ручной баланс перезаписывает текущую сумму. Это не расход и не доход.
+          Изменит текущую сумму на счёте, но не затронет историю операций.
         </p>
         <AppField label="Название" for-id="d-name">
           <AppInput id="d-name" v-model="name" />
@@ -212,7 +212,10 @@ async function leave() {
       </div>
     </section>
   </div>
-  <p v-else>Счёт не найден</p>
+  <div v-else class="not-found">
+    <p>Счёт не найден</p>
+    <AppButton variant="secondary" @click="router.push('/accounts')">К списку счетов</AppButton>
+  </div>
 </template>
 
 <style scoped>
@@ -319,5 +322,12 @@ async function leave() {
 
 .error {
   color: var(--color-danger);
+}
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 </style>

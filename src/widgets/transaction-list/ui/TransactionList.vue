@@ -31,7 +31,7 @@ const kindOptions: { value: 'all' | TransactionKind | 'income_rule' | 'expense_r
   { value: 'income', label: 'Доходы' },
   { value: 'transfer', label: 'Переводы' },
   { value: 'income_rule', label: 'Пополнения' },
-  { value: 'expense_rule', label: 'Регулярные' },
+  { value: 'expense_rule', label: 'Регулярные расходы' },
 ]
 
 const categoryOptions = computed(() => {

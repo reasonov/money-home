@@ -48,7 +48,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField label="Ещё раз" for-id="reset-confirm">
+    <AppField label="Подтвердите пароль" for-id="reset-confirm">
       <AppInput
         id="reset-confirm"
         v-model="confirm"

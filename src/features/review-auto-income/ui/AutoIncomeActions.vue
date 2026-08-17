@@ -30,8 +30,8 @@ async function skip() {
     title: props.kind === 'expense' ? 'Отменить расход?' : 'Отменить пополнение?',
     message:
       props.kind === 'expense'
-        ? 'Сумма вернётся на счёт. За этот день правило больше не спишет.'
-        : 'Сумма будет списана со счёта. За этот день правило больше не начислит.',
+        ? 'Сумма вернётся на счёт. Этот регулярный расход больше не будет списан за эту дату.'
+        : 'Сумма будет списана со счёта. Это пополнение больше не будет зачислено за эту дату.',
     confirmLabel: 'Отменить',
     danger: true,
   })
@@ -60,7 +60,7 @@ async function save() {
   pending.value = true
   try {
     await transactions.adjustOccurrence(occ.id, value)
-    showToast('Сумма изменена')
+    showToast('Сумма операции изменена только на эту дату')
     editing.value = false
   } catch (err) {
     showToast(getErrorMessage(err, 'Не удалось изменить'))
@@ -73,13 +73,13 @@ async function save() {
 <template>
   <div v-if="canAct" class="actions">
     <template v-if="editing">
-      <AppInputNumber v-model="amount" :min="1" placeholder="0" />
+      <AppInputNumber v-model="amount" :min="1" placeholder="Новая сумма" aria-label="Новая сумма" />
       <AppButton variant="secondary" :disabled="pending" @click="save">Сохранить</AppButton>
       <AppButton variant="ghost" @click="editing = false">Закрыть</AppButton>
     </template>
     <template v-else>
-      <AppButton variant="secondary" :disabled="pending" @click="startEdit">Изменить</AppButton>
-      <AppButton variant="ghost" :disabled="pending" @click="skip">Отменить</AppButton>
+      <AppButton variant="secondary" :disabled="pending" @click="startEdit">Изменить сумму</AppButton>
+      <AppButton variant="ghost" :disabled="pending" @click="skip">Отменить операцию</AppButton>
     </template>
   </div>
 </template>

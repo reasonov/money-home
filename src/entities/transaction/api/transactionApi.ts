@@ -182,7 +182,7 @@ export async function fetchOccurrences(): Promise<OccurrenceRow[]> {
     .select('id, income_rule_id, occurred_on, status, transaction_id')
 
   if (error) {
-    throw new Error(getErrorMessage(error, 'Не удалось загрузить начисления'))
+    throw new Error(getErrorMessage(error, 'Не удалось загрузить пополнения'))
   }
   return data ?? []
 }

@@ -56,7 +56,7 @@ const submitLabel = computed(() => {
   if (pending.value) {
     return existing ? 'Сохраняем…' : 'Добавляем…'
   }
-  return existing ? 'Сохранить правило' : 'Добавить правило'
+  return existing ? 'Сохранить расход' : 'Добавить регулярный расход'
 })
 
 function buildPayload(): Omit<ExpenseRule, 'id'> | null {
@@ -67,7 +67,7 @@ function buildPayload(): Omit<ExpenseRule, 'id'> | null {
 
   const value = Number(amount.value)
   if (!Number.isFinite(value) || value <= 0) {
-    error.value = 'Укажите сумму'
+    error.value = 'Укажите сумму больше 0 ₽'
     return null
   }
 
@@ -83,7 +83,7 @@ function buildPayload(): Omit<ExpenseRule, 'id'> | null {
   if (frequency.value === 'monthly') {
     const day = Number(monthDay.value)
     if (day < 1 || day > 28) {
-      error.value = 'День месяца: 1–28'
+      error.value = 'Выберите день месяца от 1 до 28'
       return null
     }
     payload.monthDay = day
@@ -160,7 +160,12 @@ async function onSubmit() {
         <option value="biweekly">Раз в две недели</option>
       </AppSelect>
     </AppField>
-    <AppField v-if="frequency === 'monthly'" label="День месяца" for-id="expense-rule-month-day">
+    <AppField
+      v-if="frequency === 'monthly'"
+      label="День месяца"
+      for-id="expense-rule-month-day"
+      hint="До 28-го числа, чтобы дата была в каждом месяце"
+    >
       <AppInput
         id="expense-rule-month-day"
         v-model="monthDay"
@@ -181,7 +186,12 @@ async function onSubmit() {
         </option>
       </AppSelect>
     </AppField>
-    <AppField v-if="frequency === 'biweekly'" label="Дата отсчёта" for-id="expense-rule-anchor">
+    <AppField
+      v-if="frequency === 'biweekly'"
+      label="Первая дата списания"
+      for-id="expense-rule-anchor"
+      hint="Дальше расход будет повторяться каждые две недели"
+    >
       <AppInput id="expense-rule-anchor" v-model="anchorDate" type="date" required />
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>

@@ -149,9 +149,9 @@ async function markDone(id: string, options?: { confirm?: boolean; event?: Event
 
   if (options?.confirm !== false) {
     const ok = await confirmAction({
-      title: 'Отметить готовым?',
+      title: 'Отметить покупку как купленную?',
       message: `Списать ${formatMoney(purchase.amount)} со счёта и перенести «${purchase.title}» в историю.`,
-      confirmLabel: 'Готово',
+      confirmLabel: 'Списать и завершить',
     })
     if (!ok) {
       return
@@ -262,7 +262,7 @@ const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.va
         <ul class="group__items">
           <li v-for="item in group.items" :key="item.id">
             <SwipeReveal
-              label="Готово"
+              label="Куплено"
               :open="swipeOpenId === item.id"
               @update:open="setSwipeOpen(item.id, $event)"
               @action="markDone(item.id, { confirm: false })"
@@ -336,11 +336,11 @@ const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.va
     <Teleport to="body">
       <div v-if="menuOpenId" class="item__dropdown" role="menu" :style="menuStyle" @click.stop>
         <button type="button" role="menuitem" @click="markDone(menuOpenId, { event: $event })">
-          Готово
+          Отметить как купленную
         </button>
         <button type="button" role="menuitem" @click="edit(menuOpenId, $event)">Изменить</button>
         <button type="button" class="is-muted" role="menuitem" @click="cancel(menuOpenId, $event)">
-          Отмена
+          Убрать из плана
         </button>
       </div>
     </Teleport>

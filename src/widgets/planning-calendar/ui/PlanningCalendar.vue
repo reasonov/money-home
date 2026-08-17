@@ -215,7 +215,7 @@ function addPurchase() {
           </button>
         </li>
       </ul>
-      <p v-else class="day__empty">Нет событий</p>
+      <p v-else class="day__empty">В этот день ничего не запланировано</p>
       <AppButton variant="secondary" block @click="addPurchase">Новая покупка</AppButton>
     </section>
   </div>

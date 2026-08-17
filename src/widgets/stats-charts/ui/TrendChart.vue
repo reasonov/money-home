@@ -92,7 +92,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
 
 <template>
   <section class="card" :class="{ 'is-embedded': embedded }">
-    <h2 class="card__title">Динамика</h2>
+    <h2 class="card__title">Динамика расходов и доходов</h2>
     <div class="card__chart">
       <Line :data="chartData" :options="chartOptions" />
     </div>

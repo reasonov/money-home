@@ -19,7 +19,7 @@ function replay() {
 async function logout() {
   const ok = await confirmAction({
     title: 'Выйти из аккаунта?',
-    message: 'Вы сможете войти снова с тем же email и паролем.',
+    message: 'Вы сможете войти снова с той же почтой и паролем.',
     confirmLabel: 'Выйти',
     danger: true,
   })
@@ -40,7 +40,7 @@ async function logout() {
   <div class="settings">
     <section class="settings__block">
       <h2 class="settings__heading">Оформление</h2>
-      <p class="settings__hint">Тема приложения</p>
+      <p class="settings__hint">Светлая, тёмная или как в системе</p>
       <div data-tour="settings-theme">
         <ThemeSwitch />
       </div>

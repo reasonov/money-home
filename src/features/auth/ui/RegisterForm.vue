@@ -19,8 +19,12 @@ async function onSubmit() {
     error.value = 'Укажите имя'
     return
   }
-  if (!email.value.trim() || password.value.length < 6) {
-    error.value = 'Email и пароль от 6 символов'
+  if (!email.value.trim()) {
+    error.value = 'Введите почту'
+    return
+  }
+  if (password.value.length < 6) {
+    error.value = 'Пароль должен содержать минимум 6 символов'
     return
   }
 

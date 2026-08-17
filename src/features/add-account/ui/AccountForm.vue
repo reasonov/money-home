@@ -51,7 +51,7 @@ async function onSubmit() {
     } else {
       const amount = Number(opening.value)
       if (!Number.isFinite(amount) || amount < 0) {
-        error.value = 'Укажите стартовый баланс'
+        error.value = 'Укажите стартовый баланс от 0 ₽'
         return
       }
       await accounts.addAccount({
@@ -78,7 +78,7 @@ async function onSubmit() {
         Создать
       </button>
       <button type="button" :class="{ 'is-on': mode === 'join' }" @click="mode = 'join'">
-        По коду
+        Подключиться по коду
       </button>
     </div>
 
@@ -105,13 +105,13 @@ async function onSubmit() {
       </AppField>
     </template>
 
-    <AppField v-else label="Код счёта" for-id="acc-code">
+    <AppField v-else label="Код счёта" for-id="acc-code" hint="Запросите код у владельца общего счёта">
       <AppInput id="acc-code" v-model="code" placeholder="ABCD2345" required />
     </AppField>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <AppButton type="submit" block :disabled="pending">
-      {{ pending ? 'Сохраняем…' : 'Сохранить' }}
+      {{ pending ? 'Сохраняем…' : mode === 'join' ? 'Подключиться' : 'Создать счёт' }}
     </AppButton>
   </form>
 </template>

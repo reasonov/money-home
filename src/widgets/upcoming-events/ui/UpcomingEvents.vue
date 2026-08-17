@@ -124,10 +124,10 @@ const events = computed(() => {
 
 function dateLabel(iso: string, overdue: boolean) {
   if (overdue) {
-    return `просрочено · ${formatShortDate(iso)}`
+    return `Просрочено · ${formatShortDate(iso)}`
   }
   if (iso === todayLocal()) {
-    return 'сегодня'
+    return 'Сегодня'
   }
   return formatShortDate(iso)
 }

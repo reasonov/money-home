@@ -44,9 +44,9 @@ const text = computed(() => {
   const next = result.value.nextIncomeDate
   const amount = formatMoney(result.value.available)
   if (next) {
-    return `до ${formatShortDate(formatLocalDate(next))} · ${amount}`
+    return `Доступно до ${formatShortDate(formatLocalDate(next))}: ${amount}`
   }
-  return `свободно с учётом планов · ${amount}`
+  return `Доступно с учётом плановых покупок: ${amount}`
 })
 </script>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { AppEmpty, AppPeriodSelect, todayLocal } from '@/shared'
+import { AppButton, AppEmpty, AppPeriodSelect, openFormDrawer, todayLocal } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
   formatPeriodLabel,
@@ -52,7 +52,9 @@ const periodItems = computed(() => {
 
 <template>
   <div class="history">
-    <AppEmpty v-if="!accounts.items.length" description="Пока нет счетов" />
+    <AppEmpty v-if="!accounts.items.length" description="Создайте счёт, чтобы сохранять операции">
+      <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
+    </AppEmpty>
 
     <template v-else>
       <div class="history__toolbar">
