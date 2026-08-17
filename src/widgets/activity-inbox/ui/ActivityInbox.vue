@@ -105,6 +105,12 @@ function openActivity(item: ActivityItem) {
               <AutoIncomeActions
                 v-if="item.kind === 'income_auto_posted' && item.transactionId"
                 :transaction-id="item.transactionId"
+                kind="income"
+              />
+              <AutoIncomeActions
+                v-else-if="item.kind === 'expense_auto_posted' && item.transactionId"
+                :transaction-id="item.transactionId"
+                kind="expense"
               />
             </div>
           </template>

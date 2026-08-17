@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   AppButton,
+  AppInput,
+  AppSelect,
   AppTag,
   confirmAction,
   formatMoney,
@@ -15,19 +17,22 @@ import {
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useActivityStore, UnseenPurchaseDot } from '@/entities/activity'
-import { CategoryIcon } from '@/entities/category'
+import { CategoryIcon, useCategoryStore } from '@/entities/category'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
 
 const store = usePurchaseStore()
 const accounts = useAccountStore()
+const categories = useCategoryStore()
 const session = useSessionStore()
 const activity = useActivityStore()
 const menuOpenId = ref<string | null>(null)
 const menuStyle = ref<Record<string, string>>({})
 const swipeOpenId = ref<string | null>(null)
 const menuButtons = new Map<string, HTMLElement>()
+const query = ref('')
+const categoryId = ref('all')
 
 function setMenuButton(id: string, el: unknown) {
   if (el instanceof HTMLElement) {
@@ -55,11 +60,24 @@ function onViewportChange() {
 const groups = computed(() => {
   const today = todayLocal()
   const map = new Map<string, Purchase[]>()
+  const needle = query.value.trim().toLowerCase()
   const source =
     accounts.selectedAccountId === ALL_ACCOUNTS_ID
       ? store.planned
       : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
-  const sorted = [...source].sort((a, b) => {
+  const filtered = source.filter((item) => {
+    if (categoryId.value !== 'all' && item.categoryId !== categoryId.value) {
+      return false
+    }
+    if (needle) {
+      const haystack = `${item.title} ${item.notes ?? ''} ${item.categoryName ?? ''}`.toLowerCase()
+      if (!haystack.includes(needle)) {
+        return false
+      }
+    }
+    return true
+  })
+  const sorted = [...filtered].sort((a, b) => {
     const aPast = isPastDate(a.plannedDate, today)
     const bPast = isPastDate(b.plannedDate, today)
     if (aPast !== bPast) {
@@ -190,10 +208,52 @@ function edit(id: string, event?: Event) {
 function accountName(accountId: string) {
   return accounts.getById(accountId)?.name ?? 'Счёт'
 }
+
+const categoryOptions = computed(() => {
+  const map = new Map<string, string>()
+  const source =
+    accounts.selectedAccountId === ALL_ACCOUNTS_ID
+      ? store.planned
+      : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
+  for (const item of source) {
+    if (item.categoryId && item.categoryName) {
+      map.set(item.categoryId, item.categoryName)
+    }
+  }
+  for (const cat of categories.items) {
+    if (cat.kind !== 'expense') {
+      continue
+    }
+    if (
+      accounts.selectedAccountId !== ALL_ACCOUNTS_ID &&
+      !cat.accountIds.includes(accounts.selectedAccountId)
+    ) {
+      continue
+    }
+    if (!map.has(cat.id)) {
+      map.set(cat.id, cat.name)
+    }
+  }
+  return [...map.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+})
+
+const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.value.trim()))
 </script>
 
 <template>
   <section class="list">
+    <div class="filters">
+      <AppSelect id="purchase-category" v-model="categoryId" size="medium" filterable aria-label="Категория">
+        <option value="all">Все категории</option>
+        <option v-for="cat in categoryOptions" :key="cat.id" :value="cat.id">
+          {{ cat.name }}
+        </option>
+      </AppSelect>
+      <AppInput id="purchase-query" v-model="query" size="medium" placeholder="Поиск" />
+    </div>
+
     <div v-if="groups.length" class="list__groups" @click="closeOverlays">
       <section v-for="group in groups" :key="group.date" class="group">
         <h3 class="group__date" :class="{ 'is-overdue': group.overdue }">
@@ -258,8 +318,10 @@ function accountName(accountId: string) {
     </div>
 
     <div v-else class="list__empty">
-      <p class="list__empty-text">Пока нет запланированных покупок</p>
-      <div class="list__empty-actions">
+      <p class="list__empty-text">
+        {{ hasFilters ? 'Ничего не найдено' : 'Пока нет запланированных покупок' }}
+      </p>
+      <div v-if="!hasFilters" class="list__empty-actions">
         <div data-tour="calendar-cta">
           <AppButton block @click="openFormDrawer({ name: 'purchase-new' })"
             >Новая покупка</AppButton
@@ -290,6 +352,12 @@ function accountName(accountId: string) {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
 .list__groups {

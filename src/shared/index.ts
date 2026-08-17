@@ -6,6 +6,7 @@ export {
   formatLocalDate,
   todayLocal,
   formatDisplayDate,
+  formatShortDate,
   formatRelativeDisplayDate,
   isPastDate,
   addDays,
@@ -29,6 +30,8 @@ export {
   type IncomeFrequency,
   type TransferCandidateAccount,
   type TransferSuggestion,
+  forecastBalanceSeries,
+  type ForecastSlice,
 } from './lib/projectBalance'
 export { createId, createInviteCode } from './lib/id'
 export { showToast, hideToast, useToastState } from './lib/toast'

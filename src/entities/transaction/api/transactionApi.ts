@@ -110,6 +110,14 @@ export async function applyDueIncomeRules(asOf: string) {
   return (data ?? []).map(mapTransaction)
 }
 
+export async function applyDueExpenseRules(asOf: string) {
+  const { data, error } = await supabase.rpc('apply_due_expense_rules', { p_as_of: asOf })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось списать регулярные расходы'))
+  }
+  return (data ?? []).map(mapTransaction)
+}
+
 export async function skipIncomeOccurrence(occurrenceId: string): Promise<void> {
   const { error } = await supabase.rpc('skip_income_occurrence', { p_occurrence_id: occurrenceId })
   if (error) {
@@ -131,9 +139,38 @@ export async function adjustIncomeOccurrence(occurrenceId: string, amount: numbe
   return mapTransaction(data)
 }
 
+export async function skipExpenseOccurrence(occurrenceId: string): Promise<void> {
+  const { error } = await supabase.rpc('skip_expense_occurrence', { p_occurrence_id: occurrenceId })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось отменить расход'))
+  }
+}
+
+export async function adjustExpenseOccurrence(occurrenceId: string, amount: number): Promise<Transaction> {
+  const { data, error } = await supabase
+    .rpc('adjust_expense_occurrence', {
+      p_occurrence_id: occurrenceId,
+      p_new_amount: Math.round(amount),
+    })
+    .single()
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось изменить расход'))
+  }
+  return mapTransaction(data)
+}
+
 export type OccurrenceRow = {
   id: string
   income_rule_id: string
+  occurred_on: string
+  status: string
+  transaction_id: string | null
+}
+
+export type ExpenseOccurrenceRow = {
+  id: string
+  expense_rule_id: string
   occurred_on: string
   status: string
   transaction_id: string | null
@@ -146,6 +183,17 @@ export async function fetchOccurrences(): Promise<OccurrenceRow[]> {
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось загрузить начисления'))
+  }
+  return data ?? []
+}
+
+export async function fetchExpenseOccurrences(): Promise<ExpenseOccurrenceRow[]> {
+  const { data, error } = await supabase
+    .from('expense_occurrences')
+    .select('id, expense_rule_id, occurred_on, status, transaction_id')
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось загрузить списания'))
   }
   return data ?? []
 }

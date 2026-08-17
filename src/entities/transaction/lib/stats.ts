@@ -344,6 +344,43 @@ export function totalsByAccount(items: Transaction[]): AccountTotalsSlice[] {
   )
 }
 
+export interface MemberTotalsSlice {
+  userId: string
+  expenseTotal: number
+  incomeTotal: number
+}
+
+export function totalsByMember(items: Transaction[]): MemberTotalsSlice[] {
+  const map = new Map<string, MemberTotalsSlice>()
+  for (const item of items) {
+    if (item.source === 'income_rule' || item.source === 'expense_rule') {
+      continue
+    }
+    if (item.kind === 'expense' && item.source !== 'manual' && item.source !== 'purchase') {
+      continue
+    }
+    if (item.kind === 'income' && item.source !== 'manual') {
+      continue
+    }
+    const existing = map.get(item.createdBy) ?? {
+      userId: item.createdBy,
+      expenseTotal: 0,
+      incomeTotal: 0,
+    }
+    if (item.kind === 'expense') {
+      existing.expenseTotal += item.amount
+    } else if (item.kind === 'income') {
+      existing.incomeTotal += item.amount
+    }
+    map.set(item.createdBy, existing)
+  }
+  return [...map.values()].sort(
+    (a, b) =>
+      b.expenseTotal + b.incomeTotal - (a.expenseTotal + a.incomeTotal) ||
+      a.userId.localeCompare(b.userId),
+  )
+}
+
 export function topTransactions(
   items: Transaction[],
   kind: Extract<TransactionKind, 'expense' | 'income'>,

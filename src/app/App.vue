@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { NConfigProvider, NDialogProvider, NMessageProvider, darkTheme, dateRuRU, ruRU } from 'naive-ui'
 import { AppButton, AppConfirmDialog, AppToastHost, naiveThemeOverrides } from '@/shared'
+import { useSessionStore } from '@/entities/session'
 import { useThemeStore } from '@/features/theme-switch'
 import { bootError, retryBoot } from './boot'
 
 const theme = useThemeStore()
+const session = useSessionStore()
+const router = useRouter()
+
+watch(
+  () => session.passwordRecovery,
+  (recovery) => {
+    if (recovery && router.currentRoute.value.name !== 'reset-password') {
+      void router.push({ name: 'reset-password' })
+    }
+  },
+)
 
 const naiveTheme = computed(() => (theme.resolved === 'dark' ? darkTheme : null))
 const overrides = computed(() => naiveThemeOverrides(theme.resolved))

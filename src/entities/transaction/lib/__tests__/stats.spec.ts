@@ -18,6 +18,7 @@ import {
   topTransactions,
   totalsByAccount,
   totalsByCategory,
+  totalsByMember,
   trendSeries,
   trendStepForRange,
 } from '../stats'
@@ -348,6 +349,44 @@ describe('totalsByAccount', () => {
     ).toEqual([
       { accountId: 'a1', expenseTotal: 40, incomeTotal: 500 },
       { accountId: 'a2', expenseTotal: 100, incomeTotal: 0 },
+    ])
+  })
+})
+
+describe('totalsByMember', () => {
+  it('groups manual and purchase operations and skips auto rules', () => {
+    expect(
+      totalsByMember([
+        tx({ id: 'e1', kind: 'expense', amount: 100, occurredOn: '2026-08-10', createdBy: 'u1' }),
+        tx({
+          id: 'e2',
+          kind: 'expense',
+          amount: 40,
+          occurredOn: '2026-08-11',
+          createdBy: 'u2',
+          source: 'purchase',
+        }),
+        tx({ id: 'i1', kind: 'income', amount: 500, occurredOn: '2026-08-05', createdBy: 'u2' }),
+        tx({
+          id: 'a1',
+          kind: 'income',
+          amount: 900,
+          occurredOn: '2026-08-10',
+          createdBy: 'u1',
+          source: 'income_rule',
+        }),
+        tx({
+          id: 'a2',
+          kind: 'expense',
+          amount: 80,
+          occurredOn: '2026-08-10',
+          createdBy: 'u1',
+          source: 'expense_rule',
+        }),
+      ]),
+    ).toEqual([
+      { userId: 'u2', expenseTotal: 40, incomeTotal: 500 },
+      { userId: 'u1', expenseTotal: 100, incomeTotal: 0 },
     ])
   })
 })

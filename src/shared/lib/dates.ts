@@ -41,6 +41,15 @@ export function formatDisplayDate(iso: string): string {
   }).format(parseLocalDate(iso))
 }
 
+export function formatShortDate(iso: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+  })
+    .format(parseLocalDate(iso))
+    .replace('.', '')
+}
+
 export function isPastDate(iso: string, asOfIso = todayLocal()): boolean {
   return compareDates(parseLocalDate(iso), parseLocalDate(asOfIso)) < 0
 }

@@ -30,6 +30,7 @@ function toSessionUser(user: User): SessionUser {
 export const useSessionStore = defineStore('session', () => {
   const user = ref<SessionUser | null>(null)
   const ready = ref(false)
+  const passwordRecovery = ref(false)
   let authSubscription: { unsubscribe: () => void } | null = null
 
   const isAuthenticated = computed(() => user.value != null)
@@ -49,8 +50,11 @@ export const useSessionStore = defineStore('session', () => {
     }
     applySession(data.session)
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       applySession(session)
+      if (event === 'PASSWORD_RECOVERY') {
+        passwordRecovery.value = true
+      }
     })
     authSubscription = listener.subscription
     ready.value = true
@@ -93,6 +97,27 @@ export const useSessionStore = defineStore('session', () => {
       throw new Error(getErrorMessage(error, 'Не удалось выйти'))
     }
     user.value = null
+    passwordRecovery.value = false
+  }
+
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: new URL('reset-password', `${window.location.origin}${import.meta.env.BASE_URL}`).href,
+    })
+    if (error) {
+      throw new Error(getErrorMessage(error, 'Не удалось отправить письмо'))
+    }
+  }
+
+  async function updatePassword(password: string) {
+    if (password.length < 6) {
+      throw new Error('Пароль должен быть не короче 6 символов')
+    }
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      throw new Error(getErrorMessage(error, 'Не удалось обновить пароль'))
+    }
+    passwordRecovery.value = false
   }
 
   async function updateDisplayName(displayName: string) {
@@ -125,11 +150,14 @@ export const useSessionStore = defineStore('session', () => {
   return {
     user,
     ready,
+    passwordRecovery,
     isAuthenticated,
     init,
     login,
     register,
     logout,
+    requestPasswordReset,
+    updatePassword,
     updateDisplayName,
     dispose,
   }

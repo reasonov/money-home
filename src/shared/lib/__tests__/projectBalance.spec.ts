@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatLocalDate, parseLocalDate } from '../dates'
-import { availableUntilNextIncome, projectBalance, suggestTransfer } from '../projectBalance'
+import { availableUntilNextIncome, forecastBalanceSeries, projectBalance, suggestTransfer } from '../projectBalance'
 
 describe('projectBalance', () => {
   it('rejects curtain when projected balance is 1500', () => {
@@ -296,6 +296,34 @@ describe('availableUntilNextIncome', () => {
     expect(result.plannedSpend).toBe(5000)
     expect(result.available).toBe(5000)
   })
+
+  it('subtracts upcoming expense rules before next income', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 10000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      incomeRules: [
+        {
+          amount: 20000,
+          frequency: 'monthly',
+          monthDay: 20,
+          active: true,
+        },
+      ],
+      plannedPurchases: [],
+      expenseRules: [
+        {
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+    })
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
+    expect(result.plannedSpend).toBe(3000)
+    expect(result.available).toBe(7000)
+  })
 })
 
 describe('postedOccurrenceDates', () => {
@@ -320,6 +348,79 @@ describe('postedOccurrenceDates', () => {
     expect(result.incomeTotal).toBe(0)
     expect(result.projectedBalance).toBe(1500)
     expect(result.canAfford).toBe(false)
+  })
+})
+
+describe('expense rules in projection', () => {
+  it('rejects when rent before the target date leaves too little', () => {
+    const result = projectBalance({
+      currentBalance: 4000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      expenseRules: [
+        {
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      candidateAmount: 2300,
+    })
+
+    expect(result.projectedBalance).toBe(1000)
+    expect(result.canAfford).toBe(false)
+    expect(result.shortfall).toBe(1300)
+  })
+
+  it('does not subtract skipped expense dates', () => {
+    const result = projectBalance({
+      currentBalance: 4000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      expenseRules: [
+        {
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      postedExpenseOccurrenceDates: ['2026-08-10'],
+      candidateAmount: 2300,
+    })
+
+    expect(result.projectedBalance).toBe(4000)
+    expect(result.canAfford).toBe(true)
+  })
+})
+
+describe('forecastBalanceSeries', () => {
+  it('starts at current balance and drops on an expense rule day', () => {
+    const series = forecastBalanceSeries({
+      currentBalance: 5000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      horizonDays: 10,
+      incomeRules: [],
+      plannedPurchases: [],
+      expenseRules: [
+        {
+          amount: 2000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+    })
+
+    expect(series).toHaveLength(11)
+    expect(series[0]).toMatchObject({ date: '2026-08-04', balance: 5000 })
+    expect(series[5]).toMatchObject({ date: '2026-08-09', balance: 5000 })
+    expect(series[6]).toMatchObject({ date: '2026-08-10', balance: 3000 })
   })
 })
 

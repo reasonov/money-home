@@ -24,6 +24,23 @@ const router = createRouter({
       ],
     },
     {
+      path: '/reset-password',
+      component: () => import('@/app/layouts/AuthLayout.vue'),
+      meta: { recovery: true },
+      children: [
+        {
+          path: '',
+          name: 'reset-password',
+          component: () => import('@/pages/reset-password/ui/ResetPasswordPage.vue'),
+          meta: {
+            title: 'Новый пароль',
+            subtitle: 'Задайте пароль для входа',
+            recovery: true,
+          },
+        },
+      ],
+    },
+    {
       path: '/register',
       component: () => import('@/app/layouts/AuthLayout.vue'),
       meta: { guestOnly: true },
@@ -103,7 +120,7 @@ const router = createRouter({
           path: 'income',
           name: 'income',
           component: () => import('@/pages/income/ui/IncomePage.vue'),
-          meta: { title: 'Авто-пополнения' },
+          meta: { title: 'Регулярные' },
         },
         {
           path: 'categories',
@@ -136,6 +153,19 @@ router.beforeEach((to) => {
   const session = useSessionStore()
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
   const guestOnly = to.matched.some((record) => record.meta.guestOnly)
+
+  const recovery = to.matched.some((record) => record.meta.recovery)
+
+  if (recovery) {
+    if (!session.isAuthenticated) {
+      return { name: 'login' }
+    }
+    return true
+  }
+
+  if (session.passwordRecovery) {
+    return { name: 'reset-password' }
+  }
 
   if (requiresAuth && !session.isAuthenticated) {
     return { name: 'login' }

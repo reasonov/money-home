@@ -158,6 +158,84 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_occurrences: {
+        Row: {
+          created_at: string
+          expense_rule_id: string
+          id: string
+          occurred_on: string
+          status: string
+          transaction_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expense_rule_id: string
+          id?: string
+          occurred_on: string
+          status: string
+          transaction_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expense_rule_id?: string
+          id?: string
+          occurred_on?: string
+          status?: string
+          transaction_id?: string | null
+        }
+        Relationships: []
+      }
+      expense_rules: {
+        Row: {
+          account_id: string
+          active: boolean
+          amount: number
+          anchor_date: string | null
+          category_id: string | null
+          created_at: string
+          frequency: string
+          id: string
+          month_day: number | null
+          starts_on: string
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+          weekday: number | null
+        }
+        Insert: {
+          account_id: string
+          active?: boolean
+          amount: number
+          anchor_date?: string | null
+          category_id?: string | null
+          created_at?: string
+          frequency: string
+          id?: string
+          month_day?: number | null
+          starts_on?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          weekday?: number | null
+        }
+        Update: {
+          account_id?: string
+          active?: boolean
+          amount?: number
+          anchor_date?: string | null
+          category_id?: string | null
+          created_at?: string
+          frequency?: string
+          id?: string
+          month_day?: number | null
+          starts_on?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          weekday?: number | null
+        }
+        Relationships: []
+      }
       income_rules: {
         Row: {
           account_id: string
@@ -347,9 +425,17 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      adjust_expense_occurrence: {
+        Args: { p_new_amount: number; p_occurrence_id: string }
+        Returns: Database['public']['Tables']['transactions']['Row']
+      }
       adjust_income_occurrence: {
         Args: { p_new_amount: number; p_occurrence_id: string }
         Returns: Database['public']['Tables']['transactions']['Row']
+      }
+      apply_due_expense_rules: {
+        Args: { p_as_of?: string }
+        Returns: Database['public']['Tables']['transactions']['Row'][]
       }
       apply_due_income_rules: {
         Args: { p_as_of?: string }
@@ -390,6 +476,10 @@ export type Database = {
       share_account: {
         Args: { p_account_id: string }
         Returns: Database['public']['Tables']['accounts']['Row']
+      }
+      skip_expense_occurrence: {
+        Args: { p_occurrence_id: string }
+        Returns: undefined
       }
       skip_income_occurrence: {
         Args: { p_occurrence_id: string }

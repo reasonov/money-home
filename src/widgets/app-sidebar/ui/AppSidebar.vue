@@ -35,7 +35,7 @@ const links = [
   { to: '/stats', label: 'Статистика', icon: PieChart },
   { to: '/calendar', label: 'Планирование', icon: CalendarCheck },
   { to: '/categories', label: 'Категории', icon: FolderTree },
-  { to: '/income', label: 'Авто-пополнения', icon: CalendarClock },
+  { to: '/income', label: 'Регулярные', icon: CalendarClock },
 ]
 
 function go(path: string) {

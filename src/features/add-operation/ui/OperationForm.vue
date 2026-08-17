@@ -81,6 +81,28 @@ watch(categoryId, (id) => {
   }
 })
 
+const lastOp = computed(() =>
+  transactions.posted.find(
+    (item) =>
+      item.accountId === accountId.value &&
+      item.kind === props.kind &&
+      (item.source === 'manual' || item.source === 'purchase'),
+  ),
+)
+
+function repeatLast() {
+  const item = lastOp.value
+  if (!item) {
+    return
+  }
+  amount.value = item.amount
+  if (item.categoryId && availableCats.value.some((cat) => cat.id === item.categoryId)) {
+    categoryId.value = item.categoryId
+  }
+  title.value = item.title ?? ''
+  notes.value = item.notes ?? ''
+}
+
 function onCategoryCreated(category: Category) {
   saveLastCategoryId(props.kind, category.id)
   categoryId.value = category.id
@@ -128,6 +150,15 @@ async function onSubmit() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
+    <AppButton
+      v-if="lastOp"
+      type="button"
+      variant="secondary"
+      block
+      @click="repeatLast"
+    >
+      Повторить прошлый
+    </AppButton>
     <AppField label="Сумма, ₽" for-id="op-amount">
       <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>

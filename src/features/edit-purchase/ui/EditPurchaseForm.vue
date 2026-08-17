@@ -24,6 +24,7 @@ import {
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { CategorySelect, useCategoryStore } from '@/entities/category'
+import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
@@ -42,6 +43,7 @@ const session = useSessionStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
+const expenseRules = useExpenseRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
@@ -106,12 +108,16 @@ const projection = computed(() => {
     asOfDate: asOf,
     targetDate: target,
     incomeRules: incomeRules.forAccount(accountId.value).filter((rule) => rule.active),
+    expenseRules: expenseRules.forAccount(accountId.value).filter((rule) => rule.active),
     plannedPurchases: purchases.plannedFor(accountId.value),
     candidateAmount,
     excludePurchaseId: purchaseId.value,
     postedOccurrenceDates: incomeRules
       .forAccount(accountId.value)
       .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
+    postedExpenseOccurrenceDates: expenseRules
+      .forAccount(accountId.value)
+      .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
   })
 })
 

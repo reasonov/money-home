@@ -22,6 +22,7 @@ import {
 } from '@/entities/transaction'
 import { InstallHint } from '@/features/install-pwa'
 import { CategorySpendChart } from '@/widgets/stats-charts'
+import { UpcomingEvents } from '@/widgets/upcoming-events'
 
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
@@ -101,6 +102,8 @@ const totalLabel = computed(() =>
           </AppButton>
         </div>
       </section>
+
+      <UpcomingEvents />
 
       <section class="home__chart" data-tour="home-chart">
         <div class="home__toolbar">

@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { usePurchaseStore } from '@/entities/purchase'
-import { AppButton, openFormDrawer } from '@/shared'
+import { AppButton, AppSegmented, openFormDrawer } from '@/shared'
 import { PurchaseList } from '@/widgets/purchase-list'
+import { PlanningCalendar } from '@/widgets/planning-calendar'
 
 const accounts = useAccountStore()
 const purchases = usePurchaseStore()
+const view = ref<'list' | 'month'>('list')
+
+const viewOptions: { value: 'list' | 'month'; label: string }[] = [
+  { value: 'list', label: 'Список' },
+  { value: 'month', label: 'Месяц' },
+]
 
 function openIncomeRule() {
   openFormDrawer({
@@ -26,11 +33,15 @@ const hasPlanned = computed(() => {
 
 <template>
   <div class="calendar">
-    <div v-if="hasPlanned" class="calendar__cta" data-tour="calendar-cta">
+    <div class="calendar__toolbar">
+      <AppSegmented v-model="view" compact :options="viewOptions" aria-label="Вид планирования" />
+    </div>
+    <div v-if="hasPlanned || view === 'month'" class="calendar__cta" data-tour="calendar-cta">
       <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
       <AppButton variant="secondary" block @click="openIncomeRule">Авто-пополнение</AppButton>
     </div>
-    <PurchaseList />
+    <PlanningCalendar v-if="view === 'month'" />
+    <PurchaseList v-else />
   </div>
 </template>
 
@@ -39,6 +50,10 @@ const hasPlanned = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.calendar__toolbar {
+  display: flex;
 }
 
 .calendar__cta {

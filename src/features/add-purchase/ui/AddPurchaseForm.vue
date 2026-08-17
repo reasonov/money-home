@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAccountStore } from '@/entities/account'
 import { CategorySelect, useCategoryStore } from '@/entities/category'
+import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
@@ -29,6 +30,10 @@ import {
   todayLocal,
 } from '@/shared'
 
+const props = defineProps<{
+  plannedDate?: string
+}>()
+
 const emit = defineEmits<{
   saved: []
 }>()
@@ -37,12 +42,13 @@ const session = useSessionStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
+const expenseRules = useExpenseRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
 const title = ref('')
 const amount = ref<string | number>('')
-const plannedDate = ref(todayLocal())
+const plannedDate = ref(props.plannedDate || todayLocal())
 const notes = ref('')
 const accountId = ref(accounts.preferredAccountId)
 const categoryId = ref('')
@@ -79,11 +85,15 @@ const projection = computed(() => {
     asOfDate: asOf,
     targetDate: target,
     incomeRules: incomeRules.forAccount(accountId.value).filter((rule) => rule.active),
+    expenseRules: expenseRules.forAccount(accountId.value).filter((rule) => rule.active),
     plannedPurchases: purchases.plannedFor(accountId.value),
     candidateAmount,
     postedOccurrenceDates: incomeRules
       .forAccount(accountId.value)
       .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
+    postedExpenseOccurrenceDates: expenseRules
+      .forAccount(accountId.value)
+      .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
   })
 })
 
@@ -104,9 +114,13 @@ const transferSuggestion = computed(() => {
         currentBalance: item.amount,
         plannedPurchases: purchases.plannedFor(item.id),
         incomeRules: incomeRules.forAccount(item.id).filter((rule) => rule.active),
+        expenseRules: expenseRules.forAccount(item.id).filter((rule) => rule.active),
         postedOccurrenceDates: incomeRules
           .forAccount(item.id)
           .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
+        postedExpenseOccurrenceDates: expenseRules
+          .forAccount(item.id)
+          .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
       })),
   )
 })

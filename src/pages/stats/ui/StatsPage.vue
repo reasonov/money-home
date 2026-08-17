@@ -6,10 +6,15 @@ import {
   AppPeriodSelect,
   AppSegmented,
   AppSelect,
+  forecastBalanceSeries,
   formatMoney,
+  parseLocalDate,
   todayLocal,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
+import { useExpenseRuleStore } from '@/entities/expense-rule'
+import { useIncomeRuleStore } from '@/entities/income-rule'
+import { usePurchaseStore } from '@/entities/purchase'
 import {
   averageDailyExpense,
   expensesByWeekday,
@@ -24,6 +29,7 @@ import {
   topTransactions,
   totalsByAccount,
   totalsByCategory,
+  totalsByMember,
   trendSeries,
   useTransactionStore,
   type ChartPeriod,
@@ -31,21 +37,26 @@ import {
 import {
   AccountSpendChart,
   CategorySpendChart,
+  ForecastChart,
   HeatmapChart,
   TopOperationsList,
   TrendChart,
   WeekdaySpendChart,
 } from '@/widgets/stats-charts'
 
-type StatsChartId = 'category' | 'weekday' | 'heatmap' | 'trend' | 'top' | 'accounts'
+type StatsChartId = 'category' | 'weekday' | 'heatmap' | 'trend' | 'top' | 'accounts' | 'members' | 'forecast'
 
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const transactions = useTransactionStore()
+const incomeRules = useIncomeRuleStore()
+const expenseRules = useExpenseRuleStore()
+const purchases = usePurchaseStore()
 
 const period = ref<ChartPeriod>('month')
 const chart = ref<StatsChartId>('category')
 const kind = ref<'expense' | 'income'>('expense')
+const forecastHorizon = ref<'30' | '90'>('30')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 
@@ -63,6 +74,9 @@ const periodLabel = computed(() =>
 
 watch(selectedAccountId, (id) => {
   if (id !== ALL_ACCOUNTS_ID && chart.value === 'accounts') {
+    chart.value = 'category'
+  }
+  if (id !== ALL_ACCOUNTS_ID && !accounts.isShared(id) && chart.value === 'members') {
     chart.value = 'category'
   }
 })
@@ -117,6 +131,59 @@ const accountSlices = computed(() =>
   })),
 )
 
+const showMembers = computed(
+  () =>
+    selectedAccountId.value === ALL_ACCOUNTS_ID || accounts.isShared(selectedAccountId.value),
+)
+
+const memberSlices = computed(() =>
+  totalsByMember(filtered.value).map((item) => ({
+    accountId: item.userId,
+    name: accounts.memberName(item.userId),
+    expenseTotal: item.expenseTotal,
+    incomeTotal: item.incomeTotal,
+  })),
+)
+
+const forecastSlices = computed(() => {
+  const asOf = parseLocalDate(todayLocal())
+  const source =
+    selectedAccountId.value === ALL_ACCOUNTS_ID
+      ? accounts.items
+      : accounts.items.filter((item) => item.id === selectedAccountId.value)
+  const byDate = new Map<string, { date: string; label: string; balance: number }>()
+  for (const account of source) {
+    const series = forecastBalanceSeries({
+      currentBalance: account.amount,
+      asOfDate: asOf,
+      horizonDays: forecastHorizon.value === '90' ? 90 : 30,
+      incomeRules: incomeRules.forAccount(account.id).filter((rule) => rule.active),
+      plannedPurchases: purchases.plannedFor(account.id),
+      expenseRules: expenseRules.forAccount(account.id).filter((rule) => rule.active),
+      postedOccurrenceDates: incomeRules
+        .forAccount(account.id)
+        .flatMap((rule) => transactions.occurrenceDatesFor(rule.id)),
+      postedExpenseOccurrenceDates: expenseRules
+        .forAccount(account.id)
+        .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+    })
+    for (const slice of series) {
+      const existing = byDate.get(slice.date)
+      if (existing) {
+        existing.balance += slice.balance
+      } else {
+        byDate.set(slice.date, { ...slice })
+      }
+    }
+  }
+  return [...byDate.values()]
+})
+
+const forecastHorizonOptions: { value: '30' | '90'; label: string }[] = [
+  { value: '30', label: '30 дней' },
+  { value: '90', label: '90 дней' },
+]
+
 const hasWeekdayExpenses = computed(() => weekdaySlices.value.some((item) => item.amount > 0))
 const showKind = computed(() => chart.value === 'category' || chart.value === 'top')
 const chartTitle = computed(() =>
@@ -163,6 +230,8 @@ function deltaClass(current: number, previous: number, invert = false) {
           <option value="trend">Динамика</option>
           <option value="top">Топ операций</option>
           <option v-if="selectedAccountId === ALL_ACCOUNTS_ID" value="accounts">По счетам</option>
+          <option v-if="showMembers" value="members">По участникам</option>
+          <option value="forecast">Прогноз баланса</option>
         </AppSelect>
       </div>
       <AppPeriodSelect
@@ -173,10 +242,10 @@ function deltaClass(current: number, previous: number, invert = false) {
       />
     </div>
 
-    <AppEmpty v-if="!filtered.length" description="Нет операций за период" />
+    <AppEmpty v-if="!filtered.length && chart !== 'forecast'" description="Нет операций за период" />
 
-    <template v-else>
-      <section class="summary" aria-label="Сводка">
+    <template v-if="filtered.length || chart === 'forecast'">
+      <section v-if="filtered.length" class="summary" aria-label="Сводка">
         <div class="summary__row">
           <div class="summary__item">
             <p class="summary__label">Расходы</p>
@@ -273,6 +342,25 @@ function deltaClass(current: number, previous: number, invert = false) {
           :slices="accountSlices"
         />
         <AppEmpty v-else-if="chart === 'accounts'" description="Нет операций за период" />
+
+        <AccountSpendChart
+          v-else-if="chart === 'members' && memberSlices.length"
+          embedded
+          title="По участникам"
+          :slices="memberSlices"
+        />
+        <AppEmpty v-else-if="chart === 'members'" description="Нет операций участников за период" />
+
+        <template v-else-if="chart === 'forecast'">
+          <AppSegmented
+            v-model="forecastHorizon"
+            compact
+            :options="forecastHorizonOptions"
+            aria-label="Горизонт прогноза"
+          />
+          <ForecastChart v-if="forecastSlices.length" embedded :slices="forecastSlices" />
+          <AppEmpty v-else description="Нет счетов для прогноза" />
+        </template>
       </section>
     </template>
   </div>

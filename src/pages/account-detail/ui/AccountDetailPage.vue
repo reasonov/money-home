@@ -17,6 +17,7 @@ import {
 import { useCategoryStore } from '@/entities/category'
 import { useAccountStore } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
+import { AccountAvailableHint } from '@/widgets/account-available'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,6 +130,7 @@ async function leave() {
         <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
       </p>
       <p class="hero__total">{{ formatMoney(account.amount) }}</p>
+      <AccountAvailableHint :account-id="account.id" :balance="account.amount" />
     </section>
 
     <div class="actions">

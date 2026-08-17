@@ -7,6 +7,7 @@ import { TransferForm } from '@/features/add-transfer'
 import { AddPurchaseForm } from '@/features/add-purchase'
 import { EditPurchaseForm } from '@/features/edit-purchase'
 import { IncomeRuleForm } from '@/features/manage-income'
+import { ExpenseRuleForm } from '@/features/manage-expense'
 import { EditOperationForm } from '@/features/edit-operation'
 
 const open = formDrawerOpen
@@ -31,6 +32,8 @@ const title = computed(() => {
       return 'Изменить покупку'
     case 'income-rule':
       return current.ruleId ? 'Изменить правило' : 'Новое правило'
+    case 'expense-rule':
+      return current.ruleId ? 'Изменить расход' : 'Регулярный расход'
     case 'transaction-edit':
       return 'Изменить операцию'
     default:
@@ -63,7 +66,11 @@ const title = computed(() => {
       :initial-mode="formDrawer.mode"
       @saved="closeFormDrawer"
     />
-    <AddPurchaseForm v-else-if="formDrawer?.name === 'purchase-new'" @saved="closeFormDrawer" />
+    <AddPurchaseForm
+      v-else-if="formDrawer?.name === 'purchase-new'"
+      :planned-date="formDrawer.plannedDate"
+      @saved="closeFormDrawer"
+    />
     <EditPurchaseForm
       v-else-if="formDrawer?.name === 'purchase-edit'"
       :purchase-id="formDrawer.purchaseId"
@@ -72,6 +79,12 @@ const title = computed(() => {
     />
     <IncomeRuleForm
       v-else-if="formDrawer?.name === 'income-rule'"
+      :rule-id="formDrawer.ruleId"
+      :account-id="formDrawer.accountId"
+      @saved="closeFormDrawer"
+    />
+    <ExpenseRuleForm
+      v-else-if="formDrawer?.name === 'expense-rule'"
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       @saved="closeFormDrawer"

@@ -3,6 +3,7 @@ import { ChevronRight, Plus, Wallet } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import { AppButton, AppEmpty, AppTag, formatMoney, openFormDrawer } from '@/shared'
 import { useAccountStore } from '@/entities/account'
+import { AccountAvailableHint } from '@/widgets/account-available'
 
 const router = useRouter()
 const accounts = useAccountStore()
@@ -39,7 +40,10 @@ function openAccount(id: string) {
           <span class="row__title">{{ account.name }}</span>
           <AppTag v-if="accounts.isShared(account.id)" type="primary">общий</AppTag>
         </span>
-        <span class="row__amount">{{ formatMoney(account.amount) }}</span>
+        <span class="row__amounts">
+          <span class="row__amount">{{ formatMoney(account.amount) }}</span>
+          <AccountAvailableHint compact :account-id="account.id" :balance="account.amount" />
+        </span>
         <span class="row__chevron" aria-hidden="true">
           <ChevronRight :size="18" :stroke-width="1.8" />
         </span>
@@ -117,6 +121,14 @@ function openAccount(id: string) {
 
 .row__name :deep(.n-tag) {
   flex-shrink: 0;
+}
+
+.row__amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 2px;
 }
 
 .row__amount {

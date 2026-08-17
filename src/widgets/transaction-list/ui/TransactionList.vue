@@ -21,16 +21,17 @@ const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const categories = useCategoryStore()
 
-const kind = ref<'all' | TransactionKind | 'income_rule'>('all')
+const kind = ref<'all' | TransactionKind | 'income_rule' | 'expense_rule'>('all')
 const categoryId = ref('all')
 const query = ref('')
 
-const kindOptions: { value: 'all' | TransactionKind | 'income_rule'; label: string }[] = [
+const kindOptions: { value: 'all' | TransactionKind | 'income_rule' | 'expense_rule'; label: string }[] = [
   { value: 'all', label: 'Все' },
   { value: 'expense', label: 'Расходы' },
   { value: 'income', label: 'Доходы' },
   { value: 'transfer', label: 'Переводы' },
   { value: 'income_rule', label: 'Пополнения' },
+  { value: 'expense_rule', label: 'Регулярные' },
 ]
 
 const categoryOptions = computed(() => {
@@ -80,6 +81,10 @@ const filtered = computed(() => {
   return props.items.filter((item) => {
     if (kind.value === 'income_rule') {
       if (item.source !== 'income_rule') {
+        return false
+      }
+    } else if (kind.value === 'expense_rule') {
+      if (item.source !== 'expense_rule') {
         return false
       }
     } else if (kind.value !== 'all' && item.kind !== kind.value) {
@@ -137,6 +142,12 @@ function accountName(id: string) {
 function openItem(item: Transaction) {
   openFormDrawer({ name: 'transaction-edit', transactionId: item.id })
 }
+
+const showAuthor = computed(
+  () =>
+    selectedAccountId.value === ALL_ACCOUNTS_ID ||
+    accounts.isShared(selectedAccountId.value),
+)
 </script>
 
 <template>
@@ -178,6 +189,9 @@ function openItem(item: Transaction) {
             {{ accountName(item.accountId) }}
             <template v-if="item.kind === 'transfer' && item.counterpartyAccountId">
               → {{ accountName(item.counterpartyAccountId) }}
+            </template>
+            <template v-if="showAuthor">
+              · {{ accounts.memberName(item.createdBy) }}
             </template>
           </p>
         </div>

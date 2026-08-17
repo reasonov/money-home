@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
+import { ChangePasswordForm } from '@/features/auth'
 import { EditAccountForm } from '@/features/edit-account'
 import { replayProductTour } from '@/features/product-tour'
 import { ThemeSwitch } from '@/features/theme-switch'
@@ -53,6 +54,7 @@ async function logout() {
       <h2 class="settings__heading">Профиль</h2>
       <EditAccountForm />
       <p class="settings__email">{{ session.user?.email }}</p>
+      <ChangePasswordForm />
       <AppButton variant="danger" block @click="logout">Выйти</AppButton>
     </section>
   </div>

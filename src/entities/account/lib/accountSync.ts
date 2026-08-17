@@ -2,6 +2,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { addDays, formatLocalDate, formatMoney, parseLocalDate, supabase, todayLocal } from '@/shared'
 import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
+import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
@@ -20,6 +21,7 @@ export async function loadAccountData() {
   const categories = useCategoryStore()
   const purchases = usePurchaseStore()
   const incomeRules = useIncomeRuleStore()
+  const expenseRules = useExpenseRuleStore()
   const transactions = useTransactionStore()
 
   await Promise.all([
@@ -27,6 +29,7 @@ export async function loadAccountData() {
     categories.load(),
     purchases.load(),
     incomeRules.load(),
+    expenseRules.load(),
     transactions.load(),
   ])
 }
@@ -46,6 +49,7 @@ export function startAccountRealtime() {
   const categories = useCategoryStore()
   const purchases = usePurchaseStore()
   const incomeRules = useIncomeRuleStore()
+  const expenseRules = useExpenseRuleStore()
   const transactions = useTransactionStore()
   const activity = useActivityStore()
 
@@ -183,6 +187,40 @@ export function startAccountRealtime() {
             : `${actorName} изменил(а) правила пополнения`,
       })
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_rules' }, (payload) => {
+      const eventType = payload.eventType
+      const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
+        id: string
+        account_id: string
+        amount: number
+        frequency: string
+        weekday: number | null
+        month_day: number | null
+        anchor_date: string | null
+        title: string | null
+        category_id: string | null
+        active: boolean
+        updated_by?: string | null
+      } | null
+      if (!row) return
+      if (eventType === 'DELETE') {
+        expenseRules.removeLocal(row.id)
+      } else {
+        expenseRules.applyRemoteRow(row)
+      }
+      const actorId = row.updated_by
+      if (!actorId || actorId === session.user?.id) return
+      const actorName = accounts.memberName(actorId)
+      activity.push({
+        kind: 'expense_rule_changed',
+        actorId,
+        actorName,
+        summary:
+          eventType === 'DELETE'
+            ? `${actorName} удалил(а) правило расхода`
+            : `${actorName} изменил(а) регулярные расходы`,
+      })
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
       const eventType = payload.eventType
       const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
@@ -226,6 +264,20 @@ export function startAccountRealtime() {
         })
         return
       }
+      if (row.source === 'expense_rule' && eventType === 'INSERT' && row.status === 'posted') {
+        if (actorId === session.user?.id) return
+        void transactions.load().then(() => {
+          activity.push({
+            kind: 'expense_auto_posted',
+            actorId,
+            actorName,
+            transactionId: row.id,
+            occurrenceId: transactions.occurrenceByTransaction(row.id)?.id,
+            summary: `Со счёта списано ${formatAmount(row.amount)} — ${label}`,
+          })
+        })
+        return
+      }
       if (actorId === session.user?.id) return
       if (eventType === 'INSERT' && row.status === 'posted') {
         activity.push({
@@ -240,30 +292,50 @@ export function startAccountRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'income_occurrences' }, () => {
       void transactions.load()
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_occurrences' }, () => {
+      void transactions.load()
+    })
     .subscribe()
 }
 
-function notifyRecentAutoIncome() {
+function notifyRecentAutoRules() {
   const transactions = useTransactionStore()
   const activity = useActivityStore()
-  const known = new Set(
+  const knownIncome = new Set(
     activity.items
       .filter((item) => item.kind === 'income_auto_posted' && item.transactionId)
       .map((item) => item.transactionId),
   )
+  const knownExpense = new Set(
+    activity.items
+      .filter((item) => item.kind === 'expense_auto_posted' && item.transactionId)
+      .map((item) => item.transactionId),
+  )
   const cutoff = formatLocalDate(addDays(parseLocalDate(todayLocal()), -14))
   for (const tx of transactions.posted) {
-    if (tx.source !== 'income_rule' || known.has(tx.id) || tx.occurredOn < cutoff) {
+    if (tx.occurredOn < cutoff) {
       continue
     }
-    activity.push({
-      kind: 'income_auto_posted',
-      actorId: tx.createdBy,
-      actorName: 'Авто-пополнение',
-      transactionId: tx.id,
-      occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
-      summary: `На счёт зачислено ${formatAmount(tx.amount)} — ${tx.title || 'Авто-пополнение'}`,
-    })
+    if (tx.source === 'income_rule' && !knownIncome.has(tx.id)) {
+      activity.push({
+        kind: 'income_auto_posted',
+        actorId: tx.createdBy,
+        actorName: 'Авто-пополнение',
+        transactionId: tx.id,
+        occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
+        summary: `На счёт зачислено ${formatAmount(tx.amount)} — ${tx.title || 'Авто-пополнение'}`,
+      })
+    }
+    if (tx.source === 'expense_rule' && !knownExpense.has(tx.id)) {
+      activity.push({
+        kind: 'expense_auto_posted',
+        actorId: tx.createdBy,
+        actorName: 'Регулярный расход',
+        transactionId: tx.id,
+        occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
+        summary: `Со счёта списано ${formatAmount(tx.amount)} — ${tx.title || 'Регулярный расход'}`,
+      })
+    }
   }
 }
 
@@ -271,7 +343,7 @@ export async function bootstrapAccountSession() {
   await ensureProfile()
   await loadAccountData()
   await useTransactionStore().applyDue(todayLocal())
-  notifyRecentAutoIncome()
+  notifyRecentAutoRules()
   startAccountRealtime()
 }
 
@@ -281,6 +353,7 @@ export function resetAccountSession() {
   useCategoryStore().reset()
   usePurchaseStore().reset()
   useIncomeRuleStore().reset()
+  useExpenseRuleStore().reset()
   useTransactionStore().reset()
   useActivityStore().reset()
 }

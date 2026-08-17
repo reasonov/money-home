@@ -19,9 +19,11 @@ const props = withDefaults(
   defineProps<{
     slices: AccountChartSlice[]
     embedded?: boolean
+    title?: string
   }>(),
   {
     embedded: false,
+    title: 'По счетам',
   },
 )
 
@@ -89,7 +91,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
 
 <template>
   <section class="card" :class="{ 'is-embedded': embedded }">
-    <h2 class="card__title">По счетам</h2>
+    <h2 class="card__title">{{ title }}</h2>
     <div class="card__chart">
       <Bar :data="chartData" :options="chartOptions" />
     </div>

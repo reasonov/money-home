@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppButton, AppField, AppInput, getErrorMessage } from '@/shared'
+import { AppButton, AppField, AppInput, getErrorMessage, showToast } from '@/shared'
 import { bootstrapAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 
@@ -12,9 +12,28 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const pending = ref(false)
+const resetMode = ref(false)
 
 async function onSubmit() {
   error.value = ''
+  if (resetMode.value) {
+    if (!email.value.trim()) {
+      error.value = 'Введите email'
+      return
+    }
+    pending.value = true
+    try {
+      await session.requestPasswordReset(email.value)
+      showToast('Письмо отправлено')
+      resetMode.value = false
+    } catch (err) {
+      error.value = getErrorMessage(err, 'Не удалось отправить письмо')
+    } finally {
+      pending.value = false
+    }
+    return
+  }
+
   if (!email.value.trim() || !password.value) {
     error.value = 'Введите email и пароль'
     return
@@ -45,7 +64,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField label="Пароль" for-id="login-password">
+    <AppField v-if="!resetMode" label="Пароль" for-id="login-password">
       <AppInput
         id="login-password"
         v-model="password"
@@ -56,8 +75,19 @@ async function onSubmit() {
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>
     <AppButton type="submit" block :disabled="pending">
-      {{ pending ? 'Входим…' : 'Войти' }}
+      {{
+        pending
+          ? resetMode
+            ? 'Отправляем…'
+            : 'Входим…'
+          : resetMode
+            ? 'Отправить ссылку'
+            : 'Войти'
+      }}
     </AppButton>
+    <button type="button" class="form__link" @click="resetMode = !resetMode">
+      {{ resetMode ? 'К входу' : 'Забыли пароль?' }}
+    </button>
   </form>
 </template>
 
@@ -71,5 +101,16 @@ async function onSubmit() {
 .form__error {
   color: var(--color-warning);
   font-size: 0.875rem;
+}
+
+.form__link {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 </style>

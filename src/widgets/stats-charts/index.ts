@@ -1,5 +1,6 @@
 export { default as AccountSpendChart } from './ui/AccountSpendChart.vue'
 export { default as CategorySpendChart } from './ui/CategorySpendChart.vue'
+export { default as ForecastChart } from './ui/ForecastChart.vue'
 export { default as HeatmapChart } from './ui/HeatmapChart.vue'
 export { default as TopOperationsList } from './ui/TopOperationsList.vue'
 export { default as TrendChart } from './ui/TrendChart.vue'

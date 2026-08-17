@@ -56,7 +56,7 @@ const originalAmount = ref(0)
 const originalFromId = ref('')
 
 const isTransfer = computed(() => kind.value === 'transfer')
-const isIncomeRule = computed(() => source.value === 'income_rule')
+const isAutoRule = computed(() => source.value === 'income_rule' || source.value === 'expense_rule')
 const categoryKind = computed<CategoryKind>(() => (kind.value === 'income' ? 'income' : 'expense'))
 const availableCats = computed(() =>
   isTransfer.value ? [] : categories.forAccount(accountId.value, categoryKind.value),
@@ -162,18 +162,23 @@ async function onSubmit() {
 }
 
 async function onDelete() {
+  const isExpenseRule = source.value === 'expense_rule'
   const ok = await confirmAction({
-    title: isIncomeRule.value
-      ? 'Отменить пополнение?'
+    title: isAutoRule.value
+      ? isExpenseRule
+        ? 'Отменить расход?'
+        : 'Отменить пополнение?'
       : isTransfer.value
         ? 'Удалить перевод?'
         : 'Удалить операцию?',
-    message: isIncomeRule.value
-      ? 'Сумма будет списана со счёта. За этот день правило больше не начислит.'
+    message: isAutoRule.value
+      ? isExpenseRule
+        ? 'Сумма вернётся на счёт. За этот день правило больше не спишет.'
+        : 'Сумма будет списана со счёта. За этот день правило больше не начислит.'
       : isTransfer.value
         ? 'Суммы вернутся на счета.'
         : 'Сумма вернётся на счёт.',
-    confirmLabel: isIncomeRule.value ? 'Отменить' : 'Удалить',
+    confirmLabel: isAutoRule.value ? 'Отменить' : 'Удалить',
     danger: true,
   })
   if (!ok) {
@@ -182,7 +187,13 @@ async function onDelete() {
   pending.value = true
   try {
     await transactions.cancelPosted(props.transactionId)
-    showToast(isIncomeRule.value ? 'Пополнение отменено' : 'Операция удалена')
+    showToast(
+      isAutoRule.value
+        ? isExpenseRule
+          ? 'Расход отменён'
+          : 'Пополнение отменено'
+        : 'Операция удалена',
+    )
     emit('saved')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось удалить')
@@ -196,7 +207,9 @@ async function onDelete() {
   <AppEmpty v-if="ready && !accounts.items.length" description="Сначала создайте счёт" />
 
   <form v-else-if="ready" class="form" @submit.prevent="onSubmit">
-    <p v-if="isIncomeRule" class="hint">Авто-пополнение — счёт и дата не меняются</p>
+    <p v-if="isAutoRule" class="hint">
+      {{ source === 'expense_rule' ? 'Регулярный расход' : 'Авто-пополнение' }} — счёт и дата не меняются
+    </p>
 
     <AppField label="Сумма, ₽" for-id="edit-amount">
       <AppInputNumber id="edit-amount" v-model="amount" :min="1" placeholder="0" />
@@ -228,7 +241,7 @@ async function onDelete() {
     </template>
 
     <AppField v-else label="Счёт" for-id="edit-account">
-      <AppSelect id="edit-account" v-model="accountId" :disabled="isIncomeRule" required>
+      <AppSelect id="edit-account" v-model="accountId" :disabled="isAutoRule" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
         </option>
@@ -255,7 +268,7 @@ async function onDelete() {
     </template>
 
     <AppField label="Дата" for-id="edit-date">
-      <AppInput id="edit-date" v-model="occurredOn" type="date" :disabled="isIncomeRule" required />
+      <AppInput id="edit-date" v-model="occurredOn" type="date" :disabled="isAutoRule" required />
     </AppField>
     <AppField v-if="!isTransfer" label="Название" for-id="edit-title">
       <AppInput id="edit-title" v-model="title" />
@@ -270,7 +283,13 @@ async function onDelete() {
       {{ pending ? 'Сохраняем…' : 'Сохранить' }}
     </AppButton>
     <AppButton type="button" variant="danger" block :disabled="pending" @click="onDelete">
-      {{ isIncomeRule ? 'Отменить пополнение' : 'Удалить' }}
+      {{
+        isAutoRule
+          ? source === 'expense_rule'
+            ? 'Отменить расход'
+            : 'Отменить пополнение'
+          : 'Удалить'
+      }}
     </AppButton>
   </form>
 
