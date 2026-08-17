@@ -7,6 +7,7 @@ import {
   AppInput,
   AppInputNumber,
   AppSelect,
+  AppSwitch,
   AppTag,
   confirmAction,
   formatMoney,
@@ -32,6 +33,7 @@ const id = computed(() => String(route.params.id ?? ''))
 const account = computed(() => accounts.getById(id.value))
 const name = ref('')
 const amount = ref<string | number>(0)
+const excludeFromTotal = ref(false)
 const selected = ref<string[]>([])
 const error = ref('')
 const pending = ref(false)
@@ -47,6 +49,7 @@ watch(
     if (!next) return
     name.value = next.name
     amount.value = next.amount
+    excludeFromTotal.value = next.excludeFromTotal
     selected.value = categories.forAccount(next.id).map((item) => item.id)
   },
   { immediate: true },
@@ -63,7 +66,11 @@ async function save() {
   }
   pending.value = true
   try {
-    await accounts.saveAccount(id.value, userId, { name: name.value, amount: value })
+    await accounts.saveAccount(id.value, userId, {
+      name: name.value,
+      amount: value,
+      excludeFromTotal: excludeFromTotal.value,
+    })
     await accounts.bindCategories(id.value, selected.value)
     showToast('Сохранено')
   } catch (err) {
@@ -138,6 +145,7 @@ async function leave() {
       <p class="hero__name">
         <span class="hero__title">{{ account.name }}</span>
         <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
+        <AppTag v-if="account.excludeFromTotal" type="default">Не в итоге</AppTag>
       </p>
       <p class="hero__total">{{ formatMoney(account.amount) }}</p>
       <AccountAvailableHint :account-id="account.id" :balance="account.amount" />
@@ -205,6 +213,13 @@ async function leave() {
         <AppField label="Баланс, ₽" for-id="d-amount">
           <AppInputNumber id="d-amount" v-model="amount" :min="0" />
         </AppField>
+        <div class="exclude">
+          <span class="exclude__text">
+            <span class="exclude__label">Не учитывать в общем балансе</span>
+            <span class="exclude__hint">Не входит в сумму «все счета» на главной</span>
+          </span>
+          <AppSwitch v-model="excludeFromTotal" aria-label="Не учитывать в общем балансе" />
+        </div>
         <AppField v-if="categories.items.length" label="Категории счёта" for-id="d-cats">
           <AppSelect
             id="d-cats"
@@ -321,6 +336,31 @@ async function leave() {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.exclude {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.exclude__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.exclude__label {
+  font-weight: 700;
+}
+
+.exclude__hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
 }
 
 .settings-toggle {

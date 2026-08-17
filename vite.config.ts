@@ -3,18 +3,13 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as {
   version: string
 }
 const fromEnv = process.env.APP_VERSION?.trim()
-const appVersion = fromEnv
-  ? fromEnv.startsWith('v')
-    ? fromEnv
-    : `v${fromEnv}`
-  : `v${pkg.version}`
+const appVersion = fromEnv ? (fromEnv.startsWith('v') ? fromEnv : `v${fromEnv}`) : `v${pkg.version}`
 const base = process.env.VITE_BASE_PATH || '/'
 const normalizedBase = base.endsWith('/') ? base : `${base}/`
 const versionPayload = JSON.stringify({ version: appVersion })
@@ -52,7 +47,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     appVersionJsonPlugin(),
-    ...(mode !== 'production' ? [vueDevTools()] : []),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'pwa-192.svg', 'pwa-512.svg'],

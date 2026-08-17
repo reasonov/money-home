@@ -35,6 +35,17 @@ export const TOUR_STEPS: TourStepDef[] = [
     align: 'start',
   },
   {
+    id: 'nav-expense',
+    match: () => true,
+    selector: '[data-tour="nav-expense"]',
+    title: 'Быстрый расход',
+    description: 'Нажмите «+», чтобы записать расход. Удерживайте, чтобы добавить доход.',
+    skipIf: (ctx) => ctx.accountCount === 0,
+    to: '/',
+    side: 'top',
+    align: 'center',
+  },
+  {
     id: 'home-chart',
     match: (path) => path === '/',
     selector: '[data-tour="home-chart"]',
@@ -69,7 +80,7 @@ export const TOUR_STEPS: TourStepDef[] = [
   },
   {
     id: 'settings-theme',
-    match: (path) => path.startsWith('/settings'),
+    match: (path) => path === '/settings',
     selector: '[data-tour="settings-theme"]',
     title: 'Тема',
     description: 'Светлая, тёмная или как в системе — меняется сразу.',

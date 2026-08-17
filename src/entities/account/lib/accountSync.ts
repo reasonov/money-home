@@ -4,6 +4,7 @@ import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { usePreferencesStore } from '@/entities/preferences'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
@@ -64,6 +65,7 @@ export function startAccountRealtime() {
         amount: number
         owner_id: string
         invite_code: string | null
+        exclude_from_total?: boolean | null
         updated_by?: string | null
       } | null
       if (!row?.id) return
@@ -298,6 +300,13 @@ export function startAccountRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_occurrences' }, () => {
       void transactions.load()
     })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+      const row = payload.new as { user_id?: string; preferences?: unknown } | null
+      if (!row?.user_id || row.user_id !== session.user?.id) {
+        return
+      }
+      usePreferencesStore().applyRemote(row.preferences)
+    })
     .subscribe()
 }
 
@@ -344,6 +353,7 @@ function notifyRecentAutoRules() {
 
 export async function bootstrapFromNetwork() {
   await ensureProfile()
+  await usePreferencesStore().syncWithServer()
   await loadAccountData()
   await useTransactionStore().applyDue(todayLocal())
   notifyRecentAutoRules()
@@ -359,4 +369,5 @@ export function resetAccountSession() {
   useExpenseRuleStore().reset()
   useTransactionStore().reset()
   useActivityStore().reset()
+  usePreferencesStore().reset()
 }

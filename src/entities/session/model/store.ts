@@ -30,6 +30,22 @@ function toSessionUser(user: User): SessionUser {
   }
 }
 
+function isSessionFresh(session: Session | null): boolean {
+  if (!session) {
+    return false
+  }
+  const expiresAt = session.expires_at
+  return expiresAt == null || expiresAt * 1000 > Date.now() + 15_000
+}
+
+function isSessionUsable(session: Session | null): boolean {
+  if (!session) {
+    return false
+  }
+  const expiresAt = session.expires_at
+  return expiresAt == null || expiresAt * 1000 > Date.now() + 2_000
+}
+
 export const useSessionStore = defineStore('session', () => {
   const user = ref<SessionUser | null>(null)
   const ready = ref(false)
@@ -60,9 +76,7 @@ export const useSessionStore = defineStore('session', () => {
   async function ensureFreshSession(): Promise<boolean> {
     const { data } = await supabase.auth.getSession()
     const current = data.session
-    const expiresAt = current?.expires_at
-    const fresh = Boolean(current && (expiresAt == null || expiresAt * 1000 > Date.now() + 15_000))
-    if (fresh && current) {
+    if (isSessionFresh(current) && current) {
       keepUser(current)
       return true
     }
@@ -70,13 +84,13 @@ export const useSessionStore = defineStore('session', () => {
       keepUser(current)
     }
     if (!isBrowserOnline()) {
-      return false
+      return isSessionUsable(current)
     }
     try {
       const refreshed = await Promise.race([
         supabase.auth.refreshSession(),
         new Promise<never>((_, reject) => {
-          window.setTimeout(() => reject(new Error(NETWORK_ERROR_MESSAGE)), 4000)
+          window.setTimeout(() => reject(new Error('Session refresh timed out')), 15_000)
         }),
       ])
       if (refreshed.data.session) {
@@ -85,6 +99,10 @@ export const useSessionStore = defineStore('session', () => {
       }
     } catch {
       keepUser(current ?? null)
+    }
+    if (isSessionUsable(current)) {
+      keepUser(current)
+      return true
     }
     setWriteBlocked(true)
     return false

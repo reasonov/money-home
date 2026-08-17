@@ -140,6 +140,18 @@ const router = createRouter({
           component: () => import('@/pages/settings/ui/SettingsPage.vue'),
           meta: { title: 'Настройки' },
         },
+        {
+          path: 'settings/profile',
+          name: 'profile',
+          component: () => import('@/pages/profile/ui/ProfilePage.vue'),
+          meta: { title: 'Профиль' },
+        },
+        {
+          path: 'settings/personalization',
+          name: 'personalization',
+          component: () => import('@/pages/personalization/ui/PersonalizationPage.vue'),
+          meta: { title: 'Персонализация' },
+        },
       ],
     },
     {

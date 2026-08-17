@@ -27,6 +27,7 @@ export function isRetryableSyncError(message: string): boolean {
   const lower = message.toLowerCase()
   return (
     lower.includes('нет соединения') ||
+    lower.includes('не удалось подключиться') ||
     lower.includes('failed to fetch') ||
     lower.includes('network') ||
     lower.includes('internet') ||

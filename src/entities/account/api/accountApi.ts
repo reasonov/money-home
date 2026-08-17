@@ -7,6 +7,7 @@ type AccountRow = {
   amount: number
   owner_id: string
   invite_code: string | null
+  exclude_from_total?: boolean | null
 }
 
 export function mapAccount(row: AccountRow): Account {
@@ -16,13 +17,14 @@ export function mapAccount(row: AccountRow): Account {
     amount: Math.round(Number(row.amount)),
     ownerId: row.owner_id,
     inviteCode: row.invite_code,
+    excludeFromTotal: Boolean(row.exclude_from_total),
   }
 }
 
 export async function fetchAccounts(): Promise<Account[]> {
   const { data, error } = await supabase
     .from('accounts')
-    .select('id, name, amount, owner_id, invite_code')
+    .select('id, name, amount, owner_id, invite_code, exclude_from_total')
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -111,17 +113,23 @@ export async function leaveAccount(accountId: string): Promise<void> {
 export async function updateAccount(
   id: string,
   userId: string,
-  patch: { name?: string; amount?: number },
+  patch: { name?: string; amount?: number; excludeFromTotal?: boolean },
 ): Promise<Account> {
-  const payload: { name?: string; amount?: number; updated_by: string } = { updated_by: userId }
+  const payload: {
+    name?: string
+    amount?: number
+    exclude_from_total?: boolean
+    updated_by: string
+  } = { updated_by: userId }
   if (patch.name != null) payload.name = patch.name.trim()
   if (patch.amount != null) payload.amount = Math.round(patch.amount)
+  if (patch.excludeFromTotal != null) payload.exclude_from_total = patch.excludeFromTotal
 
   const { data, error } = await supabase
     .from('accounts')
     .update(payload)
     .eq('id', id)
-    .select('id, name, amount, owner_id, invite_code')
+    .select('id, name, amount, owner_id, invite_code, exclude_from_total')
     .single()
 
   if (error) {

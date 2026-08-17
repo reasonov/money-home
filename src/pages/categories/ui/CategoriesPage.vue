@@ -1,16 +1,44 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { EllipsisVertical } from '@lucide/vue'
 import { NDropdown, type DropdownOption } from 'naive-ui'
-import { AppButton, AppDrawer, AppEmpty, confirmAction, getErrorMessage, showToast } from '@/shared'
+import {
+  AppButton,
+  AppDrawer,
+  AppEmpty,
+  AppSegmented,
+  confirmAction,
+  getErrorMessage,
+  showToast,
+} from '@/shared'
 import { useAccountStore } from '@/entities/account'
-import { CategoryForm, CategoryIcon, useCategoryStore, type Category } from '@/entities/category'
+import {
+  CategoryForm,
+  CategoryIcon,
+  useCategoryStore,
+  type Category,
+  type CategoryKind,
+} from '@/entities/category'
 
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 
+const kind = ref<CategoryKind>('expense')
 const drawerOpen = ref(false)
 const editing = ref<Category | null>(null)
+
+const kindOptions: { value: CategoryKind; label: string }[] = [
+  { value: 'expense', label: 'Расходы' },
+  { value: 'income', label: 'Доходы' },
+]
+
+const visible = computed(() =>
+  kind.value === 'income' ? categories.income : categories.expense,
+)
+
+const emptyText = computed(() =>
+  kind.value === 'income' ? 'Нет категорий доходов' : 'Нет категорий расходов',
+)
 
 const menuOptions: DropdownOption[] = [
   { label: 'Изменить', key: 'edit' },
@@ -73,42 +101,33 @@ function onMenu(category: Category, key: string | number) {
 
 <template>
   <div class="page">
-    <AppEmpty
-      v-if="!categories.items.length"
-      description="Категории помогают группировать расходы и доходы в статистике"
-    >
-      <div data-tour="categories">
-        <AppButton block @click="openCreate">Новая категория</AppButton>
-      </div>
-    </AppEmpty>
-
-    <template v-else>
-      <section class="card">
-        <div v-for="item in categories.items" :key="item.id" class="row">
-          <button type="button" class="row__main" @click="openEdit(item)">
-            <CategoryIcon :icon="item.icon" :color="item.color" :size="32" />
-            <span class="row__text">
-              <span class="row__name">{{ item.name }}</span>
-              <span class="row__meta">{{ item.kind === 'income' ? 'Доход' : 'Расход' }}</span>
-            </span>
-          </button>
-          <NDropdown
-            trigger="click"
-            placement="bottom-end"
-            :options="menuOptions"
-            @select="(key) => onMenu(item, key)"
-          >
-            <button type="button" class="row__more" aria-label="Ещё действия">
-              <EllipsisVertical :size="16" :stroke-width="2" />
-            </button>
-          </NDropdown>
-        </div>
-      </section>
-
+    <div class="toolbar">
+      <AppSegmented v-model="kind" :options="kindOptions" aria-label="Тип категорий" />
       <div data-tour="categories">
         <AppButton variant="secondary" block @click="openCreate">Новая категория</AppButton>
       </div>
-    </template>
+    </div>
+
+    <AppEmpty v-if="!visible.length" :description="emptyText" />
+
+    <section v-else class="card">
+      <div v-for="item in visible" :key="item.id" class="row">
+        <button type="button" class="row__main" @click="openEdit(item)">
+          <CategoryIcon :icon="item.icon" :color="item.color" :size="32" />
+          <span class="row__name">{{ item.name }}</span>
+        </button>
+        <NDropdown
+          trigger="click"
+          placement="bottom-end"
+          :options="menuOptions"
+          @select="(key) => onMenu(item, key)"
+        >
+          <button type="button" class="row__more" aria-label="Ещё действия">
+            <EllipsisVertical :size="16" :stroke-width="2" />
+          </button>
+        </NDropdown>
+      </div>
+    </section>
 
     <AppDrawer
       v-model:open="drawerOpen"
@@ -118,6 +137,7 @@ function onMenu(category: Category, key: string | number) {
       <CategoryForm
         v-if="drawerOpen"
         :category="editing"
+        :initial-kind="kind"
         :accounts="accounts.items"
         @saved="onSaved"
         @cancel="closeDrawer"
@@ -131,6 +151,17 @@ function onMenu(category: Category, key: string | number) {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.toolbar {
+  position: sticky;
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-1);
+  background: var(--color-bg);
 }
 
 .card {
@@ -167,23 +198,11 @@ function onMenu(category: Category, key: string | number) {
   color: inherit;
 }
 
-.row__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .row__name {
   overflow: hidden;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.row__meta {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
 }
 
 .row__more {

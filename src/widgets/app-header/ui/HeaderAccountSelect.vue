@@ -9,7 +9,7 @@ const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 
 const options = computed<SelectOption[]>(() => [
-  { label: 'Все счета', value: ALL_ACCOUNTS_ID, amount: accounts.total },
+  { label: 'Все счета', value: ALL_ACCOUNTS_ID, amount: accounts.includedTotal },
   ...accounts.items.map((account) => ({
     label: account.name,
     value: account.id,
@@ -20,7 +20,7 @@ const options = computed<SelectOption[]>(() => [
 function amountLabelFor(value: string | number | null | undefined) {
   const id = value == null ? '' : String(value)
   if (id === ALL_ACCOUNTS_ID) {
-    return formatMoney(accounts.total)
+    return formatMoney(accounts.includedTotal)
   }
   const account = accounts.getById(id)
   return account ? formatMoney(account.amount) : ''

@@ -1,3 +1,5 @@
+import { isBrowserOnline } from '../lib/syncBus'
+
 export const NETWORK_ERROR_MESSAGE =
   'Нет соединения с интернетом. Проверьте сеть и попробуйте снова'
 
@@ -6,7 +8,7 @@ export function isUniqueViolation(error: { code?: string } | null | undefined): 
 }
 
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (!isBrowserOnline()) {
     return NETWORK_ERROR_MESSAGE
   }
   if (error && typeof error === 'object' && 'message' in error) {
@@ -94,7 +96,7 @@ function mapAuthMessage(message: string): string {
     return 'Приложение обновилось. Обновите страницу'
   }
   if (isNetworkMessage(lower)) {
-    return NETWORK_ERROR_MESSAGE
+    return 'Не удалось подключиться к серверу. Попробуйте снова'
   }
   return ''
 }

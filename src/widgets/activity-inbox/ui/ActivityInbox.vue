@@ -66,7 +66,7 @@ function openActivity(item: ActivityItem) {
       </span>
     </button>
 
-    <AppDrawer v-model:open="open" title="Что нового">
+    <AppDrawer v-model:open="open" title="Что нового" height="70%">
       <ul v-if="store.recent.length" class="feed">
         <li
           v-for="item in store.recent"

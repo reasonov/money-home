@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from '@lucide/vue'
 import { AppButton } from '@/shared'
 import { runSync } from '../lib/engine'
 import { useSyncStore } from '../model/store'
@@ -7,27 +8,24 @@ const sync = useSyncStore()
 </script>
 
 <template>
-  <div v-if="sync.bannerText" class="bar" role="status">
+  <div v-if="sync.showBanner" class="bar" role="status">
     <p class="bar__text">{{ sync.bannerText }}</p>
     <AppButton v-if="sync.status === 'error'" variant="ghost" @click="runSync">Повторить</AppButton>
+    <button type="button" class="bar__close" aria-label="Скрыть" @click="sync.dismissBanner">
+      <X :size="18" :stroke-width="2" />
+    </button>
   </div>
 </template>
 
 <style scoped>
 .bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(env(safe-area-inset-top, 0px) + var(--header-height));
-  z-index: 9;
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-height: 40px;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
   background: var(--color-accent-soft);
   color: var(--color-text);
-  box-shadow: var(--shadow-soft);
 }
 
 .bar__text {
@@ -35,5 +33,19 @@ const sync = useSyncStore()
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.35;
+}
+
+.bar__close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
 }
 </style>

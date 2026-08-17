@@ -5,8 +5,30 @@ import { setBootError } from './boot'
 const RELOAD_KEY = 'money-home.stale-asset-reload'
 const RELOAD_COOLDOWN_MS = 10_000
 
+const DEV_SW_CLEAR_KEY = 'money-home.dev-sw-cleared'
+
+async function unregisterDevServiceWorkers() {
+  if (!('serviceWorker' in navigator)) {
+    return
+  }
+  const registrations = await navigator.serviceWorker.getRegistrations()
+  if (!registrations.length) {
+    return
+  }
+  if (sessionStorage.getItem(DEV_SW_CLEAR_KEY)) {
+    return
+  }
+  sessionStorage.setItem(DEV_SW_CLEAR_KEY, '1')
+  await Promise.allSettled(registrations.map((registration) => registration.unregister()))
+  window.location.reload()
+}
+
 export function registerPwa() {
-  registerSW({ immediate: true })
+  if (import.meta.env.DEV) {
+    void unregisterDevServiceWorkers()
+  } else {
+    registerSW({ immediate: true })
+  }
 
   window.addEventListener('vite:preloadError', (event) => {
     event.preventDefault()

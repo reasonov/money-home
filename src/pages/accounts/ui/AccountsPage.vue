@@ -40,6 +40,7 @@ function openAccount(id: string) {
           <span class="row__name">
             <span class="row__title">{{ account.name }}</span>
             <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
+            <AppTag v-if="account.excludeFromTotal" type="default">Не в итоге</AppTag>
           </span>
           <span class="row__amount">{{ formatMoney(account.amount) }}</span>
           <AccountAvailableHint compact :account-id="account.id" :balance="account.amount" />
@@ -115,6 +116,7 @@ function openAccount(id: string) {
 
 .row__name {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;

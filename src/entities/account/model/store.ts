@@ -32,6 +32,9 @@ export const useAccountStore = defineStore('account', () => {
   }
 
   const total = computed(() => items.value.reduce((sum, item) => sum + item.amount, 0))
+  const includedTotal = computed(() =>
+    items.value.reduce((sum, item) => (item.excludeFromTotal ? sum : sum + item.amount), 0),
+  )
   const selectedAccount = computed(() => getById(selectedAccountId.value))
   const preferredAccountId = computed(() => {
     if (selectedAccountId.value !== ALL_ACCOUNTS_ID && selectedAccount.value) {
@@ -39,7 +42,7 @@ export const useAccountStore = defineStore('account', () => {
     }
     return items.value[0]?.id ?? ''
   })
-  const displayedTotal = computed(() => selectedAccount.value?.amount ?? total.value)
+  const displayedTotal = computed(() => selectedAccount.value?.amount ?? includedTotal.value)
 
   watch(items, () => {
     if (selectedAccountId.value !== ALL_ACCOUNTS_ID && !getById(selectedAccountId.value)) {
@@ -122,6 +125,7 @@ export const useAccountStore = defineStore('account', () => {
       amount: Math.round(input.openingAmount),
       ownerId: userId,
       inviteCode: null,
+      excludeFromTotal: false,
     }
     upsert(account)
     members.value = [
@@ -161,15 +165,27 @@ export const useAccountStore = defineStore('account', () => {
     return account
   }
 
-  async function saveAccount(id: string, userId: string, patch: { name?: string; amount?: number }) {
+  async function saveAccount(
+    id: string,
+    userId: string,
+    patch: { name?: string; amount?: number; excludeFromTotal?: boolean },
+  ) {
     assertWritable()
     const current = getById(id)
     if (!current) {
       throw new Error('Счёт не найден')
     }
+    const accountPatch: { name?: string; excludeFromTotal?: boolean } = {}
     if (patch.name != null) {
+      accountPatch.name = patch.name.trim()
       upsert({ ...getById(id)!, name: patch.name.trim() })
-      await enqueueMutation(userId, 'updateAccount', { id, userId, name: patch.name }, id)
+    }
+    if (patch.excludeFromTotal != null) {
+      accountPatch.excludeFromTotal = patch.excludeFromTotal
+      upsert({ ...getById(id)!, excludeFromTotal: patch.excludeFromTotal })
+    }
+    if (Object.keys(accountPatch).length) {
+      await enqueueMutation(userId, 'updateAccount', { id, userId, ...accountPatch }, id)
     }
     if (patch.amount != null) {
       const latest = getById(id)!
@@ -248,6 +264,7 @@ export const useAccountStore = defineStore('account', () => {
     selectedAccount,
     preferredAccountId,
     displayedTotal,
+    includedTotal,
     total,
     upsert,
     remove,

@@ -39,6 +39,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          exclude_from_total: boolean
           id: string
           invite_code: string | null
           name: string
@@ -49,6 +50,7 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          exclude_from_total?: boolean
           id?: string
           invite_code?: string | null
           name: string
@@ -59,6 +61,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          exclude_from_total?: boolean
           id?: string
           invite_code?: string | null
           name?: string
@@ -290,16 +293,19 @@ export type Database = {
       profiles: {
         Row: {
           display_name: string
+          preferences: Json
           updated_at: string
           user_id: string
         }
         Insert: {
           display_name: string
+          preferences?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
           display_name?: string
+          preferences?: Json
           updated_at?: string
           user_id?: string
         }

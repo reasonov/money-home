@@ -36,6 +36,7 @@ export function hydrateStores(payload: ReplicaPayload): void {
     payload.accounts.map((account) => ({
       ...account,
       amount: normalizeAccountAmount(account.amount),
+      excludeFromTotal: Boolean(account.excludeFromTotal),
     })),
     payload.members,
     payload.selectedAccountId,

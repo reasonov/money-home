@@ -5,11 +5,12 @@ import {
   stopAccountRealtime,
 } from '@/entities/account/lib/accountSync'
 import { useSessionStore } from '@/entities/session'
+import { usePreferencesStore } from '@/entities/preferences'
 import { useTransactionStore } from '@/entities/transaction'
 import {
   getErrorMessage,
-  isBrowserOnline,
   isRetryableSyncError,
+  refreshOnlineStatus,
   registerPendingHandler,
   registerPersistHandler,
   registerSyncHandler,
@@ -31,7 +32,7 @@ export async function refreshPendingState(): Promise<void> {
   const session = useSessionStore()
   const sync = useSyncStore()
   const userId = session.user?.id
-  sync.online = isBrowserOnline()
+  sync.online = await refreshOnlineStatus()
   if (!sync.online && sync.status !== 'syncing') {
     sync.status = 'offline'
   }
@@ -61,7 +62,7 @@ export async function runSync(): Promise<void> {
   if (!userId) {
     return
   }
-  if (!isBrowserOnline()) {
+  if (!sync.online) {
     stopAccountRealtime()
     sync.status = 'offline'
     applyDueSimulation()
@@ -69,7 +70,7 @@ export async function runSync(): Promise<void> {
   }
   if (!(await session.ensureFreshSession())) {
     stopAccountRealtime()
-    sync.status = 'offline'
+    sync.status = (await refreshOnlineStatus()) ? 'readonly' : 'offline'
     applyDueSimulation()
     return
   }
@@ -88,7 +89,7 @@ export async function runSync(): Promise<void> {
         }
       } catch (error) {
         const message = getErrorMessage(error)
-        if (!isBrowserOnline() || isRetryableSyncError(message)) {
+        if (!(await refreshOnlineStatus()) || isRetryableSyncError(message)) {
           throw error
         }
         showToast(message)
@@ -98,6 +99,7 @@ export async function runSync(): Promise<void> {
       }
     }
     await useTransactionStore().applyDue(todayLocal())
+    await usePreferencesStore().syncWithServer()
     await loadAccountData()
     startAccountRealtime()
     clearSkippedDueKeys()
@@ -106,7 +108,7 @@ export async function runSync(): Promise<void> {
     sync.lastError = null
   } catch (error) {
     const message = getErrorMessage(error)
-    if (!isBrowserOnline() || isRetryableSyncError(message)) {
+    if (!(await refreshOnlineStatus())) {
       stopAccountRealtime()
       sync.status = 'offline'
       applyDueSimulation()
@@ -137,6 +139,7 @@ export async function bootstrapAccountSession(): Promise<void> {
     return
   }
   initOfflineRuntime()
+  usePreferencesStore().hydrateLocal(userId)
   const hydrated = await tryHydrateReplica(userId)
   if (hydrated) {
     applyDueSimulation()
@@ -153,6 +156,7 @@ export async function bootstrapOfflineFirst(): Promise<boolean> {
     return false
   }
   initOfflineRuntime()
+  usePreferencesStore().hydrateLocal(userId)
   const hydrated = await tryHydrateReplica(userId)
   if (hydrated) {
     applyDueSimulation()

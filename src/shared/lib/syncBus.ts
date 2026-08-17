@@ -12,9 +12,44 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 let writeBlocked = false
 let listenersBound = false
+let supabaseReachable = true
+
+async function probeSupabaseHealth(): Promise<boolean> {
+  const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '')
+  if (!base || typeof fetch === 'undefined') {
+    return false
+  }
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 4000)
+  try {
+    await fetch(`${base}/auth/v1/health`, {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    return true
+  } catch {
+    return false
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
 
 export function isBrowserOnline(): boolean {
-  return typeof navigator === 'undefined' || navigator.onLine !== false
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    return true
+  }
+  return supabaseReachable
+}
+
+export async function refreshOnlineStatus(): Promise<boolean> {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+    supabaseReachable = true
+    return true
+  }
+  supabaseReachable = await probeSupabaseHealth()
+  return supabaseReachable
 }
 
 export function setWriteBlocked(value: boolean): void {
@@ -77,8 +112,13 @@ export function startNetworkListeners(): void {
     return
   }
   listenersBound = true
-  window.addEventListener('online', () => requestSync())
-  window.addEventListener('offline', () => requestSync())
+  window.addEventListener('online', () => {
+    supabaseReachable = true
+    requestSync()
+  })
+  window.addEventListener('offline', () => {
+    void refreshOnlineStatus().then(() => requestSync())
+  })
 }
 
 export async function enqueueMutation(

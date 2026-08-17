@@ -2,6 +2,7 @@ export const TOUR_STEP_IDS = [
   'home-create',
   'home-balance',
   'home-cta',
+  'nav-expense',
   'home-chart',
   'header-account',
   'header-menu',

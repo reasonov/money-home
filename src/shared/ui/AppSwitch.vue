@@ -24,23 +24,23 @@ const emit = defineEmits<{
 
 const model = defineModel<boolean>()
 
-const value = computed({
-  get: () => model.value ?? props.checked ?? false,
-  set: (next: boolean) => {
-    model.value = next
-    emit('update:checked', next)
-  },
-})
+const value = computed(() => props.checked ?? model.value ?? false)
+
+function onUpdate(next: boolean) {
+  model.value = next
+  emit('update:checked', next)
+}
 </script>
 
 <template>
   <span class="switch">
     <NSwitch
       v-bind="attrs"
-      v-model:value="value"
+      :value="value"
       :disabled="disabled"
       :loading="loading"
       :size="size"
+      @update:value="onUpdate"
     />
   </span>
 </template>

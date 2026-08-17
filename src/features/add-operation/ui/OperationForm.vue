@@ -11,6 +11,7 @@ import {
   AppSelect,
   AppTextarea,
   formatMoney,
+  formatShortDate,
   getErrorMessage,
   openFormDrawer,
   showToast,
@@ -19,6 +20,7 @@ import {
 import { useAccountStore } from '@/entities/account'
 import {
   CategoryForm,
+  CategoryIcon,
   CategorySelect,
   loadLastCategoryId,
   saveLastCategoryId,
@@ -26,8 +28,9 @@ import {
   type Category,
   type CategoryKind,
 } from '@/entities/category'
+import { usePreferencesStore } from '@/entities/preferences'
 import { useSessionStore } from '@/entities/session'
-import { useTransactionStore } from '@/entities/transaction'
+import { matchOperationsByAmount, useTransactionStore, type Transaction } from '@/entities/transaction'
 
 const props = defineProps<{
   kind: CategoryKind
@@ -42,6 +45,7 @@ const session = useSessionStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const transactions = useTransactionStore()
+const prefs = usePreferencesStore()
 
 const accountId = ref(
   accounts.getById(props.accountId ?? '')?.id ?? accounts.preferredAccountId,
@@ -81,26 +85,46 @@ watch(categoryId, (id) => {
   }
 })
 
-const lastOp = computed(() =>
-  transactions.posted.find(
-    (item) =>
-      item.accountId === accountId.value &&
-      item.kind === props.kind &&
-      (item.source === 'manual' || item.source === 'purchase'),
-  ),
-)
+const amountMatches = computed(() => {
+  if (!prefs.amountSuggestions) {
+    return []
+  }
+  const value = Math.round(Number(amount.value))
+  if (!Number.isFinite(value) || value <= 0) {
+    return []
+  }
+  return matchOperationsByAmount(transactions.posted, {
+    amount: value,
+    kind: props.kind,
+    accountId: accountId.value,
+    categoryIds: availableCats.value.map((cat) => cat.id),
+  })
+})
 
-function repeatLast() {
-  const item = lastOp.value
-  if (!item) {
+const amountFocused = ref(false)
+
+const matchesOpen = computed(() => amountFocused.value && amountMatches.value.length > 0)
+
+function matchLabel(item: Transaction) {
+  return item.title || item.categoryName || 'Операция'
+}
+
+function onAmountFocusOut(event: FocusEvent) {
+  const root = event.currentTarget as HTMLElement
+  const next = event.relatedTarget as Node | null
+  if (next && root.contains(next)) {
     return
   }
-  amount.value = item.amount
+  amountFocused.value = false
+}
+
+function applyMatch(item: Transaction) {
   if (item.categoryId && availableCats.value.some((cat) => cat.id === item.categoryId)) {
     categoryId.value = item.categoryId
   }
   title.value = item.title ?? ''
   notes.value = item.notes ?? ''
+  amountFocused.value = false
 }
 
 function onCategoryCreated(category: Category) {
@@ -149,17 +173,33 @@ async function onSubmit() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
-    <AppButton
-      v-if="lastOp"
-      type="button"
-      variant="secondary"
-      block
-      @click="repeatLast"
-    >
-      Повторить последнюю операцию
-    </AppButton>
-    <AppField label="Сумма, ₽" for-id="op-amount">
-      <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
+    <AppField class="amount-field" label="Сумма, ₽" for-id="op-amount">
+      <div class="amount" @focusin="amountFocused = true" @focusout="onAmountFocusOut">
+        <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
+        <ul v-if="matchesOpen" class="matches" role="listbox" aria-label="Похожие операции">
+          <li v-for="item in amountMatches" :key="item.id" role="none">
+            <button
+              type="button"
+              class="match"
+              role="option"
+              @mousedown.prevent
+              @click="applyMatch(item)"
+            >
+              <CategoryIcon
+                v-if="item.categoryIcon && item.categoryColor"
+                :icon="item.categoryIcon"
+                :color="item.categoryColor"
+                :size="28"
+              />
+              <span class="match__body">
+                <span class="match__title">{{ matchLabel(item) }}</span>
+                <span v-if="item.categoryName" class="match__meta">{{ item.categoryName }}</span>
+              </span>
+              <span class="match__date">{{ formatShortDate(item.occurredOn) }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </AppField>
     <AppField label="Счёт" for-id="op-account">
       <AppSelect id="op-account" v-model="accountId" required>
@@ -218,6 +258,80 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.amount-field :deep(.n-form-item-blank) {
+  overflow: visible;
+}
+
+.amount {
+  position: relative;
+  z-index: 8;
+}
+
+.matches {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.match {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.match:hover,
+.match:focus-visible {
+  background: var(--color-accent-soft);
+}
+
+.match__body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.match__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.match__meta,
+.match__date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.match__date {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .cat {

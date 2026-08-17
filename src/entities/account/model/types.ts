@@ -4,6 +4,7 @@ export interface Account {
   amount: number
   ownerId: string
   inviteCode: string | null
+  excludeFromTotal: boolean
 }
 
 export interface AccountMember {

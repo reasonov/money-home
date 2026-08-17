@@ -1,40 +1,17 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { APP_VERSION, AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
-import { ChangePasswordForm } from '@/features/auth'
-import { EditAccountForm } from '@/features/edit-account'
+import { ChevronRight, SlidersHorizontal, User } from '@lucide/vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { APP_VERSION, AppButton } from '@/shared'
 import { replayProductTour } from '@/features/product-tour'
 import { ThemeSwitch } from '@/features/theme-switch'
 import { useAppUpdateStore } from '@/features/update-app'
-import { resetAccountSession } from '@/entities/account'
-import { useSessionStore } from '@/entities/session'
 
 const router = useRouter()
-const session = useSessionStore()
 const update = useAppUpdateStore()
 
 function replay() {
   replayProductTour()
   void router.push({ name: 'home' })
-}
-
-async function logout() {
-  const ok = await confirmAction({
-    title: 'Выйти из аккаунта?',
-    message: 'Вы сможете войти снова с той же почтой и паролем.',
-    confirmLabel: 'Выйти',
-    danger: true,
-  })
-  if (!ok) {
-    return
-  }
-  try {
-    await session.logout()
-    resetAccountSession()
-    void router.push('/login')
-  } catch (err) {
-    showToast(getErrorMessage(err, 'Не удалось выйти'))
-  }
 }
 </script>
 
@@ -52,12 +29,29 @@ async function logout() {
       <AppButton variant="secondary" block @click="replay">Показать подсказки</AppButton>
     </section>
 
-    <section class="settings__block">
-      <h2 class="settings__heading">Профиль</h2>
-      <EditAccountForm />
-      <p class="settings__email">{{ session.user?.email }}</p>
-      <ChangePasswordForm />
-      <AppButton variant="danger" block @click="logout">Выйти</AppButton>
+    <section class="settings__links">
+      <RouterLink class="settings__row" to="/settings/profile" aria-label="Открыть профиль">
+        <span class="settings__icon" aria-hidden="true">
+          <User :size="18" :stroke-width="1.8" />
+        </span>
+        <span class="settings__title">Профиль</span>
+        <span class="settings__chevron" aria-hidden="true">
+          <ChevronRight :size="18" :stroke-width="1.8" />
+        </span>
+      </RouterLink>
+      <RouterLink
+        class="settings__row"
+        to="/settings/personalization"
+        aria-label="Открыть персонализацию"
+      >
+        <span class="settings__icon" aria-hidden="true">
+          <SlidersHorizontal :size="18" :stroke-width="1.8" />
+        </span>
+        <span class="settings__title">Персонализация</span>
+        <span class="settings__chevron" aria-hidden="true">
+          <ChevronRight :size="18" :stroke-width="1.8" />
+        </span>
+      </RouterLink>
     </section>
 
     <p class="settings__version">Версия {{ APP_VERSION }}</p>
@@ -103,13 +97,61 @@ async function logout() {
   margin-top: var(--space-2);
 }
 
-.settings__email {
-  color: var(--color-text-muted);
-}
-
 .settings__hint {
   margin: 0;
   font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.settings__links {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.settings__row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.settings__row:last-of-type {
+  padding-bottom: 0;
+}
+
+.settings__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-accent);
+}
+
+.settings__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings__chevron {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
   color: var(--color-text-muted);
 }
 

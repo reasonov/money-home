@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
+import { computed, ref, watch } from 'vue'
+import type { ActiveElement, ChartEvent, ChartData, ChartOptions, TooltipItem } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
 import { formatMoney } from '@/shared'
 import type { CategorySpendSlice } from '@/entities/transaction'
@@ -22,7 +22,45 @@ const props = withDefaults(
 )
 
 const theme = useChartTheme()
+const selectedIndex = ref<number | null>(null)
 const total = computed(() => props.slices.reduce((sum, slice) => sum + slice.amount, 0))
+const selected = computed(() =>
+  selectedIndex.value == null ? null : (props.slices[selectedIndex.value] ?? null),
+)
+
+watch(
+  () => props.slices,
+  () => {
+    selectedIndex.value = null
+  },
+)
+
+function formatShare(amount: number, sum: number): string {
+  if (sum <= 0) {
+    return '0%'
+  }
+  const percent = (amount / sum) * 100
+  if (percent < 0.5) {
+    return '<1%'
+  }
+  return `${Math.round(percent)}%`
+}
+
+function selectIndex(index: number | null) {
+  if (index == null || index === selectedIndex.value) {
+    selectedIndex.value = null
+    return
+  }
+  selectedIndex.value = index
+}
+
+function onChartClick(_event: ChartEvent, elements: ActiveElement[]) {
+  if (!elements.length) {
+    selectedIndex.value = null
+    return
+  }
+  selectIndex(elements[0]?.index ?? null)
+}
 
 const chartData = computed<ChartData<'doughnut'>>(() => ({
   labels: props.slices.map((slice) => slice.name),
@@ -40,6 +78,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   cutout: '62%',
+  onClick: onChartClick,
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -51,8 +90,10 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
       displayColors: false,
       callbacks: {
         title: () => '',
-        label: (item: TooltipItem<'doughnut'>) =>
-          `${item.label} — ${formatMoney(Number(item.raw ?? 0))}`,
+        label: (item: TooltipItem<'doughnut'>) => {
+          const amount = Number(item.raw ?? 0)
+          return `${item.label} — ${formatMoney(amount)} · ${formatShare(amount, total.value)}`
+        },
       },
     },
   },
@@ -66,19 +107,33 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
       <div class="card__chart">
         <Doughnut :data="chartData" :options="chartOptions" />
         <div v-if="centerLabel || total" class="card__center">
-          <p v-if="centerLabel" class="card__center-label">{{ centerLabel }}</p>
-          <p class="card__center-value">{{ formatMoney(total) }}</p>
+          <template v-if="selected">
+            <p class="card__center-label">{{ selected.name }}</p>
+            <p class="card__center-value">{{ formatShare(selected.amount, total) }}</p>
+            <p class="card__center-amount">{{ formatMoney(selected.amount) }}</p>
+          </template>
+          <template v-else>
+            <p v-if="centerLabel" class="card__center-label">{{ centerLabel }}</p>
+            <p class="card__center-value">{{ formatMoney(total) }}</p>
+          </template>
         </div>
       </div>
       <ul class="legend">
-        <li v-for="slice in slices" :key="slice.categoryId ?? slice.name" class="legend__item">
-          <span
-            class="legend__dot"
-            :style="{ background: slice.color || theme.muted }"
-            aria-hidden="true"
-          />
-          <span class="legend__name">{{ slice.name }}</span>
-          <span class="legend__amount">{{ formatMoney(slice.amount) }}</span>
+        <li v-for="(slice, index) in slices" :key="slice.categoryId ?? slice.name">
+          <button
+            type="button"
+            class="legend__item"
+            :class="{ 'is-active': selectedIndex === index }"
+            @click="selectIndex(index)"
+          >
+            <span
+              class="legend__dot"
+              :style="{ background: slice.color || theme.muted }"
+              aria-hidden="true"
+            />
+            <span class="legend__name">{{ slice.name }}</span>
+            <span class="legend__amount">{{ formatMoney(slice.amount) }}</span>
+          </button>
         </li>
       </ul>
     </div>
@@ -117,18 +172,30 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 0 28%;
   pointer-events: none;
 }
 
 .card__center-label {
+  max-width: 100%;
+  overflow: hidden;
   font-size: 0.75rem;
   color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card__center-value {
   font-size: 1.125rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.card__center-amount {
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
 }
 
 .legend {
@@ -161,7 +228,21 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 32px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.legend__item.is-active {
+  background: var(--color-bg);
 }
 
 .legend__dot {

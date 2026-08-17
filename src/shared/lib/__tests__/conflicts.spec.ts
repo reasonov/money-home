@@ -37,6 +37,7 @@ describe('sync error classification', () => {
     expect(
       isRetryableSyncError('Нет соединения с интернетом. Проверьте сеть и попробуйте снова'),
     ).toBe(true)
+    expect(isRetryableSyncError('Не удалось подключиться к серверу. Попробуйте снова')).toBe(true)
     expect(isConflictSyncError('Purchase is not planned')).toBe(true)
     expect(isConflictSyncError('Покупка уже проведена')).toBe(true)
   })

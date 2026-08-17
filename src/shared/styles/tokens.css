@@ -39,6 +39,7 @@
   --app-max-width: 430px;
   --header-height: 56px;
   --nav-height: 64px;
+  --nav-fab-size: 52px;
 
   color-scheme: light;
 }
@@ -48,6 +49,7 @@
     --app-max-width: min(840px, 100%);
     --header-height: 48px;
     --nav-height: 52px;
+    --nav-fab-size: 40px;
   }
 }
 

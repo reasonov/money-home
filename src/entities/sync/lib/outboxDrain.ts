@@ -106,11 +106,12 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       await createAccount(payload as Parameters<typeof createAccount>[0])
       return
     case 'updateAccount':
-      if (payload.name != null) {
-        await updateAccount(String(payload.id), String(payload.userId), {
-          name: String(payload.name),
-        })
-      }
+      await updateAccount(String(payload.id), String(payload.userId), {
+        ...(payload.name != null ? { name: String(payload.name) } : {}),
+        ...(payload.excludeFromTotal != null
+          ? { excludeFromTotal: Boolean(payload.excludeFromTotal) }
+          : {}),
+      })
       return
     case 'adjustAccountBalance':
       await adjustAccountAmount(String(payload.id), Number(payload.delta))
@@ -167,7 +168,12 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       }
       return
     }
-    default:
+    default: {
+      const type = String(item.type)
+      if (type === 'insertOperationTemplate' || type === 'deleteOperationTemplate') {
+        return
+      }
       throw new Error(`Unknown outbox type: ${item.type}`)
+    }
   }
 }

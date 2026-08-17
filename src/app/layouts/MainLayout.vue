@@ -10,7 +10,7 @@ import { AppSidebar } from '@/widgets/app-sidebar'
 import { AppFormDrawers } from '@/widgets/app-drawers'
 import { ActivityInbox } from '@/widgets/activity-inbox'
 import { BottomNav } from '@/widgets/bottom-nav'
-import { SyncStatusBar } from '@/entities/sync'
+import { SyncStatusBar, SyncStatusIcon } from '@/entities/sync'
 
 const route = useRoute()
 const accounts = useAccountStore()
@@ -39,6 +39,7 @@ watch(
   <div class="shell">
     <AppHeader :show-account-select="showAccountSelect" :title="pageTitle" @menu="toggleSidebar">
       <template #actions>
+        <SyncStatusIcon />
         <ActivityInbox />
       </template>
     </AppHeader>
@@ -71,6 +72,8 @@ watch(
 }
 
 .shell__main.has-nav {
-  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+  padding-bottom: calc(
+    var(--nav-height) + (var(--nav-fab-size) / 2) + env(safe-area-inset-bottom) + var(--space-4)
+  );
 }
 </style>

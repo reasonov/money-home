@@ -8,4 +8,5 @@ export {
   runSync,
 } from './lib/engine'
 export { default as SyncStatusBar } from './ui/SyncStatusBar.vue'
+export { default as SyncStatusIcon } from './ui/SyncStatusIcon.vue'
 export { default as PendingDot } from './ui/PendingDot.vue'

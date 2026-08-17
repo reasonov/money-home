@@ -1,4 +1,5 @@
 export { useTransactionStore } from './model/store'
+export { matchOperationsByAmount } from './lib/amountMatches'
 export type {
   Transaction,
   TransactionKind,

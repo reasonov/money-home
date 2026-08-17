@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, Fragment, useSlots, type VNode } from 'vue'
-import { NSelect, type SelectRenderLabel } from 'naive-ui'
+import { NSelect, type SelectFilter, type SelectRenderLabel } from 'naive-ui'
+
+type SelectOption = {
+  value: string
+  label: string
+  disabled: boolean
+  icon?: string
+  color?: string
+}
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +19,7 @@ const props = withDefaults(
     filterable?: boolean
     clearable?: boolean
     placeholder?: string
+    filter?: SelectFilter
     renderLabel?: SelectRenderLabel
     size?: 'medium' | 'large'
   }>(),
@@ -21,14 +30,6 @@ const props = withDefaults(
 
 const model = defineModel<string | number | string[]>({ required: true })
 const slots = useSlots()
-
-type SelectOption = {
-  value: string
-  label: string
-  disabled: boolean
-  icon?: string
-  color?: string
-}
 
 function textOf(node: unknown): string {
   if (node == null || typeof node === 'boolean') return ''
@@ -135,6 +136,7 @@ function isSelected(optionValue: string) {
       :filterable="filterable"
       :clearable="clearable"
       :placeholder="placeholder"
+      :filter="filter"
       :render-label="renderLabel"
       :max-tag-count="multiple ? 'responsive' : undefined"
       :size="size"

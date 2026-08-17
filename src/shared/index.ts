@@ -4,6 +4,7 @@ export {
   NETWORK_ERROR_MESSAGE,
   isUniqueViolation,
   type Database,
+  type Json,
 } from './api'
 export { APP_VERSION } from './config/version'
 export { formatMoney, formatMoneyPlain } from './lib/formatMoney'
@@ -46,6 +47,7 @@ export {
   enqueueMutation,
   isBrowserOnline,
   isWriteBlocked,
+  refreshOnlineStatus,
   ONLINE_ONLY_MESSAGE,
   registerPendingHandler,
   registerPersistHandler,
