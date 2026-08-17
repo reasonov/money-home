@@ -64,7 +64,7 @@ function openAccount(id: string) {
     v-model:show="open"
     placement="left"
     :width="300"
-    :auto-focus="true"
+    :auto-focus="false"
     :trap-focus="true"
     :z-index="2000000000"
   >

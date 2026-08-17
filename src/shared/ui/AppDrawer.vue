@@ -19,7 +19,7 @@ withDefaults(
     v-model:show="open"
     placement="bottom"
     :height="height"
-    :auto-focus="true"
+    :auto-focus="false"
     :trap-focus="true"
     :z-index="2000000000"
   >

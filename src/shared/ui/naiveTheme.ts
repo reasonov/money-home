@@ -2,6 +2,11 @@ import type { GlobalThemeOverrides } from 'naive-ui'
 import type { ResolvedTheme } from '../lib/theme'
 
 const FONT = 'Manrope, system-ui, sans-serif'
+const CONTROL_FONT = {
+  fontSize: '16px',
+  fontSizeMedium: '16px',
+  fontSizeLarge: '16px',
+} as const
 
 const light: GlobalThemeOverrides = {
   common: {
@@ -47,9 +52,14 @@ const light: GlobalThemeOverrides = {
   },
   Input: {
     heightLarge: '48px',
+    ...CONTROL_FONT,
   },
   InternalSelection: {
     heightLarge: '48px',
+    ...CONTROL_FONT,
+  },
+  DatePicker: {
+    ...CONTROL_FONT,
   },
 }
 
@@ -97,9 +107,14 @@ const dark: GlobalThemeOverrides = {
   },
   Input: {
     heightLarge: '48px',
+    ...CONTROL_FONT,
   },
   InternalSelection: {
     heightLarge: '48px',
+    ...CONTROL_FONT,
+  },
+  DatePicker: {
+    ...CONTROL_FONT,
   },
 }
 

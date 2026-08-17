@@ -36,11 +36,11 @@ function openAccount(id: string) {
         <span class="row__icon" aria-hidden="true">
           <Wallet :size="18" :stroke-width="1.8" />
         </span>
-        <span class="row__name">
-          <span class="row__title">{{ account.name }}</span>
-          <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
-        </span>
-        <span class="row__amounts">
+        <span class="row__body">
+          <span class="row__name">
+            <span class="row__title">{{ account.name }}</span>
+            <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
+          </span>
           <span class="row__amount">{{ formatMoney(account.amount) }}</span>
           <AccountAvailableHint compact :account-id="account.id" :balance="account.amount" />
         </span>
@@ -76,11 +76,11 @@ function openAccount(id: string) {
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
   width: 100%;
   min-height: 56px;
-  padding: 0;
+  padding: var(--space-3) 0;
   border: 0;
   border-top: 1px solid var(--color-border);
   background: transparent;
@@ -101,18 +101,27 @@ function openAccount(id: string) {
   place-items: center;
   width: 24px;
   height: 24px;
+  margin-top: 2px;
   color: var(--color-accent);
+}
+
+.row__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .row__name {
   display: flex;
-  flex: 1;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
 
 .row__title {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -123,16 +132,7 @@ function openAccount(id: string) {
   flex-shrink: 0;
 }
 
-.row__amounts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-  gap: 2px;
-}
-
 .row__amount {
-  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
 }
@@ -143,6 +143,7 @@ function openAccount(id: string) {
   place-items: center;
   width: 24px;
   height: 24px;
+  margin-top: 2px;
   color: var(--color-text-muted);
 }
 </style>

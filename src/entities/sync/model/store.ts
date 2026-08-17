@@ -13,9 +13,6 @@ export const useSyncStore = defineStore('sync', () => {
     if (status.value === 'readonly') {
       return 'Сессия истекла — только просмотр. Войдите при появлении сети'
     }
-    if (status.value === 'syncing') {
-      return 'Синхронизация…'
-    }
     if (status.value === 'error') {
       return lastError.value || 'Не удалось синхронизировать'
     }

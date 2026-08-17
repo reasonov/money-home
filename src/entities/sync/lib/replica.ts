@@ -26,8 +26,20 @@ export function snapshotStores(): ReplicaPayload {
   }
 }
 
+function normalizeAccountAmount(amount: unknown) {
+  const value = Number(amount)
+  return Number.isFinite(value) ? Math.round(value) : 0
+}
+
 export function hydrateStores(payload: ReplicaPayload): void {
-  useAccountStore().hydrate(payload.accounts, payload.members, payload.selectedAccountId)
+  useAccountStore().hydrate(
+    payload.accounts.map((account) => ({
+      ...account,
+      amount: normalizeAccountAmount(account.amount),
+    })),
+    payload.members,
+    payload.selectedAccountId,
+  )
   useCategoryStore().hydrate(payload.categories)
   usePurchaseStore().hydrate(payload.purchases)
   useIncomeRuleStore().hydrate(payload.incomeRules)

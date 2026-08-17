@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body {
   margin: 0;
@@ -24,11 +30,35 @@ body {
 }
 
 button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+button,
 input,
 select,
 textarea {
   font: inherit;
+  font-size: 16px;
   color: inherit;
+}
+
+.n-input,
+.n-input__input-el,
+.n-base-selection,
+.n-base-selection-label,
+.n-base-selection-input,
+.n-date-picker {
+  font-size: 16px !important;
+}
+
+@media (hover: none) {
+  button,
+  a,
+  [role='button'] {
+    cursor: default;
+  }
 }
 
 a {

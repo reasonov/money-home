@@ -15,6 +15,11 @@ const sync = useSyncStore()
 
 <style scoped>
 .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(env(safe-area-inset-top, 0px) + var(--header-height));
+  z-index: 9;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -22,6 +27,7 @@ const sync = useSyncStore()
   padding: var(--space-2) var(--space-4);
   background: var(--color-accent-soft);
   color: var(--color-text);
+  box-shadow: var(--shadow-soft);
 }
 
 .bar__text {

@@ -8,22 +8,28 @@ import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 
-type AccountOption = SelectOption & { amountLabel: string }
-
-const options = computed<AccountOption[]>(() => [
-  { label: 'Все счета', value: ALL_ACCOUNTS_ID, amountLabel: formatMoney(accounts.total) },
+const options = computed<SelectOption[]>(() => [
+  { label: 'Все счета', value: ALL_ACCOUNTS_ID, amount: accounts.total },
   ...accounts.items.map((account) => ({
     label: account.name,
     value: account.id,
-    amountLabel: formatMoney(account.amount),
+    amount: account.amount,
   })),
 ])
 
+function amountLabelFor(value: string | number | null | undefined) {
+  const id = value == null ? '' : String(value)
+  if (id === ALL_ACCOUNTS_ID) {
+    return formatMoney(accounts.total)
+  }
+  const account = accounts.getById(id)
+  return account ? formatMoney(account.amount) : ''
+}
+
 function renderLabel(option: SelectOption) {
-  const amountLabel = (option as AccountOption).amountLabel ?? ''
   return h('span', { class: 'header-select-option' }, [
     h('span', { class: 'header-select-option__name' }, String(option.label ?? '')),
-    h('span', { class: 'header-select-option__amount' }, amountLabel),
+    h('span', { class: 'header-select-option__amount' }, amountLabelFor(option.value)),
   ])
 }
 </script>
