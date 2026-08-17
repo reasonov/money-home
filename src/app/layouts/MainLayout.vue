@@ -9,6 +9,7 @@ import { AppSidebar } from '@/widgets/app-sidebar'
 import { AppFormDrawers } from '@/widgets/app-drawers'
 import { ActivityInbox } from '@/widgets/activity-inbox'
 import { BottomNav } from '@/widgets/bottom-nav'
+import { SyncStatusBar } from '@/entities/sync'
 
 const route = useRoute()
 const accounts = useAccountStore()
@@ -40,6 +41,7 @@ watch(
         <ActivityInbox />
       </template>
     </AppHeader>
+    <SyncStatusBar />
     <main class="shell__main" :class="{ 'has-nav': showNav }">
       <RouterView />
     </main>

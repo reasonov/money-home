@@ -1,13 +1,10 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAccountStore } from '@/entities/account'
+import { assertWritable, createUuid, enqueueMutation } from '@/shared'
 import {
-  cancelPurchase,
-  completePurchase,
   fetchPurchases,
-  insertPurchase,
   mapPurchase,
-  updatePurchaseRow,
 } from '../api/purchaseApi'
 import type { Purchase } from './types'
 
@@ -43,6 +40,10 @@ export const usePurchaseStore = defineStore('purchase', () => {
     upsert(mapPurchase(row))
   }
 
+  function hydrate(next: Purchase[]) {
+    items.value = next
+  }
+
   function plannedFor(accountId: string) {
     return planned.value.filter((item) => item.accountId === accountId)
   }
@@ -63,8 +64,24 @@ export const usePurchaseStore = defineStore('purchase', () => {
     notes?: string
     createdBy: string
   }) {
-    const purchase = await insertPurchase(input)
+    assertWritable()
+    const id = createUuid()
+    const purchase: Purchase = {
+      id,
+      accountId: input.accountId,
+      categoryId: input.categoryId,
+      categoryName: input.categoryName,
+      categoryColor: input.categoryColor,
+      categoryIcon: input.categoryIcon,
+      title: input.title,
+      amount: Math.round(input.amount),
+      plannedDate: input.plannedDate,
+      status: 'planned',
+      createdBy: input.createdBy,
+      ...(input.notes ? { notes: input.notes } : {}),
+    }
     upsert(purchase)
+    await enqueueMutation(input.createdBy, 'insertPurchase', { ...input, id }, id)
     return purchase
   }
 
@@ -83,26 +100,71 @@ export const usePurchaseStore = defineStore('purchase', () => {
       notes?: string
     },
   ) {
-    const purchase = await updatePurchaseRow(id, userId, input)
+    assertWritable()
+    const current = getById(id)
+    if (!current || current.status !== 'planned') {
+      throw new Error('Покупка уже проведена или отменена')
+    }
+    const purchase: Purchase = {
+      ...current,
+      ...input,
+      amount: Math.round(input.amount),
+    }
     upsert(purchase)
+    await enqueueMutation(userId, 'updatePurchase', { id, userId, input }, id)
     return purchase
   }
 
   async function setCancelled(id: string, userId: string) {
-    const purchase = await cancelPurchase(id, userId)
+    assertWritable()
+    const current = getById(id)
+    if (!current || current.status !== 'planned') {
+      throw new Error('Покупка уже проведена или отменена')
+    }
+    const purchase = { ...current, status: 'cancelled' as const }
     upsert(purchase)
+    await enqueueMutation(userId, 'cancelPurchase', { id, userId }, id)
     return purchase
   }
 
   async function markDone(id: string) {
-    const purchase = await completePurchase(id)
-    upsert(purchase)
+    assertWritable()
+    const purchase = getById(id)
+    if (!purchase || purchase.status !== 'planned') {
+      throw new Error('Покупка уже проведена или отменена')
+    }
+    const next = { ...purchase, status: 'done' as const }
+    upsert(next)
     const accounts = useAccountStore()
     const account = accounts.getById(purchase.accountId)
     if (account) {
       accounts.upsert({ ...account, amount: account.amount - purchase.amount })
     }
-    return purchase
+    const transactionId = createUuid()
+    const { useTransactionStore } = await import('@/entities/transaction')
+    useTransactionStore().upsert({
+      id: transactionId,
+      accountId: purchase.accountId,
+      kind: 'expense',
+      status: 'posted',
+      source: 'purchase',
+      amount: purchase.amount,
+      occurredOn: purchase.plannedDate,
+      createdBy: purchase.createdBy,
+      title: purchase.title,
+      ...(purchase.categoryId ? { categoryId: purchase.categoryId } : {}),
+      ...(purchase.categoryName ? { categoryName: purchase.categoryName } : {}),
+      ...(purchase.categoryColor ? { categoryColor: purchase.categoryColor } : {}),
+      ...(purchase.categoryIcon ? { categoryIcon: purchase.categoryIcon } : {}),
+      ...(purchase.notes ? { notes: purchase.notes } : {}),
+    })
+    await enqueueMutation(
+      purchase.createdBy,
+      'completePurchase',
+      { id, transactionId },
+      id,
+    )
+    return next
   }
 
   function getById(id: string) {
@@ -121,6 +183,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
     upsert,
     remove,
     applyRemoteRow,
+    hydrate,
     plannedFor,
     load,
     addPurchase,

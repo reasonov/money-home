@@ -1,4 +1,10 @@
-export { supabase, getErrorMessage, NETWORK_ERROR_MESSAGE, type Database } from './api'
+export {
+  supabase,
+  getErrorMessage,
+  NETWORK_ERROR_MESSAGE,
+  isUniqueViolation,
+  type Database,
+} from './api'
 export { APP_VERSION } from './config/version'
 export { formatMoney, formatMoneyPlain } from './lib/formatMoney'
 export {
@@ -33,7 +39,29 @@ export {
   forecastBalanceSeries,
   type ForecastSlice,
 } from './lib/projectBalance'
-export { createId, createInviteCode } from './lib/id'
+export { createId, createInviteCode, createUuid } from './lib/id'
+export {
+  assertOnline,
+  assertWritable,
+  enqueueMutation,
+  isBrowserOnline,
+  isWriteBlocked,
+  ONLINE_ONLY_MESSAGE,
+  registerPendingHandler,
+  registerPersistHandler,
+  registerSyncHandler,
+  requestPersist,
+  requestSync,
+  startNetworkListeners,
+  WRITE_BLOCKED_MESSAGE,
+} from './lib/syncBus'
+export { dueKey, ruleDueDates, type DueRule } from './lib/dueDates'
+export {
+  accountBalanceAfterDelta,
+  isConflictSyncError,
+  isRetryableSyncError,
+  purchaseConflictMessage,
+} from './lib/conflicts'
 export { showToast, hideToast, useToastState } from './lib/toast'
 export { confirmAction, useConfirmState, settleConfirm } from './lib/confirm'
 export {

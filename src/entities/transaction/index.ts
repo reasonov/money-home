@@ -5,6 +5,18 @@ export type {
   TransactionSource,
   TransactionStatus,
 } from './model/types'
+export type { ExpenseOccurrenceRow, OccurrenceRow } from './api/transactionApi'
+export {
+  adjustExpenseOccurrence,
+  adjustIncomeOccurrence,
+  cancelPostedTransaction,
+  findExpenseOccurrence,
+  findIncomeOccurrence,
+  insertTransaction,
+  skipExpenseOccurrence,
+  skipIncomeOccurrence,
+  updatePostedTransaction,
+} from './api/transactionApi'
 export {
   averageDailyExpense,
   expensesByCategory,

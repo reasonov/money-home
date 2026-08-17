@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { AppButton, AppField, AppInput, getErrorMessage, showToast } from '@/shared'
+import { AppButton, AppField, AppInput, getErrorMessage, isBrowserOnline, ONLINE_ONLY_MESSAGE, showToast } from '@/shared'
 import { useSessionStore } from '@/entities/session'
+import { isWriteBlocked, WRITE_BLOCKED_MESSAGE } from '@/shared/lib/syncBus'
 
 const session = useSessionStore()
 const password = ref('')
@@ -11,6 +12,10 @@ const pending = ref(false)
 
 async function onSubmit() {
   error.value = ''
+  if (!isBrowserOnline() || isWriteBlocked()) {
+    error.value = isWriteBlocked() ? WRITE_BLOCKED_MESSAGE : ONLINE_ONLY_MESSAGE
+    return
+  }
   if (password.value.length < 6) {
     error.value = 'Пароль должен быть не короче 6 символов'
     return
@@ -52,7 +57,12 @@ async function onSubmit() {
       />
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>
-    <AppButton type="submit" variant="secondary" block :disabled="pending">
+    <AppButton
+      type="submit"
+      variant="secondary"
+      block
+      :disabled="pending || !isBrowserOnline() || isWriteBlocked()"
+    >
       {{ pending ? 'Сохраняем…' : 'Сменить пароль' }}
     </AppButton>
   </form>

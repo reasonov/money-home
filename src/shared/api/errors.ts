@@ -1,6 +1,10 @@
 export const NETWORK_ERROR_MESSAGE =
   'Нет соединения с интернетом. Проверьте сеть и попробуйте снова'
 
+export function isUniqueViolation(error: { code?: string } | null | undefined): boolean {
+  return error?.code === '23505'
+}
+
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return NETWORK_ERROR_MESSAGE

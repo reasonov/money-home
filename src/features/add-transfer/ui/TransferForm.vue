@@ -68,14 +68,26 @@ async function onSubmit() {
   }
   pending.value = true
   try {
-    await accounts.transfer({
+    const local = await accounts.transfer({
       fromAccountId: fromId.value,
       toAccountId: toId.value,
       amount: value,
       occurredOn: todayLocal(),
       notes: notes.value,
     })
-    await transactions.load()
+    transactions.upsert({
+      id: local.id,
+      accountId: local.fromAccountId,
+      counterpartyAccountId: local.toAccountId,
+      kind: 'transfer',
+      status: 'posted',
+      source: 'manual',
+      amount: local.amount,
+      occurredOn: local.occurredOn,
+      createdBy: local.userId,
+      title: 'Перевод',
+      ...(local.notes ? { notes: local.notes } : {}),
+    })
     showToast('Перевод выполнен')
     emit('saved')
   } catch (err) {

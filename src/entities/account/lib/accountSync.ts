@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { addDays, formatLocalDate, formatMoney, parseLocalDate, supabase, todayLocal } from '@/shared'
+import { addDays, formatLocalDate, formatMoney, parseLocalDate, requestPersist, supabase, todayLocal } from '@/shared'
 import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
@@ -32,6 +32,7 @@ export async function loadAccountData() {
     expenseRules.load(),
     transactions.load(),
   ])
+  requestPersist()
 }
 
 export function stopAccountRealtime() {
@@ -166,6 +167,7 @@ export function startAccountRealtime() {
         title: string | null
         category_id: string | null
         active: boolean
+        starts_on?: string
         updated_by?: string | null
       } | null
       if (!row) return
@@ -200,6 +202,7 @@ export function startAccountRealtime() {
         title: string | null
         category_id: string | null
         active: boolean
+        starts_on?: string
         updated_by?: string | null
       } | null
       if (!row) return
@@ -339,7 +342,7 @@ function notifyRecentAutoRules() {
   }
 }
 
-export async function bootstrapAccountSession() {
+export async function bootstrapFromNetwork() {
   await ensureProfile()
   await loadAccountData()
   await useTransactionStore().applyDue(todayLocal())

@@ -12,6 +12,7 @@ type ExpenseRuleRow = {
   title: string | null
   category_id: string | null
   active: boolean
+  starts_on?: string
 }
 
 export function mapExpenseRule(row: ExpenseRuleRow): ExpenseRule {
@@ -22,6 +23,7 @@ export function mapExpenseRule(row: ExpenseRuleRow): ExpenseRule {
     amount: Math.round(Number(row.amount)),
     frequency: row.frequency as IncomeFrequency,
     active: row.active,
+    ...(row.starts_on ? { startsOn: row.starts_on } : {}),
     ...(row.weekday != null ? { weekday: row.weekday } : {}),
     ...(row.month_day != null ? { monthDay: row.month_day } : {}),
     ...(row.anchor_date ? { anchorDate: row.anchor_date } : {}),
@@ -31,7 +33,7 @@ export function mapExpenseRule(row: ExpenseRuleRow): ExpenseRule {
 }
 
 const SELECT =
-  'id, account_id, amount, frequency, weekday, month_day, anchor_date, title, category_id, active'
+  'id, account_id, amount, frequency, weekday, month_day, anchor_date, title, category_id, active, starts_on'
 
 export async function fetchExpenseRules(): Promise<ExpenseRule[]> {
   const { data, error } = await supabase.from('expense_rules').select(SELECT).order('created_at')
@@ -41,8 +43,9 @@ export async function fetchExpenseRules(): Promise<ExpenseRule[]> {
   return (data ?? []).map(mapExpenseRule)
 }
 
-function toRow(input: Omit<ExpenseRule, 'id'>, userId: string) {
+function toRow(input: Omit<ExpenseRule, 'id'>, userId: string, id?: string) {
   return {
+    ...(id ? { id } : {}),
     account_id: input.accountId,
     amount: Math.round(input.amount),
     frequency: input.frequency,
@@ -52,15 +55,26 @@ function toRow(input: Omit<ExpenseRule, 'id'>, userId: string) {
     title: input.title?.trim() || null,
     category_id: input.categoryId ?? null,
     active: input.active,
+    ...(input.startsOn ? { starts_on: input.startsOn } : {}),
     updated_by: userId,
   }
 }
 
 export async function insertExpenseRule(
   userId: string,
-  input: Omit<ExpenseRule, 'id'>,
+  input: Omit<ExpenseRule, 'id'> & { id?: string },
 ): Promise<ExpenseRule> {
-  const { data, error } = await supabase.from('expense_rules').insert(toRow(input, userId)).select(SELECT).single()
+  const { data, error } = await supabase
+    .from('expense_rules')
+    .insert(toRow(input, userId, input.id))
+    .select(SELECT)
+    .single()
+  if (error?.code === '23505' && input.id) {
+    const existing = await supabase.from('expense_rules').select(SELECT).eq('id', input.id).single()
+    if (existing.data) {
+      return mapExpenseRule(existing.data)
+    }
+  }
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось добавить правило'))
   }

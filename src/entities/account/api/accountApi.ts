@@ -65,6 +65,7 @@ export async function fetchAccountMembers(): Promise<AccountMember[]> {
 }
 
 export async function createAccount(input: {
+  id?: string
   name: string
   openingAmount: number
   categoryIds?: string[]
@@ -74,6 +75,7 @@ export async function createAccount(input: {
       p_name: input.name,
       p_opening_amount: Math.round(input.openingAmount),
       p_category_ids: input.categoryIds?.length ? input.categoryIds : undefined,
+      ...(input.id ? { p_id: input.id } : {}),
     })
     .single()
 
@@ -128,6 +130,20 @@ export async function updateAccount(
   return mapAccount(data)
 }
 
+export async function adjustAccountAmount(id: string, delta: number): Promise<Account> {
+  const { data, error } = await supabase
+    .rpc('adjust_account_amount', {
+      p_account_id: id,
+      p_delta: Math.round(delta),
+    })
+    .single()
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось сохранить счёт'))
+  }
+  return mapAccount(data)
+}
+
 export async function setAccountCategories(accountId: string, categoryIds: string[]): Promise<void> {
   const { error } = await supabase.rpc('set_account_categories', {
     p_account_id: accountId,
@@ -139,6 +155,7 @@ export async function setAccountCategories(accountId: string, categoryIds: strin
 }
 
 export async function transferBetweenAccounts(input: {
+  id?: string
   fromAccountId: string
   toAccountId: string
   amount: number
@@ -152,6 +169,7 @@ export async function transferBetweenAccounts(input: {
       p_amount: Math.round(input.amount),
       p_occurred_on: input.occurredOn,
       p_notes: input.notes,
+      ...(input.id ? { p_id: input.id } : {}),
     })
     .single()
 

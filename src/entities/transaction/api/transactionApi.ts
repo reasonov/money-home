@@ -1,4 +1,4 @@
-import { getErrorMessage, supabase } from '@/shared'
+import { getErrorMessage, isUniqueViolation, supabase } from '@/shared'
 import type {
   Transaction,
   TransactionKind,
@@ -63,6 +63,7 @@ export async function fetchTransactions(): Promise<Transaction[]> {
 }
 
 export async function insertTransaction(input: {
+  id?: string
   accountId: string
   kind: 'expense' | 'income'
   categoryId?: string
@@ -78,6 +79,7 @@ export async function insertTransaction(input: {
   const { data, error } = await supabase
     .from('transactions')
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       account_id: input.accountId,
       kind: input.kind,
       status: 'posted',
@@ -95,6 +97,13 @@ export async function insertTransaction(input: {
     })
     .select(SELECT)
     .single()
+
+  if (isUniqueViolation(error) && input.id) {
+    const existing = await supabase.from('transactions').select(SELECT).eq('id', input.id).single()
+    if (existing.data) {
+      return mapTransaction(existing.data)
+    }
+  }
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось сохранить операцию'))
@@ -185,6 +194,40 @@ export async function fetchOccurrences(): Promise<OccurrenceRow[]> {
     throw new Error(getErrorMessage(error, 'Не удалось загрузить пополнения'))
   }
   return data ?? []
+}
+
+export async function findIncomeOccurrence(
+  ruleId: string,
+  occurredOn: string,
+): Promise<OccurrenceRow | null> {
+  const { data, error } = await supabase
+    .from('income_occurrences')
+    .select('id, income_rule_id, occurred_on, status, transaction_id')
+    .eq('income_rule_id', ruleId)
+    .eq('occurred_on', occurredOn)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось загрузить пополнения'))
+  }
+  return data
+}
+
+export async function findExpenseOccurrence(
+  ruleId: string,
+  occurredOn: string,
+): Promise<ExpenseOccurrenceRow | null> {
+  const { data, error } = await supabase
+    .from('expense_occurrences')
+    .select('id, expense_rule_id, occurred_on, status, transaction_id')
+    .eq('expense_rule_id', ruleId)
+    .eq('occurred_on', occurredOn)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось загрузить списания'))
+  }
+  return data
 }
 
 export async function fetchExpenseOccurrences(): Promise<ExpenseOccurrenceRow[]> {

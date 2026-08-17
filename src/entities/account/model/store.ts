@@ -1,16 +1,21 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
-  createAccount,
+  assertOnline,
+  assertWritable,
+  createUuid,
+  enqueueMutation,
+  getErrorMessage,
+} from '@/shared'
+import { useSessionStore } from '@/entities/session'
+import { useCategoryStore } from '@/entities/category'
+import {
   fetchAccountMembers,
   fetchAccounts,
   joinAccount,
   leaveAccount,
   mapAccount,
-  setAccountCategories,
   shareAccount,
-  transferBetweenAccounts,
-  updateAccount,
 } from '../api/accountApi'
 import type { Account, AccountMember } from './types'
 
@@ -62,6 +67,23 @@ export const useAccountStore = defineStore('account', () => {
     upsert(mapAccount(row))
   }
 
+  function applyAmountDelta(accountId: string, delta: number) {
+    const account = getById(accountId)
+    if (!account || !delta) {
+      return
+    }
+    upsert({ ...account, amount: account.amount + delta })
+  }
+
+  function hydrate(accounts: Account[], nextMembers: AccountMember[], selectedId?: string) {
+    items.value = accounts
+    members.value = nextMembers
+    loaded.value = true
+    if (selectedId) {
+      selectedAccountId.value = selectedId
+    }
+  }
+
   function membersOf(accountId: string) {
     return members.value.filter((item) => item.accountId === accountId)
   }
@@ -74,6 +96,14 @@ export const useAccountStore = defineStore('account', () => {
     return membersOf(accountId).length > 1
   }
 
+  function requireUserId() {
+    const userId = useSessionStore().user?.id
+    if (!userId) {
+      throw new Error(getErrorMessage('not authenticated', 'Войдите в аккаунт'))
+    }
+    return userId
+  }
+
   async function load() {
     const [accounts, nextMembers] = await Promise.all([fetchAccounts(), fetchAccountMembers()])
     items.value = accounts
@@ -82,31 +112,81 @@ export const useAccountStore = defineStore('account', () => {
   }
 
   async function addAccount(input: { name: string; openingAmount: number; categoryIds?: string[] }) {
-    const account = await createAccount(input)
+    assertWritable()
+    const userId = requireUserId()
+    const session = useSessionStore()
+    const id = createUuid()
+    const account: Account = {
+      id,
+      name: input.name.trim() || 'Основной счёт',
+      amount: Math.round(input.openingAmount),
+      ownerId: userId,
+      inviteCode: null,
+    }
     upsert(account)
+    members.value = [
+      ...members.value,
+      { accountId: id, userId, displayName: session.user?.displayName || 'Участник' },
+    ]
+    if (input.categoryIds?.length) {
+      useCategoryStore().bindAccounts(id, input.categoryIds)
+    }
+    await enqueueMutation(
+      userId,
+      'createAccount',
+      {
+        id,
+        name: input.name,
+        openingAmount: input.openingAmount,
+        ...(input.categoryIds ? { categoryIds: input.categoryIds } : {}),
+      },
+      id,
+    )
     return account
   }
 
   async function addByCode(code: string) {
+    assertOnline()
+    assertWritable()
     const account = await joinAccount(code)
     await load()
     return account
   }
 
   async function enableShare(accountId: string) {
+    assertOnline()
+    assertWritable()
     const account = await shareAccount(accountId)
     upsert(account)
     return account
   }
 
   async function saveAccount(id: string, userId: string, patch: { name?: string; amount?: number }) {
-    const account = await updateAccount(id, userId, patch)
-    upsert(account)
-    return account
+    assertWritable()
+    const current = getById(id)
+    if (!current) {
+      throw new Error('Счёт не найден')
+    }
+    if (patch.name != null) {
+      upsert({ ...getById(id)!, name: patch.name.trim() })
+      await enqueueMutation(userId, 'updateAccount', { id, userId, name: patch.name }, id)
+    }
+    if (patch.amount != null) {
+      const latest = getById(id)!
+      const delta = Math.round(patch.amount) - latest.amount
+      if (delta) {
+        applyAmountDelta(id, delta)
+        await enqueueMutation(userId, 'adjustAccountBalance', { id, delta }, id)
+      }
+    }
+    return getById(id)!
   }
 
   async function bindCategories(accountId: string, categoryIds: string[]) {
-    await setAccountCategories(accountId, categoryIds)
+    assertWritable()
+    const userId = requireUserId()
+    useCategoryStore().bindAccounts(accountId, categoryIds)
+    await enqueueMutation(userId, 'bindAccountCategories', { accountId, categoryIds }, accountId)
   }
 
   async function transfer(input: {
@@ -116,15 +196,39 @@ export const useAccountStore = defineStore('account', () => {
     occurredOn: string
     notes?: string
   }) {
-    const tx = await transferBetweenAccounts(input)
-    const from = getById(input.fromAccountId)
-    const to = getById(input.toAccountId)
-    if (from) upsert({ ...from, amount: from.amount - Math.round(input.amount) })
-    if (to) upsert({ ...to, amount: to.amount + Math.round(input.amount) })
-    return tx
+    assertWritable()
+    const userId = requireUserId()
+    const id = createUuid()
+    const amount = Math.round(input.amount)
+    applyAmountDelta(input.fromAccountId, -amount)
+    applyAmountDelta(input.toAccountId, amount)
+    await enqueueMutation(
+      userId,
+      'transfer',
+      {
+        id,
+        fromAccountId: input.fromAccountId,
+        toAccountId: input.toAccountId,
+        amount,
+        occurredOn: input.occurredOn,
+        ...(input.notes ? { notes: input.notes } : {}),
+      },
+      id,
+    )
+    return {
+      id,
+      userId,
+      amount,
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      occurredOn: input.occurredOn,
+      notes: input.notes,
+    }
   }
 
   async function leave(accountId: string) {
+    assertOnline()
+    assertWritable()
     await leaveAccount(accountId)
     remove(accountId)
   }
@@ -148,6 +252,8 @@ export const useAccountStore = defineStore('account', () => {
     upsert,
     remove,
     applyRemoteRow,
+    applyAmountDelta,
+    hydrate,
     getById,
     membersOf,
     memberName,

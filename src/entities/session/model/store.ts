@@ -1,7 +1,10 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session, User } from '@supabase/supabase-js'
-import { getErrorMessage, supabase } from '@/shared'
+import { getErrorMessage, isBrowserOnline, NETWORK_ERROR_MESSAGE, supabase } from '@/shared'
+import { allowAuthStorageClear, denyAuthStorageClear } from '@/shared/api/authStorage'
+import { setWriteBlocked } from '@/shared/lib/syncBus'
+import { persistSessionUser, readPersistedSessionUser } from './persist'
 import type { SessionUser } from './types'
 
 function readDisplayName(user: User): string {
@@ -32,11 +35,68 @@ export const useSessionStore = defineStore('session', () => {
   const ready = ref(false)
   const passwordRecovery = ref(false)
   let authSubscription: { unsubscribe: () => void } | null = null
+  let networkAbort: AbortController | null = null
+  let loggingOut = false
 
   const isAuthenticated = computed(() => user.value != null)
 
-  function applySession(session: Session | null) {
-    user.value = session?.user ? toSessionUser(session.user) : null
+  function keepUser(session: Session | null) {
+    if (session?.user) {
+      user.value = toSessionUser(session.user)
+      persistSessionUser(user.value)
+      setWriteBlocked(false)
+      return
+    }
+    if (loggingOut) {
+      user.value = null
+      persistSessionUser(null)
+      return
+    }
+    if (!user.value) {
+      user.value = readPersistedSessionUser()
+    }
+  }
+
+  async function ensureFreshSession(): Promise<boolean> {
+    const { data } = await supabase.auth.getSession()
+    const current = data.session
+    const expiresAt = current?.expires_at
+    const fresh = Boolean(current && (expiresAt == null || expiresAt * 1000 > Date.now() + 15_000))
+    if (fresh && current) {
+      keepUser(current)
+      return true
+    }
+    if (current?.user) {
+      keepUser(current)
+    }
+    if (!isBrowserOnline()) {
+      return false
+    }
+    try {
+      const refreshed = await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error(NETWORK_ERROR_MESSAGE)), 4000)
+        }),
+      ])
+      if (refreshed.data.session) {
+        keepUser(refreshed.data.session)
+        return true
+      }
+    } catch {
+      keepUser(current ?? null)
+    }
+    setWriteBlocked(true)
+    return false
+  }
+
+  function onOffline() {
+    void supabase.auth.stopAutoRefresh()
+  }
+
+  function onOnline() {
+    void supabase.auth.startAutoRefresh()
+    void ensureFreshSession()
   }
 
   async function init() {
@@ -44,19 +104,38 @@ export const useSessionStore = defineStore('session', () => {
       return
     }
 
+    user.value = readPersistedSessionUser()
+
     const { data, error } = await supabase.auth.getSession()
     if (error) {
       console.error(error)
     }
-    applySession(data.session)
+    keepUser(data.session)
+
+    if (isBrowserOnline()) {
+      void supabase.auth.startAutoRefresh()
+      void ensureFreshSession()
+    } else {
+      void supabase.auth.stopAutoRefresh()
+    }
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      applySession(session)
+      if (event === 'SIGNED_OUT' && !loggingOut) {
+        keepUser(null)
+        return
+      }
+      keepUser(session)
       if (event === 'PASSWORD_RECOVERY') {
         passwordRecovery.value = true
       }
     })
     authSubscription = listener.subscription
+
+    networkAbort?.abort()
+    networkAbort = new AbortController()
+    window.addEventListener('offline', onOffline, { signal: networkAbort.signal })
+    window.addEventListener('online', onOnline, { signal: networkAbort.signal })
+
     ready.value = true
   }
 
@@ -68,7 +147,8 @@ export const useSessionStore = defineStore('session', () => {
     if (error) {
       throw new Error(getErrorMessage(error, 'Не удалось войти'))
     }
-    applySession(data.session)
+    keepUser(data.session)
+    void supabase.auth.startAutoRefresh()
   }
 
   async function register(email: string, password: string, displayName: string) {
@@ -88,16 +168,35 @@ export const useSessionStore = defineStore('session', () => {
     if (!data.session) {
       throw new Error('Подтвердите email по ссылке из письма, затем войдите')
     }
-    applySession(data.session)
+    keepUser(data.session)
+    void supabase.auth.startAutoRefresh()
   }
 
   async function logout() {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      throw new Error(getErrorMessage(error, 'Не удалось выйти'))
+    loggingOut = true
+    allowAuthStorageClear()
+    try {
+      if (isBrowserOnline()) {
+        try {
+          await Promise.race([
+            supabase.auth.signOut(),
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => reject(new Error(NETWORK_ERROR_MESSAGE)), 4000)
+            }),
+          ])
+        } catch {
+          // local sign-out below
+        }
+      }
+      await supabase.auth.signOut({ scope: 'local' })
+    } finally {
+      denyAuthStorageClear()
+      user.value = null
+      persistSessionUser(null)
+      passwordRecovery.value = false
+      setWriteBlocked(false)
+      loggingOut = false
     }
-    user.value = null
-    passwordRecovery.value = false
   }
 
   async function requestPasswordReset(email: string) {
@@ -135,16 +234,20 @@ export const useSessionStore = defineStore('session', () => {
     }
     if (data.user) {
       user.value = toSessionUser(data.user)
+      persistSessionUser(user.value)
       return
     }
     if (user.value) {
       user.value = { ...user.value, displayName: name }
+      persistSessionUser(user.value)
     }
   }
 
   function dispose() {
     authSubscription?.unsubscribe()
     authSubscription = null
+    networkAbort?.abort()
+    networkAbort = null
   }
 
   return {
@@ -153,6 +256,7 @@ export const useSessionStore = defineStore('session', () => {
     passwordRecovery,
     isAuthenticated,
     init,
+    ensureFreshSession,
     login,
     register,
     logout,

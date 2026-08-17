@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { authStorage } from './authStorage'
 import type { Database } from './database.types'
 
 const url = import.meta.env.VITE_SUPABASE_URL
@@ -11,7 +12,8 @@ if (!url || !anonKey) {
 export const supabase = createClient<Database>(url, anonKey, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true,
+    autoRefreshToken: false,
     detectSessionInUrl: true,
+    storage: authStorage,
   },
 })

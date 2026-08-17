@@ -50,6 +50,7 @@ export async function fetchPurchases(): Promise<Purchase[]> {
 }
 
 export async function insertPurchase(input: {
+  id?: string
   accountId: string
   categoryId: string
   categoryName: string
@@ -64,6 +65,7 @@ export async function insertPurchase(input: {
   const { data, error } = await supabase
     .from('purchases')
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       account_id: input.accountId,
       category_id: input.categoryId,
       category_name: input.categoryName,
@@ -79,6 +81,13 @@ export async function insertPurchase(input: {
     })
     .select(SELECT)
     .single()
+
+  if (error?.code === '23505' && input.id) {
+    const existing = await supabase.from('purchases').select(SELECT).eq('id', input.id).single()
+    if (existing.data) {
+      return mapPurchase(existing.data)
+    }
+  }
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось сохранить покупку'))
@@ -116,6 +125,7 @@ export async function updatePurchaseRow(
       updated_by: userId,
     })
     .eq('id', id)
+    .eq('status', 'planned')
     .select(SELECT)
     .single()
 
@@ -130,6 +140,7 @@ export async function cancelPurchase(id: string, userId: string): Promise<Purcha
     .from('purchases')
     .update({ status: 'cancelled', updated_by: userId })
     .eq('id', id)
+    .eq('status', 'planned')
     .select(SELECT)
     .single()
 
@@ -139,8 +150,13 @@ export async function cancelPurchase(id: string, userId: string): Promise<Purcha
   return mapPurchase(data)
 }
 
-export async function completePurchase(id: string): Promise<Purchase> {
-  const { data, error } = await supabase.rpc('complete_purchase', { p_purchase_id: id }).single()
+export async function completePurchase(id: string, transactionId?: string): Promise<Purchase> {
+  const { data, error } = await supabase
+    .rpc('complete_purchase', {
+      p_purchase_id: id,
+      ...(transactionId ? { p_transaction_id: transactionId } : {}),
+    })
+    .single()
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось завершить покупку'))
   }

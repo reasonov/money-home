@@ -17,10 +17,10 @@ import {
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useActivityStore, UnseenPurchaseDot } from '@/entities/activity'
+import { PendingDot } from '@/entities/sync'
 import { CategoryIcon, useCategoryStore } from '@/entities/category'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
-import { useTransactionStore } from '@/entities/transaction'
 
 const store = usePurchaseStore()
 const accounts = useAccountStore()
@@ -161,7 +161,6 @@ async function markDone(id: string, options?: { confirm?: boolean; event?: Event
   acknowledge(id)
   try {
     await store.markDone(id)
-    await useTransactionStore().load()
   } catch (err) {
     showToast(getErrorMessage(err, 'Не удалось завершить покупку'))
   }
@@ -275,7 +274,9 @@ const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.va
                 <div class="item__main">
                   <p class="item__title">
                     <UnseenPurchaseDot :purchase-id="item.id">
-                      {{ item.title }}
+                      <PendingDot :entity-id="item.id">
+                        {{ item.title }}
+                      </PendingDot>
                     </UnseenPurchaseDot>
                   </p>
                   <p class="item__meta-row">

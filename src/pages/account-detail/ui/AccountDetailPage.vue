@@ -11,12 +11,14 @@ import {
   confirmAction,
   formatMoney,
   getErrorMessage,
+  ONLINE_ONLY_MESSAGE,
   openFormDrawer,
   showToast,
 } from '@/shared'
 import { useCategoryStore } from '@/entities/category'
 import { useAccountStore } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
+import { useSyncStore } from '@/entities/sync'
 import { AccountAvailableHint } from '@/widgets/account-available'
 
 const route = useRoute()
@@ -24,6 +26,7 @@ const router = useRouter()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const session = useSessionStore()
+const sync = useSyncStore()
 
 const id = computed(() => String(route.params.id ?? ''))
 const account = computed(() => accounts.getById(id.value))
@@ -62,7 +65,6 @@ async function save() {
   try {
     await accounts.saveAccount(id.value, userId, { name: name.value, amount: value })
     await accounts.bindCategories(id.value, selected.value)
-    await categories.load()
     showToast('Сохранено')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить')
@@ -72,6 +74,10 @@ async function save() {
 }
 
 async function share() {
+  if (!sync.online) {
+    error.value = ONLINE_ONLY_MESSAGE
+    return
+  }
   try {
     await accounts.enableShare(id.value)
   } catch (err) {
@@ -106,6 +112,10 @@ async function nativeShare() {
 }
 
 async function leave() {
+  if (!sync.online) {
+    error.value = ONLINE_ONLY_MESSAGE
+    return
+  }
   const ok = await confirmAction({
     title: 'Покинуть счёт?',
     message: 'Он исчезнет из вашего списка, но останется у других участников.',
@@ -172,9 +182,13 @@ async function leave() {
             <AppButton variant="ghost" block @click="nativeShare">Поделиться кодом</AppButton>
           </div>
         </template>
-        <AppButton v-else variant="secondary" block @click="share">Поделиться счётом</AppButton>
+        <AppButton v-else variant="secondary" block :disabled="!sync.online" @click="share">
+          {{ sync.online ? 'Поделиться счётом' : ONLINE_ONLY_MESSAGE }}
+        </AppButton>
       </div>
-      <AppButton v-if="!isOwner" variant="danger" block @click="leave">Покинуть счёт</AppButton>
+      <AppButton v-if="!isOwner" variant="danger" block :disabled="!sync.online" @click="leave">
+        Покинуть счёт
+      </AppButton>
     </section>
 
     <section class="block">

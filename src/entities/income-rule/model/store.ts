@@ -1,12 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import {
-  deleteIncomeRule,
-  fetchIncomeRules,
-  insertIncomeRule,
-  mapIncomeRule,
-  updateIncomeRule,
-} from '../api/incomeRuleApi'
+import { assertWritable, createUuid, enqueueMutation, todayLocal } from '@/shared'
+import { fetchIncomeRules, mapIncomeRule } from '../api/incomeRuleApi'
 import type { IncomeRule } from './types'
 
 export const useIncomeRuleStore = defineStore('income-rule', () => {
@@ -33,6 +28,10 @@ export const useIncomeRuleStore = defineStore('income-rule', () => {
     upsert(mapIncomeRule(row))
   }
 
+  function hydrate(next: IncomeRule[]) {
+    items.value = next
+  }
+
   function forAccount(accountId: string) {
     return items.value.filter((item) => item.accountId === accountId)
   }
@@ -42,20 +41,30 @@ export const useIncomeRuleStore = defineStore('income-rule', () => {
   }
 
   async function addRule(userId: string, input: Omit<IncomeRule, 'id'>) {
-    const rule = await insertIncomeRule(userId, input)
+    assertWritable()
+    const id = createUuid()
+    const rule: IncomeRule = { ...input, id, startsOn: input.startsOn ?? todayLocal() }
     upsert(rule)
+    await enqueueMutation(userId, 'insertIncomeRule', { userId, input: { ...rule, id } }, id)
     return rule
   }
 
   async function updateRule(id: string, userId: string, patch: Partial<Omit<IncomeRule, 'id'>>) {
-    const rule = await updateIncomeRule(id, userId, patch)
+    assertWritable()
+    const current = items.value.find((item) => item.id === id)
+    if (!current) {
+      throw new Error('Правило не найдено')
+    }
+    const rule = { ...current, ...patch }
     upsert(rule)
+    await enqueueMutation(userId, 'updateIncomeRule', { id, userId, patch }, id)
     return rule
   }
 
   async function removeRule(id: string, userId: string) {
-    await deleteIncomeRule(id, userId)
+    assertWritable()
     removeLocal(id)
+    await enqueueMutation(userId, 'deleteIncomeRule', { id, userId }, id)
   }
 
   function reset() {
@@ -68,6 +77,7 @@ export const useIncomeRuleStore = defineStore('income-rule', () => {
     upsert,
     removeLocal,
     applyRemoteRow,
+    hydrate,
     forAccount,
     load,
     addRule,

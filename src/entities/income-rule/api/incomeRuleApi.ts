@@ -12,6 +12,7 @@ type IncomeRuleRow = {
   title: string | null
   category_id: string | null
   active: boolean
+  starts_on?: string
 }
 
 export function mapIncomeRule(row: IncomeRuleRow): IncomeRule {
@@ -22,6 +23,7 @@ export function mapIncomeRule(row: IncomeRuleRow): IncomeRule {
     amount: Math.round(Number(row.amount)),
     frequency: row.frequency as IncomeFrequency,
     active: row.active,
+    ...(row.starts_on ? { startsOn: row.starts_on } : {}),
     ...(row.weekday != null ? { weekday: row.weekday } : {}),
     ...(row.month_day != null ? { monthDay: row.month_day } : {}),
     ...(row.anchor_date ? { anchorDate: row.anchor_date } : {}),
@@ -31,7 +33,7 @@ export function mapIncomeRule(row: IncomeRuleRow): IncomeRule {
 }
 
 const SELECT =
-  'id, account_id, amount, frequency, weekday, month_day, anchor_date, title, category_id, active'
+  'id, account_id, amount, frequency, weekday, month_day, anchor_date, title, category_id, active, starts_on'
 
 export async function fetchIncomeRules(): Promise<IncomeRule[]> {
   const { data, error } = await supabase.from('income_rules').select(SELECT).order('created_at')
@@ -41,8 +43,9 @@ export async function fetchIncomeRules(): Promise<IncomeRule[]> {
   return (data ?? []).map(mapIncomeRule)
 }
 
-function toRow(input: Omit<IncomeRule, 'id'>, userId: string) {
+function toRow(input: Omit<IncomeRule, 'id'>, userId: string, id?: string) {
   return {
+    ...(id ? { id } : {}),
     account_id: input.accountId,
     amount: Math.round(input.amount),
     frequency: input.frequency,
@@ -52,12 +55,26 @@ function toRow(input: Omit<IncomeRule, 'id'>, userId: string) {
     title: input.title?.trim() || null,
     category_id: input.categoryId ?? null,
     active: input.active,
+    ...(input.startsOn ? { starts_on: input.startsOn } : {}),
     updated_by: userId,
   }
 }
 
-export async function insertIncomeRule(userId: string, input: Omit<IncomeRule, 'id'>): Promise<IncomeRule> {
-  const { data, error } = await supabase.from('income_rules').insert(toRow(input, userId)).select(SELECT).single()
+export async function insertIncomeRule(
+  userId: string,
+  input: Omit<IncomeRule, 'id'> & { id?: string },
+): Promise<IncomeRule> {
+  const { data, error } = await supabase
+    .from('income_rules')
+    .insert(toRow(input, userId, input.id))
+    .select(SELECT)
+    .single()
+  if (error?.code === '23505' && input.id) {
+    const existing = await supabase.from('income_rules').select(SELECT).eq('id', input.id).single()
+    if (existing.data) {
+      return mapIncomeRule(existing.data)
+    }
+  }
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось добавить правило'))
   }

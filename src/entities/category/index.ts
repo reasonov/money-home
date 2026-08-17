@@ -1,3 +1,4 @@
+export { deleteCategory, upsertCategory } from './api/categoryApi'
 export { useCategoryStore } from './model/store'
 export {
   CATEGORY_COLORS,

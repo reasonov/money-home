@@ -425,6 +425,10 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      adjust_account_amount: {
+        Args: { p_account_id: string; p_delta: number }
+        Returns: Database['public']['Tables']['accounts']['Row']
+      }
       adjust_expense_occurrence: {
         Args: { p_new_amount: number; p_occurrence_id: string }
         Returns: Database['public']['Tables']['transactions']['Row']
@@ -446,11 +450,16 @@ export type Database = {
         Returns: undefined
       }
       complete_purchase: {
-        Args: { p_purchase_id: string }
+        Args: { p_purchase_id: string; p_transaction_id?: string }
         Returns: Database['public']['Tables']['purchases']['Row']
       }
       create_account: {
-        Args: { p_category_ids?: string[]; p_name: string; p_opening_amount?: number }
+        Args: {
+          p_category_ids?: string[]
+          p_id?: string
+          p_name: string
+          p_opening_amount?: number
+        }
         Returns: Database['public']['Tables']['accounts']['Row']
       }
       delete_category: {
@@ -502,6 +511,7 @@ export type Database = {
         Args: {
           p_amount: number
           p_from_account_id: string
+          p_id?: string
           p_notes?: string
           p_occurred_on: string
           p_to_account_id: string

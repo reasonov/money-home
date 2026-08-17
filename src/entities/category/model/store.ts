@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { deleteCategory, fetchCategories, upsertCategory } from '../api/categoryApi'
+import { assertWritable, createUuid, enqueueMutation } from '@/shared'
+import { useSessionStore } from '@/entities/session'
+import { fetchCategories } from '../api/categoryApi'
 import type { Category, CategoryKind } from './types'
 
 export const useCategoryStore = defineStore('category', () => {
@@ -34,6 +36,27 @@ export const useCategoryStore = defineStore('category', () => {
     return items.value.find((item) => item.id === id)
   }
 
+  function hydrate(next: Category[]) {
+    items.value = next
+  }
+
+  function bindAccounts(accountId: string, categoryIds: string[]) {
+    const selected = new Set(categoryIds)
+    items.value = items.value.map((cat) => {
+      const has = cat.accountIds.includes(accountId)
+      const want = selected.has(cat.id)
+      if (has === want) {
+        return cat
+      }
+      return {
+        ...cat,
+        accountIds: want
+          ? [...cat.accountIds, accountId]
+          : cat.accountIds.filter((id) => id !== accountId),
+      }
+    })
+  }
+
   async function load() {
     items.value = await fetchCategories()
   }
@@ -46,14 +69,38 @@ export const useCategoryStore = defineStore('category', () => {
     icon: string
     accountIds: string[]
   }) {
-    const category = await upsertCategory(input)
+    assertWritable()
+    const id = input.id ?? createUuid()
+    const category: Category = {
+      id,
+      kind: input.kind,
+      name: input.name,
+      color: input.color,
+      icon: input.icon,
+      accountIds: input.accountIds,
+    }
     upsert(category)
+    const userId = useSessionStore().user?.id
+    if (!userId) {
+      throw new Error('Войдите в аккаунт')
+    }
+    await enqueueMutation(
+      userId,
+      'upsertCategory',
+      { input: { ...input, id } },
+      id,
+    )
     return category
   }
 
   async function remove(id: string) {
-    await deleteCategory(id)
+    assertWritable()
+    const userId = useSessionStore().user?.id
+    if (!userId) {
+      throw new Error('Войдите в аккаунт')
+    }
     removeLocal(id)
+    await enqueueMutation(userId, 'deleteCategory', { id }, id)
   }
 
   function reset() {
@@ -68,6 +115,8 @@ export const useCategoryStore = defineStore('category', () => {
     removeLocal,
     forAccount,
     getById,
+    hydrate,
+    bindAccounts,
     load,
     save,
     remove,

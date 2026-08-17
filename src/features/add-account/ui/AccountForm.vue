@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   AppButton,
   AppField,
@@ -7,6 +7,8 @@ import {
   AppInputNumber,
   AppSelect,
   getErrorMessage,
+  isBrowserOnline,
+  ONLINE_ONLY_MESSAGE,
   showToast,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
@@ -33,6 +35,7 @@ const code = ref('')
 const selected = ref<string[]>(categories.items.map((item) => item.id))
 const error = ref('')
 const pending = ref(false)
+const joinBlocked = computed(() => mode.value === 'join' && !isBrowserOnline())
 
 watch(
   () => props.initialMode,
@@ -46,6 +49,10 @@ async function onSubmit() {
   pending.value = true
   try {
     if (mode.value === 'join') {
+      if (!isBrowserOnline()) {
+        error.value = ONLINE_ONLY_MESSAGE
+        return
+      }
       await accounts.addByCode(code.value)
       showToast('Счёт добавлен')
     } else {
@@ -61,7 +68,6 @@ async function onSubmit() {
       })
       showToast('Счёт создан')
     }
-    await categories.load()
     emit('saved')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить счёт')
@@ -106,11 +112,12 @@ async function onSubmit() {
     </template>
 
     <AppField v-else label="Код счёта" for-id="acc-code" hint="Запросите код у владельца общего счёта">
-      <AppInput id="acc-code" v-model="code" placeholder="ABCD2345" required />
+      <AppInput id="acc-code" v-model="code" placeholder="ABCD2345" required :disabled="joinBlocked" />
     </AppField>
+    <p v-if="joinBlocked" class="error" role="alert">{{ ONLINE_ONLY_MESSAGE }}</p>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
-    <AppButton type="submit" block :disabled="pending">
+    <AppButton type="submit" block :disabled="pending || joinBlocked">
       {{ pending ? 'Сохраняем…' : mode === 'join' ? 'Подключиться' : 'Создать счёт' }}
     </AppButton>
   </form>

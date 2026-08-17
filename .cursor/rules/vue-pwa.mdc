@@ -11,5 +11,5 @@ alwaysApply: false
 - SFCs: `<script setup lang="ts">`. Composition API only.
 - Follow existing Prettier/ESLint (no semicolons, single quotes).
 - Router guards for auth and household onboarding.
-- PWA via `vite-plugin-pwa` when wiring build; v1 is installable cache, not offline-first conflict sync.
+- PWA via `vite-plugin-pwa`: installable shell plus IndexedDB replica and mutation outbox. Server is source of truth after sync; do not add a third-party sync service.
 - Do not invent global CSS frameworks unless the task asks. Keep styles local/scoped unless shared tokens exist.

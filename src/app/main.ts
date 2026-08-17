@@ -48,7 +48,7 @@ async function bootstrap() {
   try {
     await withTimeout(session.init())
     if (session.isAuthenticated) {
-      await withTimeout(bootstrapAccountSession())
+      await bootstrapAccountSession()
     }
   } catch (error) {
     setBootError(getErrorMessage(error, NETWORK_ERROR_MESSAGE))

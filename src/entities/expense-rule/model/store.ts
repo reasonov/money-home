@@ -1,12 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import {
-  deleteExpenseRule,
-  fetchExpenseRules,
-  insertExpenseRule,
-  mapExpenseRule,
-  updateExpenseRule,
-} from '../api/expenseRuleApi'
+import { assertWritable, createUuid, enqueueMutation, todayLocal } from '@/shared'
+import { fetchExpenseRules, mapExpenseRule } from '../api/expenseRuleApi'
 import type { ExpenseRule } from './types'
 
 export const useExpenseRuleStore = defineStore('expense-rule', () => {
@@ -33,6 +28,10 @@ export const useExpenseRuleStore = defineStore('expense-rule', () => {
     upsert(mapExpenseRule(row))
   }
 
+  function hydrate(next: ExpenseRule[]) {
+    items.value = next
+  }
+
   function forAccount(accountId: string) {
     return items.value.filter((item) => item.accountId === accountId)
   }
@@ -42,20 +41,30 @@ export const useExpenseRuleStore = defineStore('expense-rule', () => {
   }
 
   async function addRule(userId: string, input: Omit<ExpenseRule, 'id'>) {
-    const rule = await insertExpenseRule(userId, input)
+    assertWritable()
+    const id = createUuid()
+    const rule: ExpenseRule = { ...input, id, startsOn: input.startsOn ?? todayLocal() }
     upsert(rule)
+    await enqueueMutation(userId, 'insertExpenseRule', { userId, input: { ...rule, id } }, id)
     return rule
   }
 
   async function updateRule(id: string, userId: string, patch: Partial<Omit<ExpenseRule, 'id'>>) {
-    const rule = await updateExpenseRule(id, userId, patch)
+    assertWritable()
+    const current = items.value.find((item) => item.id === id)
+    if (!current) {
+      throw new Error('Правило не найдено')
+    }
+    const rule = { ...current, ...patch }
     upsert(rule)
+    await enqueueMutation(userId, 'updateExpenseRule', { id, userId, patch }, id)
     return rule
   }
 
   async function removeRule(id: string, userId: string) {
-    await deleteExpenseRule(id, userId)
+    assertWritable()
     removeLocal(id)
+    await enqueueMutation(userId, 'deleteExpenseRule', { id, userId }, id)
   }
 
   function reset() {
@@ -68,6 +77,7 @@ export const useExpenseRuleStore = defineStore('expense-rule', () => {
     upsert,
     removeLocal,
     applyRemoteRow,
+    hydrate,
     forAccount,
     load,
     addRule,

@@ -12,6 +12,7 @@ import {
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { CategoryIcon, useCategoryStore } from '@/entities/category'
 import { type Transaction, type TransactionKind } from '@/entities/transaction'
+import { PendingDot } from '@/entities/sync'
 
 const props = defineProps<{
   items: Transaction[]
@@ -184,7 +185,11 @@ const showAuthor = computed(
           :size="32"
         />
         <div class="row__body">
-          <p class="row__title">{{ item.title || item.categoryName || 'Операция' }}</p>
+          <p class="row__title">
+            <PendingDot :entity-id="item.id">
+              {{ item.title || item.categoryName || 'Операция' }}
+            </PendingDot>
+          </p>
           <p class="row__meta">
             {{ accountName(item.accountId) }}
             <template v-if="item.kind === 'transfer' && item.counterpartyAccountId">

@@ -5,6 +5,7 @@ export interface ExpenseRule {
   accountId: string
   amount: number
   frequency: IncomeFrequency
+  startsOn?: string
   weekday?: number
   monthDay?: number
   anchorDate?: string

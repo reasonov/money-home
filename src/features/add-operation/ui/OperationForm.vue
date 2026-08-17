@@ -133,7 +133,6 @@ async function onSubmit() {
       createdBy: session.user!.id,
     })
     saveLastCategoryId(props.kind, category.id)
-    await accounts.load()
     showToast(props.kind === 'expense' ? 'Расход сохранён' : 'Доход сохранён')
     emit('saved')
   } catch (err) {
