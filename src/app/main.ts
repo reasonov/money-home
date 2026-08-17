@@ -10,6 +10,7 @@ import { useSessionStore } from '@/entities/session'
 import { listenForInstallPrompt } from '@/features/install-pwa'
 import { resetProductTour } from '@/features/product-tour'
 import { useThemeStore } from '@/features/theme-switch'
+import { startAppUpdateChecks } from '@/features/update-app'
 import { getErrorMessage, NETWORK_ERROR_MESSAGE } from '@/shared'
 
 import '@/shared/styles/tokens.css'
@@ -43,6 +44,7 @@ async function bootstrap() {
   app.use(pinia)
 
   useThemeStore(pinia).init()
+  startAppUpdateChecks(pinia)
 
   const session = useSessionStore(pinia)
   try {

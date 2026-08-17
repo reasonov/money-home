@@ -15,7 +15,7 @@ import {
 } from '@lucide/vue'
 import { NDrawer, NDrawerContent } from 'naive-ui'
 import { RouterLink, useRouter } from 'vue-router'
-import { AppTag, closeSidebar, formatMoney, openFormDrawer, sidebarOpen } from '@/shared'
+import { APP_VERSION, AppTag, closeSidebar, formatMoney, openFormDrawer, sidebarOpen } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 
 const router = useRouter()
@@ -77,7 +77,10 @@ function openAccount(id: string) {
       }"
     >
       <template #header>
-        <p class="sidebar__brand">Money Home</p>
+        <p class="sidebar__brand">
+          <span>Money Home</span>
+          <span class="sidebar__version">{{ APP_VERSION }}</span>
+        </p>
       </template>
       <nav class="sidebar" aria-label="Разделы">
         <section class="sidebar__block">
@@ -160,12 +163,23 @@ function openAccount(id: string) {
 }
 
 .sidebar__brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-accent);
+}
+
+.sidebar__version {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-text-muted);
 }
 
 .sidebar {

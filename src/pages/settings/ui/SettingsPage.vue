@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
+import { APP_VERSION, AppButton, confirmAction, getErrorMessage, showToast } from '@/shared'
 import { ChangePasswordForm } from '@/features/auth'
 import { EditAccountForm } from '@/features/edit-account'
 import { replayProductTour } from '@/features/product-tour'
 import { ThemeSwitch } from '@/features/theme-switch'
+import { useAppUpdateStore } from '@/features/update-app'
 import { resetAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 
 const router = useRouter()
 const session = useSessionStore()
+const update = useAppUpdateStore()
 
 function replay() {
   replayProductTour()
@@ -57,6 +59,17 @@ async function logout() {
       <ChangePasswordForm />
       <AppButton variant="danger" block @click="logout">Выйти</AppButton>
     </section>
+
+    <p class="settings__version">Версия {{ APP_VERSION }}</p>
+    <AppButton
+      v-if="update.outdated"
+      variant="secondary"
+      block
+      :disabled="update.applying"
+      @click="update.apply"
+    >
+      {{ update.applying ? 'Обновление…' : `Обновить до ${update.latestVersion}` }}
+    </AppButton>
   </div>
 </template>
 
@@ -97,6 +110,13 @@ async function logout() {
 .settings__hint {
   margin: 0;
   font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.settings__version {
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 </style>

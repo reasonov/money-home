@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { closeSidebar, toggleSidebar } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { useProductTour } from '@/features/product-tour'
+import { UpdateBanner } from '@/features/update-app'
 import { AppHeader } from '@/widgets/app-header'
 import { AppSidebar } from '@/widgets/app-sidebar'
 import { AppFormDrawers } from '@/widgets/app-drawers'
@@ -42,6 +43,7 @@ watch(
       </template>
     </AppHeader>
     <SyncStatusBar />
+    <UpdateBanner />
     <main class="shell__main" :class="{ 'has-nav': showNav }">
       <RouterView />
     </main>

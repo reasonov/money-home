@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -17,6 +17,32 @@ const appVersion = fromEnv
   : `v${pkg.version}`
 const base = process.env.VITE_BASE_PATH || '/'
 const normalizedBase = base.endsWith('/') ? base : `${base}/`
+const versionPayload = JSON.stringify({ version: appVersion })
+
+function appVersionJsonPlugin(): Plugin {
+  return {
+    name: 'app-version-json',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? '').split('?')[0]
+        if (path !== '/version.json' && !path.endsWith('/version.json')) {
+          next()
+          return
+        }
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(versionPayload)
+      })
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: versionPayload,
+      })
+    },
+  }
+}
 
 export default defineConfig(({ mode }) => ({
   base: normalizedBase,
@@ -25,6 +51,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     vue(),
+    appVersionJsonPlugin(),
     ...(mode !== 'production' ? [vueDevTools()] : []),
     VitePWA({
       registerType: 'autoUpdate',
@@ -55,6 +82,14 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         navigateFallback: `${normalizedBase}index.html`,
+        globIgnores: ['**/version.json'],
+        navigateFallbackDenylist: [/version\.json/],
+        runtimeCaching: [
+          {
+            urlPattern: /version\.json/,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
     }),
   ],
