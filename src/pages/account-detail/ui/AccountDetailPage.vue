@@ -17,7 +17,7 @@ import {
   showToast,
 } from '@/shared'
 import { useCategoryStore } from '@/entities/category'
-import { useAccountStore } from '@/entities/account'
+import { loadAccountData, useAccountStore } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 import { useSyncStore } from '@/entities/sync'
 import { AccountAvailableHint } from '@/widgets/account-available'
@@ -157,6 +157,21 @@ async function nativeShare() {
   await copyCode(code)
 }
 
+const successor = computed(() => {
+  const userId = session.user?.id
+  return [...members.value]
+    .filter((item) => item.userId !== userId)
+    .sort(
+      (a, b) =>
+        (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '') || a.userId.localeCompare(b.userId),
+    )[0]
+})
+
+async function afterRemoved() {
+  await loadAccountData()
+  await router.push('/')
+}
+
 async function leave() {
   if (!sync.online) {
     error.value = ONLINE_ONLY_MESSAGE
@@ -171,9 +186,39 @@ async function leave() {
   if (!ok) return
   try {
     await accounts.leave(id.value)
-    await router.push('/')
+    await afterRemoved()
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось покинуть счёт')
+  }
+}
+
+async function removeAccount() {
+  if (!sync.online) {
+    error.value = ONLINE_ONLY_MESSAGE
+    return
+  }
+  const shared = accounts.isShared(id.value)
+  const ok = await confirmAction(
+    shared
+      ? {
+          title: 'Удалить счёт?',
+          message: `Счёт останется у участников. Владельцем станет ${successor.value?.displayName ?? 'участник'}. Вы перестанете его видеть.`,
+          confirmLabel: 'Удалить',
+          danger: true,
+        }
+      : {
+          title: 'Удалить счёт?',
+          message: 'Счёт и все его операции, покупки и правила будут удалены.',
+          confirmLabel: 'Удалить',
+          danger: true,
+        },
+  )
+  if (!ok) return
+  try {
+    await accounts.deleteAccount(id.value)
+    await afterRemoved()
+  } catch (err) {
+    error.value = getErrorMessage(err, 'Не удалось удалить счёт')
   }
 }
 </script>
@@ -242,6 +287,9 @@ async function leave() {
       </div>
       <AppButton v-if="!isOwner" variant="danger" block :disabled="!sync.online" @click="leave">
         Покинуть счёт
+      </AppButton>
+      <AppButton v-else variant="danger" block :disabled="!sync.online" @click="removeAccount">
+        Удалить счёт
       </AppButton>
     </section>
 

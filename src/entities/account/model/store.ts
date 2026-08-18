@@ -10,10 +10,10 @@ import {
 import { useSessionStore } from '@/entities/session'
 import { useCategoryStore } from '@/entities/category'
 import {
+  deleteAccount as deleteAccountRemote,
   fetchAccountMembers,
   fetchAccounts,
   joinAccount,
-  leaveAccount,
   mapAccount,
   shareAccount,
 } from '../api/accountApi'
@@ -130,7 +130,12 @@ export const useAccountStore = defineStore('account', () => {
     upsert(account)
     members.value = [
       ...members.value,
-      { accountId: id, userId, displayName: session.user?.displayName || 'Участник' },
+      {
+        accountId: id,
+        userId,
+        displayName: session.user?.displayName || 'Участник',
+        joinedAt: new Date().toISOString(),
+      },
     ]
     if (input.categoryIds?.length) {
       useCategoryStore().bindAccounts(id, input.categoryIds)
@@ -242,11 +247,15 @@ export const useAccountStore = defineStore('account', () => {
     }
   }
 
-  async function leave(accountId: string) {
+  async function deleteAccount(accountId: string) {
     assertOnline()
     assertWritable()
-    await leaveAccount(accountId)
+    await deleteAccountRemote(accountId)
     remove(accountId)
+  }
+
+  async function leave(accountId: string) {
+    await deleteAccount(accountId)
   }
 
   function reset() {
@@ -282,6 +291,7 @@ export const useAccountStore = defineStore('account', () => {
     saveAccount,
     bindCategories,
     transfer,
+    deleteAccount,
     leave,
     reset,
   }

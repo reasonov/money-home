@@ -34,7 +34,9 @@ export async function fetchAccounts(): Promise<Account[]> {
 }
 
 export async function fetchAccountMembers(): Promise<AccountMember[]> {
-  const { data, error } = await supabase.from('account_members').select('account_id, user_id')
+  const { data, error } = await supabase
+    .from('account_members')
+    .select('account_id, user_id, created_at')
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось загрузить участников'))
@@ -63,6 +65,7 @@ export async function fetchAccountMembers(): Promise<AccountMember[]> {
     accountId: row.account_id,
     userId: row.user_id,
     displayName: names.get(row.user_id) || 'Участник',
+    joinedAt: row.created_at,
   }))
 }
 
@@ -107,6 +110,13 @@ export async function leaveAccount(accountId: string): Promise<void> {
   const { error } = await supabase.rpc('leave_account', { p_account_id: accountId })
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось покинуть счёт'))
+  }
+}
+
+export async function deleteAccount(accountId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_account', { p_account_id: accountId })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось удалить счёт'))
   }
 }
 

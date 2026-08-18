@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { AppButton, AppEmpty, AppPeriodSelect, openFormDrawer, todayLocal } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
@@ -11,13 +12,48 @@ import {
 } from '@/entities/transaction'
 import { TransactionList } from '@/widgets/transaction-list'
 
+const CHART_PERIODS: ChartPeriod[] = ['day', 'week', 'month', 'year', 'custom']
+
+const route = useRoute()
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const transactions = useTransactionStore()
 
-const period = ref<ChartPeriod>('month')
-const customFrom = ref(todayLocal().slice(0, 8) + '01')
-const customTo = ref(todayLocal())
+function queryParam(key: string): string {
+  const value = route.query[key]
+  return typeof value === 'string' ? value : ''
+}
+
+function periodFromQuery(): ChartPeriod {
+  const value = queryParam('period')
+  return CHART_PERIODS.includes(value as ChartPeriod) ? (value as ChartPeriod) : 'month'
+}
+
+const period = ref<ChartPeriod>(periodFromQuery())
+const customFrom = ref(queryParam('from') || todayLocal().slice(0, 8) + '01')
+const customTo = ref(queryParam('to') || todayLocal())
+const listKind = ref<'expense' | 'income' | undefined>(undefined)
+const listCategoryId = ref<string | undefined>(undefined)
+
+function applyQuery() {
+  period.value = periodFromQuery()
+  const from = queryParam('from')
+  const to = queryParam('to')
+  if (from) customFrom.value = from
+  if (to) customTo.value = to
+  const kind = queryParam('kind')
+  listKind.value = kind === 'expense' || kind === 'income' ? kind : undefined
+  listCategoryId.value = queryParam('category') || undefined
+}
+
+applyQuery()
+
+watch(
+  () => route.query,
+  () => {
+    applyQuery()
+  },
+)
 
 const periodLabel = computed(() =>
   formatPeriodLabel(period.value, undefined, {
@@ -66,7 +102,11 @@ const periodItems = computed(() => {
         />
       </div>
 
-      <TransactionList :items="periodItems" />
+      <TransactionList
+        :items="periodItems"
+        :initial-kind="listKind"
+        :initial-category-id="listCategoryId"
+      />
     </template>
   </div>
 </template>

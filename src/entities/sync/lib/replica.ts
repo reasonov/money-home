@@ -40,7 +40,10 @@ export function hydrateStores(payload: ReplicaPayload): void {
       amount: normalizeAccountAmount(account.amount),
       excludeFromTotal: Boolean(account.excludeFromTotal),
     })),
-    payload.members,
+    payload.members.map((item) => ({
+      ...item,
+      joinedAt: item.joinedAt ?? '',
+    })),
     payload.selectedAccountId,
   )
   useCategoryStore().hydrate(payload.categories)

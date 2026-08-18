@@ -21,6 +21,10 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  legendClick: [slice: CategorySpendSlice]
+}>()
+
 const theme = useChartTheme()
 const selectedIndex = ref<number | null>(null)
 const total = computed(() => props.slices.reduce((sum, slice) => sum + slice.amount, 0))
@@ -60,6 +64,14 @@ function onChartClick(_event: ChartEvent, elements: ActiveElement[]) {
     return
   }
   selectIndex(elements[0]?.index ?? null)
+}
+
+function onLegendClick(index: number) {
+  const slice = props.slices[index]
+  if (slice) {
+    emit('legendClick', slice)
+  }
+  selectIndex(index)
 }
 
 const chartData = computed<ChartData<'doughnut'>>(() => ({
@@ -124,7 +136,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
             type="button"
             class="legend__item"
             :class="{ 'is-active': selectedIndex === index }"
-            @click="selectIndex(index)"
+            @click="onLegendClick(index)"
           >
             <span
               class="legend__dot"
@@ -133,6 +145,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
             />
             <span class="legend__name">{{ slice.name }}</span>
             <span class="legend__amount">{{ formatMoney(slice.amount) }}</span>
+            <span class="legend__share">{{ formatShare(slice.amount, total) }}</span>
           </button>
         </li>
       </ul>
@@ -201,7 +214,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 .legend {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 0;
   margin-top: var(--space-4);
   padding: 0;
   list-style: none;
@@ -225,11 +238,12 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .legend__item {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto 5ch;
+  column-gap: var(--space-2);
   align-items: center;
-  gap: var(--space-2);
   width: 100%;
-  min-height: 44px;
+  min-height: 32px;
   margin: 0;
   padding: 0 var(--space-1);
   border: 0;
@@ -246,21 +260,27 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .legend__dot {
-  flex-shrink: 0;
   width: 10px;
   height: 10px;
   border-radius: 3px;
 }
 
 .legend__name {
-  flex: 1;
   min-width: 0;
   font-size: 0.875rem;
 }
 
-.legend__amount {
+.legend__amount,
+.legend__share {
   font-size: 0.875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.legend__share {
+  width: 5ch;
+  color: var(--color-text-muted);
 }
 </style>

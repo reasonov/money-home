@@ -512,6 +512,10 @@ export type Database = {
         }
         Returns: Database['public']['Tables']['accounts']['Row']
       }
+      delete_account: {
+        Args: { p_account_id: string }
+        Returns: undefined
+      }
       delete_category: {
         Args: { p_id: string }
         Returns: undefined

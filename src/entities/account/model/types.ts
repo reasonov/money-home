@@ -11,4 +11,5 @@ export interface AccountMember {
   accountId: string
   userId: string
   displayName: string
+  joinedAt: string
 }

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ChevronRight, Plus } from '@lucide/vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import {
   AppButton,
   AppEmpty,
@@ -18,6 +18,7 @@ import {
   formatPeriodLabel,
   totalsByCategory,
   useTransactionStore,
+  type CategorySpendSlice,
   type ChartPeriod,
 } from '@/entities/transaction'
 import { InstallHint } from '@/features/install-pwa'
@@ -27,6 +28,7 @@ import { UpcomingEvents } from '@/widgets/upcoming-events'
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const transactions = useTransactionStore()
+const router = useRouter()
 
 const period = ref<ChartPeriod>('month')
 const kind = ref<'expense' | 'income'>('expense')
@@ -64,6 +66,20 @@ const totalLabel = computed(() =>
     ? 'Всего на счетах'
     : (accounts.selectedAccount?.name ?? 'Счёт'),
 )
+
+function openCategoryHistory(slice: CategorySpendSlice) {
+  void router.push({
+    name: 'history',
+    query: {
+      category: slice.categoryId ?? 'none',
+      kind: kind.value,
+      period: period.value,
+      ...(period.value === 'custom'
+        ? { from: customFrom.value, to: customTo.value }
+        : {}),
+    },
+  })
+}
 </script>
 
 <template>
@@ -126,6 +142,7 @@ const totalLabel = computed(() =>
           embedded
           :slices="slices"
           :center-label="centerLabel"
+          @legend-click="openCategoryHistory"
         />
         <AppEmpty v-else :description="emptyText" />
       </section>

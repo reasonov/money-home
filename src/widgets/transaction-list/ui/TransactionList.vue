@@ -16,6 +16,8 @@ import { PendingDot } from '@/entities/sync'
 
 const props = defineProps<{
   items: Transaction[]
+  initialKind?: 'expense' | 'income'
+  initialCategoryId?: string
 }>()
 
 const accounts = useAccountStore()
@@ -25,6 +27,15 @@ const categories = useCategoryStore()
 const kind = ref<'all' | TransactionKind | 'income_rule' | 'expense_rule'>('all')
 const categoryId = ref('all')
 const query = ref('')
+
+watch(
+  () => [props.initialKind, props.initialCategoryId] as const,
+  ([nextKind, nextCategory]) => {
+    kind.value = nextKind ?? 'all'
+    categoryId.value = nextCategory ?? 'all'
+  },
+  { immediate: true },
+)
 
 const kindOptions: { value: 'all' | TransactionKind | 'income_rule' | 'expense_rule'; label: string }[] = [
   { value: 'all', label: 'Все' },
@@ -71,7 +82,7 @@ const categoryOptions = computed(() => {
 
 watch(categoryOptions, (options) => {
   if (categoryId.value !== 'all' && categoryId.value !== 'none') {
-    if (!options.some((item) => item.id === categoryId.value)) {
+    if (options.length && !options.some((item) => item.id === categoryId.value)) {
       categoryId.value = 'all'
     }
   }
