@@ -151,6 +151,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
       amount: purchase.amount,
       occurredOn: purchase.plannedDate,
       createdBy: purchase.createdBy,
+      createdAt: new Date().toISOString(),
       title: purchase.title,
       ...(purchase.categoryId ? { categoryId: purchase.categoryId } : {}),
       ...(purchase.categoryName ? { categoryName: purchase.categoryName } : {}),

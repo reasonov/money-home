@@ -31,6 +31,7 @@ watch(
   () => route.fullPath,
   () => {
     closeSidebar()
+    window.scrollTo(0, 0)
   },
 )
 </script>

@@ -18,4 +18,5 @@ export interface Transaction {
   occurredOn: string
   notes?: string
   createdBy: string
+  createdAt?: string
 }

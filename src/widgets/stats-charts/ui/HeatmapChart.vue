@@ -75,7 +75,7 @@ function label(day: HeatmapDay) {
 <template>
   <section class="card" :class="{ 'is-embedded': embedded }">
     <h2 class="card__title">Расходы по дням</h2>
-    <p v-if="capped" class="card__hint">Показаны последние 90 дней</p>
+    <p v-if="capped" class="card__hint">Показан последний год</p>
 
     <div class="week week--head" aria-hidden="true">
       <span v-for="item in WEEKDAY_LABELS" :key="item" class="head">{{ item }}</span>
@@ -85,26 +85,27 @@ function label(day: HeatmapDay) {
       <div v-for="(week, index) in weeks" :key="week.days[0]?.date ?? index" class="month">
         <p v-if="week.monthLabel" class="month__label">{{ week.monthLabel }}</p>
         <div class="week">
-          <button
-            v-for="day in week.days"
-            :key="day.date"
-            class="cell"
-            :class="[
-              `level-${level(day.amount)}`,
-              {
-                'is-out': !day.inPeriod,
-                'is-future': day.isFuture,
-                'is-selected': selectedDate === day.date,
-              },
-            ]"
-            type="button"
-            :disabled="!canSelect(day)"
-            :aria-pressed="selectedDate === day.date"
-            :aria-label="label(day)"
-            @click="pick(day)"
-          >
-            {{ day.day }}
-          </button>
+          <template v-for="day in week.days" :key="day.date">
+            <span v-if="!day.inPeriod" class="cell cell--empty" aria-hidden="true" />
+            <button
+              v-else
+              class="cell"
+              :class="[
+                `level-${level(day.amount)}`,
+                {
+                  'is-future': day.isFuture,
+                  'is-selected': selectedDate === day.date,
+                },
+              ]"
+              type="button"
+              :disabled="!canSelect(day)"
+              :aria-pressed="selectedDate === day.date"
+              :aria-label="label(day)"
+              @click="pick(day)"
+            >
+              {{ day.day }}
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -216,10 +217,15 @@ function label(day: HeatmapDay) {
   cursor: default;
 }
 
-.cell.is-out,
 .cell.is-future {
   color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+}
+
+.cell--empty {
+  min-height: 44px;
   background: transparent;
+  pointer-events: none;
 }
 
 .cell.is-selected {

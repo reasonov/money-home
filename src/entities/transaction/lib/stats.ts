@@ -65,7 +65,7 @@ export interface HeatmapWeek {
   monthLabel?: string
 }
 
-const HEATMAP_MAX_DAYS = 90
+const HEATMAP_MAX_DAYS = 366
 
 const WEEKDAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -566,9 +566,8 @@ export function heatmapWindow(
   asOf = todayLocal(),
   items: Transaction[] = [],
 ): { from: string; to: string; capped: boolean } {
-  const clamped = clampRangeToAsOf(range, asOf)
-  const to = clamped.to ?? asOf
-  let from = clamped.from
+  let to = range.to ?? asOf
+  let from = range.from
   if (!from) {
     const dates = items.map((item) => item.occurredOn).sort()
     from = dates[0] ?? to
@@ -578,9 +577,10 @@ export function heatmapWindow(
   }
   const span = daysBetween(parseLocalDate(from), parseLocalDate(to)) + 1
   if (span > HEATMAP_MAX_DAYS) {
+    const capTo = to > asOf ? asOf : to
     return {
-      from: formatLocalDate(addDays(parseLocalDate(to), 1 - HEATMAP_MAX_DAYS)),
-      to,
+      from: formatLocalDate(addDays(parseLocalDate(capTo), 1 - HEATMAP_MAX_DAYS)),
+      to: capTo,
       capped: true,
     }
   }
@@ -615,7 +615,7 @@ export function heatmapWeeks(
     })
 
     if (days.length === 7) {
-      const firstOfMonth = days.find((item) => item.day === 1)
+      const firstOfMonth = days.find((item) => item.day === 1 && item.inPeriod)
       const monthSource = firstOfMonth
         ? parseLocalDate(firstOfMonth.date)
         : weeks.length === 0

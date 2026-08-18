@@ -463,21 +463,29 @@ describe('expensesByDay', () => {
 })
 
 describe('heatmapWindow', () => {
-  it('clamps the current month to asOf', () => {
+  it('keeps the full selected month, including days after asOf', () => {
     expect(heatmapWindow({ from: '2026-08-01', to: '2026-08-31' }, '2026-08-14')).toEqual({
       from: '2026-08-01',
-      to: '2026-08-14',
+      to: '2026-08-31',
       capped: false,
     })
   })
 
-  it('caps a long range to 90 days', () => {
+  it('keeps a full calendar year', () => {
+    expect(heatmapWindow({ from: '2026-01-01', to: '2026-12-31' }, '2026-08-14')).toEqual({
+      from: '2026-01-01',
+      to: '2026-12-31',
+      capped: false,
+    })
+  })
+
+  it('caps a longer range to one year', () => {
     expect(
       heatmapWindow({}, '2026-08-14', [
         tx({ id: 'e1', kind: 'expense', amount: 10, occurredOn: '2025-01-01' }),
       ]),
     ).toEqual({
-      from: '2026-05-17',
+      from: '2025-08-14',
       to: '2026-08-14',
       capped: true,
     })
@@ -499,13 +507,17 @@ describe('heatmapWeeks', () => {
     expect(weeks[0]?.days[0]?.date).toBe('2026-07-27')
     expect(weeks[0]?.days[0]?.inPeriod).toBe(false)
     expect(weeks[0]?.monthLabel).toBe('Август')
-    expect(weeks[weeks.length - 1]?.days[6]?.date).toBe('2026-08-16')
+    expect(weeks[weeks.length - 1]?.days[6]?.date).toBe('2026-09-06')
+    expect(weeks[weeks.length - 1]?.monthLabel).toBeUndefined()
 
     const tenth = weeks.flatMap((week) => week.days).find((day) => day.date === '2026-08-10')
     expect(tenth).toMatchObject({ amount: 100, inPeriod: true, isFuture: false })
 
     const future = weeks.flatMap((week) => week.days).find((day) => day.date === '2026-08-15')
-    expect(future).toMatchObject({ inPeriod: false, amount: 0 })
+    expect(future).toMatchObject({ inPeriod: true, isFuture: true, amount: 0 })
+
+    const augustDays = weeks.flatMap((week) => week.days).filter((day) => day.inPeriod)
+    expect(augustDays).toHaveLength(31)
   })
 })
 

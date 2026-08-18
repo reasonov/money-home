@@ -118,7 +118,15 @@ const groups = computed(() => {
     list.push(item)
     map.set(item.occurredOn, list)
   }
-  return [...map.entries()].map(([date, items]) => ({ date, items }))
+  return [...map.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, items]) => ({
+      date,
+      items: [...items].sort(
+        (a, b) =>
+          (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.id.localeCompare(a.id),
+      ),
+    }))
 })
 
 const emptyText = computed(() => {

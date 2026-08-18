@@ -38,22 +38,61 @@ const selected = ref<string[]>([])
 const error = ref('')
 const pending = ref(false)
 const settingsOpen = ref(false)
+const excludePending = ref(false)
 
 const members = computed(() => accounts.membersOf(id.value))
 const isOwner = computed(() => account.value?.ownerId === session.user?.id)
 const canTransfer = computed(() => accounts.items.length > 1)
 
 watch(
-  [account, () => categories.items],
-  ([next]) => {
+  () =>
+    account.value && {
+      id: account.value.id,
+      name: account.value.name,
+      amount: account.value.amount,
+      excludeFromTotal: account.value.excludeFromTotal,
+    },
+  (next) => {
     if (!next) return
     name.value = next.name
     amount.value = next.amount
     excludeFromTotal.value = next.excludeFromTotal
-    selected.value = categories.forAccount(next.id).map((item) => item.id)
   },
   { immediate: true },
 )
+
+watch(
+  [() => account.value?.id, () => categories.items],
+  () => {
+    if (!account.value) return
+    selected.value = categories.forAccount(account.value.id).map((item) => item.id)
+  },
+  { immediate: true },
+)
+
+function memberInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
+}
+
+async function setExcludeFromTotal(value: boolean) {
+  const current = account.value
+  const userId = session.user?.id
+  if (!current || !userId || excludePending.value) return
+  excludeFromTotal.value = value
+  if (current.excludeFromTotal === value) return
+  excludePending.value = true
+  try {
+    await accounts.saveAccount(id.value, userId, { excludeFromTotal: value })
+  } catch (err) {
+    excludeFromTotal.value = current.excludeFromTotal
+    error.value = getErrorMessage(err, 'Не удалось сохранить')
+  } finally {
+    excludePending.value = false
+  }
+}
 
 async function save() {
   error.value = ''
@@ -174,12 +213,19 @@ async function leave() {
 
     <section class="block">
       <h2>Участники</h2>
-      <p v-for="member in members" :key="member.userId" class="member">
-        <span class="member__name">{{ member.displayName }}</span>
-        <AppTag v-if="member.userId === session.user?.id" type="info">вы</AppTag>
-        <AppTag v-if="member.userId === account.ownerId" type="default">владелец</AppTag>
-      </p>
-      <div data-tour="account-share">
+      <ul class="members">
+        <li v-for="member in members" :key="member.userId" class="member">
+          <span class="member__avatar" aria-hidden="true">{{ memberInitials(member.displayName) }}</span>
+          <span class="member__body">
+            <span class="member__name">{{ member.displayName }}</span>
+            <span class="member__tags">
+              <AppTag v-if="member.userId === session.user?.id" type="info">вы</AppTag>
+              <AppTag v-if="member.userId === account.ownerId" type="default">владелец</AppTag>
+            </span>
+          </span>
+        </li>
+      </ul>
+      <div class="share" data-tour="account-share">
         <template v-if="account.inviteCode">
           <p class="share-hint">
             Отправьте этот код человеку — он добавит тот же счёт у себя, не копию.
@@ -213,12 +259,19 @@ async function leave() {
         <AppField label="Баланс, ₽" for-id="d-amount">
           <AppInputNumber id="d-amount" v-model="amount" :min="0" />
         </AppField>
-        <div class="exclude">
+        <div class="exclude" @click="setExcludeFromTotal(!excludeFromTotal)">
           <span class="exclude__text">
             <span class="exclude__label">Не учитывать в общем балансе</span>
             <span class="exclude__hint">Не входит в сумму «все счета» на главной</span>
           </span>
-          <AppSwitch v-model="excludeFromTotal" aria-label="Не учитывать в общем балансе" />
+          <span @click.stop>
+            <AppSwitch
+              :checked="excludeFromTotal"
+              :loading="excludePending"
+              aria-label="Не учитывать в общем балансе"
+              @update:checked="setExcludeFromTotal"
+            />
+          </span>
         </div>
         <AppField v-if="categories.items.length" label="Категории счёта" for-id="d-cats">
           <AppSelect
@@ -300,23 +353,76 @@ async function leave() {
   gap: var(--space-3);
 }
 
+.members {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
 .member {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 52px;
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.member:first-child {
+  border-top: 0;
+}
+
+.member__avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.member__body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
   min-width: 0;
-  min-height: 44px;
 }
 
 .member__name {
   min-width: 0;
   overflow: hidden;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.member :deep(.n-tag) {
+.member__tags {
+  display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
 }
 
 .share-hint {
@@ -326,9 +432,13 @@ async function leave() {
 }
 
 .code {
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.06em;
+  text-align: center;
 }
 
 .share-actions,
@@ -343,6 +453,7 @@ async function leave() {
   align-items: center;
   gap: var(--space-3);
   min-height: 44px;
+  cursor: pointer;
 }
 
 .exclude__text {

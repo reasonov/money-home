@@ -62,6 +62,7 @@ export function applyDueSimulation(): void {
         amount: rule.amount,
         occurredOn: iso,
         createdBy: userId,
+        createdAt: new Date().toISOString(),
         ...(rule.title ? { title: rule.title } : { title: 'Авто-пополнение' }),
         ...(category
           ? {
@@ -106,6 +107,7 @@ export function applyDueSimulation(): void {
         amount: rule.amount,
         occurredOn: iso,
         createdBy: userId,
+        createdAt: new Date().toISOString(),
         ...(rule.title ? { title: rule.title } : { title: 'Регулярный расход' }),
         ...(category
           ? {

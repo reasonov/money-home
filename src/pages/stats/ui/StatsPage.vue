@@ -204,7 +204,7 @@ function formatShare(value: number | null) {
 function formatDelta(current: number, previous: number) {
   const delta = current - previous
   if (delta === 0) {
-    return 'без изменений к прошлому периоду'
+    return ''
   }
   return `${delta > 0 ? '+' : '−'}${formatMoney(Math.abs(delta))}`
 }
@@ -251,7 +251,7 @@ function deltaClass(current: number, previous: number, invert = false) {
             <p class="summary__label">Расходы</p>
             <p class="summary__value is-out">{{ formatMoney(summary.expenseTotal) }}</p>
             <p
-              v-if="previousSummary"
+              v-if="previousSummary && formatDelta(summary.expenseTotal, previousSummary.expenseTotal)"
               class="summary__delta"
               :class="deltaClass(summary.expenseTotal, previousSummary.expenseTotal, true)"
             >
@@ -262,7 +262,7 @@ function deltaClass(current: number, previous: number, invert = false) {
             <p class="summary__label">Доходы</p>
             <p class="summary__value is-in">{{ formatMoney(summary.incomeTotal) }}</p>
             <p
-              v-if="previousSummary"
+              v-if="previousSummary && formatDelta(summary.incomeTotal, previousSummary.incomeTotal)"
               class="summary__delta"
               :class="deltaClass(summary.incomeTotal, previousSummary.incomeTotal)"
             >
@@ -275,7 +275,7 @@ function deltaClass(current: number, previous: number, invert = false) {
               {{ formatMoney(summary.net) }}
             </p>
             <p
-              v-if="previousSummary"
+              v-if="previousSummary && formatDelta(summary.net, previousSummary.net)"
               class="summary__delta"
               :class="deltaClass(summary.net, previousSummary.net)"
             >

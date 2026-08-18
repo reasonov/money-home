@@ -24,7 +24,12 @@ export const useTransactionStore = defineStore('transaction', () => {
   const posted = computed(() =>
     items.value
       .filter((item) => item.status === 'posted')
-      .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn)),
+      .sort(
+        (a, b) =>
+          b.occurredOn.localeCompare(a.occurredOn) ||
+          (b.createdAt ?? '').localeCompare(a.createdAt ?? '') ||
+          b.id.localeCompare(a.id),
+      ),
   )
 
   function upsert(tx: Transaction) {
@@ -160,6 +165,7 @@ export const useTransactionStore = defineStore('transaction', () => {
       amount,
       occurredOn: input.occurredOn,
       createdBy: input.createdBy,
+      createdAt: new Date().toISOString(),
       ...(input.categoryId ? { categoryId: input.categoryId } : {}),
       ...(input.categoryName ? { categoryName: input.categoryName } : {}),
       ...(input.categoryColor ? { categoryColor: input.categoryColor } : {}),

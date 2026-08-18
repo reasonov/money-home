@@ -85,6 +85,7 @@ async function onSubmit() {
       amount: local.amount,
       occurredOn: local.occurredOn,
       createdBy: local.userId,
+      createdAt: new Date().toISOString(),
       title: 'Перевод',
       ...(local.notes ? { notes: local.notes } : {}),
     })

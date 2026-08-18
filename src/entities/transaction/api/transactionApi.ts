@@ -22,6 +22,7 @@ type TransactionRow = {
   occurred_on: string
   notes: string | null
   created_by: string
+  created_at?: string
 }
 
 export function mapTransaction(row: TransactionRow): Transaction {
@@ -36,6 +37,7 @@ export function mapTransaction(row: TransactionRow): Transaction {
     amount: Math.round(Number(row.amount)),
     occurredOn: row.occurred_on,
     createdBy: row.created_by,
+    ...(row.created_at ? { createdAt: row.created_at } : {}),
     ...(row.counterparty_account_id ? { counterpartyAccountId: row.counterparty_account_id } : {}),
     ...(row.category_id ? { categoryId: row.category_id } : {}),
     ...(row.category_name ? { categoryName: row.category_name } : {}),
@@ -47,7 +49,7 @@ export function mapTransaction(row: TransactionRow): Transaction {
 }
 
 const SELECT =
-  'id, account_id, counterparty_account_id, kind, status, source, category_id, category_name, category_color, category_icon, title, amount, occurred_on, notes, created_by'
+  'id, account_id, counterparty_account_id, kind, status, source, category_id, category_name, category_color, category_icon, title, amount, occurred_on, notes, created_by, created_at'
 
 export async function fetchTransactions(): Promise<Transaction[]> {
   const { data, error } = await supabase
