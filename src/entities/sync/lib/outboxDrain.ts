@@ -8,6 +8,7 @@ import {
 import { deleteCategory, upsertCategory } from '@/entities/category'
 import { deleteExpenseRule, insertExpenseRule, updateExpenseRule } from '@/entities/expense-rule'
 import { deleteIncomeRule, insertIncomeRule, updateIncomeRule } from '@/entities/income-rule'
+import { deleteOperationTemplate, upsertOperationTemplate, type OperationTemplateInput } from '@/entities/operation-template'
 import {
   cancelPurchase,
   completePurchase,
@@ -168,12 +169,19 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       }
       return
     }
-    default: {
-      const type = String(item.type)
-      if (type === 'insertOperationTemplate' || type === 'deleteOperationTemplate') {
+    case 'upsertOperationTemplate':
+      await upsertOperationTemplate(
+        String(payload.userId),
+        payload.input as OperationTemplateInput,
+      )
+      return
+    case 'deleteOperationTemplate':
+      await deleteOperationTemplate(String(payload.id))
+      return
+    default:
+      if (String(item.type) === 'insertOperationTemplate') {
         return
       }
       throw new Error(`Unknown outbox type: ${item.type}`)
-    }
   }
 }

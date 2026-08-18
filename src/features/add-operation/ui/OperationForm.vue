@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Plus } from '@lucide/vue'
+import { Bookmark, Plus } from '@lucide/vue'
 import {
   AppButton,
   AppDrawer,
@@ -31,6 +31,11 @@ import {
 import { usePreferencesStore } from '@/entities/preferences'
 import { useSessionStore } from '@/entities/session'
 import { matchOperationsByAmount, useTransactionStore, type Transaction } from '@/entities/transaction'
+import {
+  TemplatePicker,
+  useOperationTemplateStore,
+  type OperationTemplate,
+} from '@/entities/operation-template'
 
 const props = defineProps<{
   kind: CategoryKind
@@ -45,6 +50,7 @@ const session = useSessionStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const transactions = useTransactionStore()
+const templates = useOperationTemplateStore()
 const prefs = usePreferencesStore()
 
 const accountId = ref(
@@ -58,6 +64,8 @@ const notes = ref('')
 const error = ref('')
 const pending = ref(false)
 const createOpen = ref(false)
+const templatesOpen = ref(false)
+const savingTemplate = ref(false)
 
 const availableCats = computed(() => categories.forAccount(accountId.value, props.kind))
 
@@ -127,6 +135,70 @@ function applyMatch(item: Transaction) {
   amountFocused.value = false
 }
 
+function applyTemplate(item: OperationTemplate) {
+  amount.value = item.amount
+  title.value = item.title ?? ''
+  notes.value = item.notes ?? ''
+  if (availableCats.value.some((cat) => cat.id === item.categoryId)) {
+    categoryId.value = item.categoryId
+  }
+  templatesOpen.value = false
+}
+
+const canSaveTemplate = computed(() => {
+  const value = Number(amount.value)
+  return Boolean(categoryId.value && Number.isFinite(value) && value > 0)
+})
+
+const matchingTemplate = computed(() => {
+  if (!canSaveTemplate.value) {
+    return null
+  }
+  const amountValue = Math.round(Number(amount.value))
+  const titleValue = title.value.trim()
+  const notesValue = notes.value.trim()
+  return (
+    templates.forKind(props.kind).find(
+      (item) =>
+        item.categoryId === categoryId.value &&
+        item.amount === amountValue &&
+        (item.title ?? '') === titleValue &&
+        (item.notes ?? '') === notesValue,
+    ) ?? null
+  )
+})
+
+const inFavorites = computed(() => Boolean(matchingTemplate.value))
+
+async function toggleCurrentTemplate() {
+  if (!canSaveTemplate.value || savingTemplate.value) {
+    return
+  }
+  const existing = matchingTemplate.value
+  savingTemplate.value = true
+  try {
+    if (existing) {
+      await templates.remove(existing.id)
+      showToast('Удалено из избранного')
+    } else {
+      await templates.save({
+        kind: props.kind,
+        categoryId: categoryId.value,
+        amount: Number(amount.value),
+        title: title.value,
+        notes: notes.value,
+      })
+      showToast('Добавлено в избранное')
+    }
+  } catch (err) {
+    showToast(
+      getErrorMessage(err, existing ? 'Не удалось удалить избранное' : 'Не удалось сохранить избранное'),
+    )
+  } finally {
+    savingTemplate.value = false
+  }
+}
+
 function onCategoryCreated(category: Category) {
   saveLastCategoryId(props.kind, category.id)
   categoryId.value = category.id
@@ -173,6 +245,21 @@ async function onSubmit() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
+    <div class="form__fav">
+      <AppButton type="button" variant="secondary" class="form__fav-fill" @click="templatesOpen = true">
+        Заполнить из избранного
+      </AppButton>
+      <AppButton
+        type="button"
+        class="form__fav-add"
+        :aria-label="inFavorites ? 'Удалить из избранного' : 'Добавить в избранное'"
+        :aria-pressed="inFavorites"
+        :disabled="!canSaveTemplate || savingTemplate"
+        @click="toggleCurrentTemplate"
+      >
+        <Bookmark :size="20" :stroke-width="2.2" :fill="inFavorites ? 'currentColor' : 'none'" />
+      </AppButton>
+    </div>
     <AppField class="amount-field" label="Сумма, ₽" for-id="op-amount">
       <div class="amount" @focusin="amountFocused = true" @focusout="onAmountFocusOut">
         <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
@@ -242,6 +329,10 @@ async function onSubmit() {
     </AppButton>
   </form>
 
+  <AppDrawer v-model:open="templatesOpen" title="Избранное" height="90%">
+    <TemplatePicker v-if="templatesOpen" :kind="kind" @select="applyTemplate" />
+  </AppDrawer>
+
   <AppDrawer v-model:open="createOpen" title="Новая категория" height="90%">
     <CategoryForm
       v-if="createOpen"
@@ -258,6 +349,26 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.form__fav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.form__fav :deep(.form__fav-fill) {
+  flex: 1;
+  min-width: 0;
+}
+
+.form__fav :deep(.form__fav-add) {
+  flex-shrink: 0;
+  width: 44px;
+  min-width: 44px;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .amount-field :deep(.n-form-item-blank) {

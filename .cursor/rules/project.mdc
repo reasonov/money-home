@@ -5,9 +5,10 @@ alwaysApply: true
 
 # money-home
 
-- Product spec: `docs/SPEC.md`. Read it before domain work.
 - Stack: Vue 3 + Vite + TS + Pinia + Vue Router + PWA; FSD; Supabase (Auth, Postgres, RLS, Realtime).
-- Currency: RUB. UI copy: Russian. Code/DB identifiers: English.
-- Do not implement beyond the current task. No drive-by refactors.
-- User-centric accounts. Sharing is per account via invite code, not a global household.
+- RUB. UI copy: Russian. Code/DB identifiers: English.
+- Only the current task. No drive-by refactors, no adjacent features, no Non-Goals from `docs/SPEC.md`.
+- Accounts are user-centric. Sharing is per-account invite code, not a global household. No roles in v1.
 - Client env only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never ship `service_role`.
+- Product source of truth: `docs/SPEC.md`. Read **only the section the task needs**. Do not load the whole file for a local bugfix.
+- Tests: update Vitest only for pure helpers (balance projection, due dates, sync conflicts, amount parse). No component/UI tests unless asked. After those changes: `npm run test:unit`.

@@ -1,8 +1,10 @@
 # Agent setup
 
+Документ для человека: MCP и env. Агенту не читать, пока задача не про настройку Cursor/MCP.
+
 ## Docs
 
-- Product requirements: [SPEC.md](./SPEC.md)
+- Product: [SPEC.md](./SPEC.md) — читать секцию под задачу, не файл целиком
 - Cursor rules: `.cursor/rules/`
 - Cursor skills: `.cursor/skills/`
 

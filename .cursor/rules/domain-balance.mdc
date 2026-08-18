@@ -1,23 +1,25 @@
 ---
-description: Balance projection and purchase affordability rules
+description: Balance projection and purchase affordability
 globs:
-  - "**/entities/**/*"
-  - "**/features/**/*"
-  - "**/shared/lib/**/*"
+  - "**/projectBalance*"
+  - "**/dueDates*"
+  - "**/entities/purchase/**"
+  - "**/entities/income-rule/**"
+  - "**/entities/expense-rule/**"
+  - "**/features/add-purchase/**"
+  - "**/features/edit-purchase/**"
 alwaysApply: false
 ---
 
 # Balance domain
 
-- Projection is a pure function (no I/O), **per account**. Single helper used by UI.
-- Spec: `docs/SPEC.md` § Balance Projection Algorithm; skill `balance-projection`.
-- `currentBalance` already includes posted auto-income and auto-expense. Future incomes/expenses: dates without an occurrence.
-- Purchases on `asOfDate` are already in the account balance — do not subtract again.
-- Interval for future incomes, expense rules, and planned spend: `(asOfDate, targetDate]`.
-- Re-check projection on create and on edit of amount/date/account (exclude the edited purchase).
-- Refuse create/update when `!canAfford`; banner + drawer; offer transfer from another of the user's accounts when surplus ≥ shortfall.
-- Account card «свободно до пополнения»: `balance − planned − future expense rules` with dates strictly before `nextIncomeDate`.
-- Purchase `notes` are display-only.
-- Completing a purchase posts an expense and subtracts `amount` from that account once.
-- Auto-income posts a real income transaction on the rule's calendar day; skip/adjust must not re-apply that date.
-- Auto-expense posts a real expense transaction on the rule's calendar day; skip/adjust must not re-apply that date.
+Canonical formula: `docs/SPEC.md` § Balance Projection Algorithm.
+
+- Pure function, one account, no I/O. UI calls a single helper.
+- `currentBalance` already includes posted auto-income/expense. Future dates: no occurrence yet.
+- Purchases on `asOfDate` are already in the balance — do not subtract again.
+- Future incomes, expense rules, planned spend: interval `(asOfDate, targetDate]`.
+- Recheck on create and on edit of amount/date/account (exclude the edited purchase).
+- If `!canAfford`: refuse; banner + drawer; offer transfer from another of the user's accounts when surplus ≥ shortfall.
+- «Свободно до пополнения»: `balance − planned − future expense rules` with dates strictly before next income.
+- «Готово» по покупке: один расход и одно списание. Skip/adjust auto-post must not re-apply that date.

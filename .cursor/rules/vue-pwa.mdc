@@ -1,5 +1,5 @@
 ---
-description: Vue SFC and PWA conventions
+description: Vue SFC, UI copy, and PWA conventions
 globs:
   - "**/*.vue"
   - "**/vite.config.*"
@@ -10,6 +10,9 @@ alwaysApply: false
 
 - SFCs: `<script setup lang="ts">`. Composition API only.
 - Follow existing Prettier/ESLint (no semicolons, single quotes).
-- Router guards for auth and household onboarding.
-- PWA via `vite-plugin-pwa`: installable shell plus IndexedDB replica and mutation outbox. Server is source of truth after sync; do not add a third-party sync service.
-- Do not invent global CSS frameworks unless the task asks. Keep styles local/scoped unless shared tokens exist.
+- User-facing copy: Russian only. No «household» / «Invite» in UI.
+- Create/edit of expense, income, transfer, purchase, account, rules: bottom drawers, not pages.
+- Auth: email+password. No household onboarding. Unauthenticated → login; session → app.
+- Layout/theme/tokens: read `docs/SPEC.md` § Design only when changing them.
+- PWA: `vite-plugin-pwa` + IndexedDB replica + mutation outbox. Server is source of truth after sync. Do not add a third-party sync service.
+- Do not invent a CSS framework. Scoped/local styles unless shared tokens exist.

@@ -4,6 +4,7 @@ import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePreferencesStore } from '@/entities/preferences'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
@@ -23,6 +24,7 @@ export async function loadAccountData() {
   const purchases = usePurchaseStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
+  const templates = useOperationTemplateStore()
   const transactions = useTransactionStore()
 
   await Promise.all([
@@ -31,6 +33,7 @@ export async function loadAccountData() {
     purchases.load(),
     incomeRules.load(),
     expenseRules.load(),
+    templates.load(),
     transactions.load(),
   ])
   requestPersist()
@@ -52,6 +55,7 @@ export function startAccountRealtime() {
   const purchases = usePurchaseStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
+  const templates = useOperationTemplateStore()
   const transactions = useTransactionStore()
   const activity = useActivityStore()
 
@@ -300,6 +304,25 @@ export function startAccountRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_occurrences' }, () => {
       void transactions.load()
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'operation_templates' }, (payload) => {
+      const eventType = payload.eventType
+      const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
+        id: string
+        user_id?: string
+        kind: string
+        category_id: string
+        amount: number
+        title: string | null
+        notes: string | null
+      } | null
+      if (!row?.id) return
+      if (row.user_id && row.user_id !== session.user?.id) return
+      if (eventType === 'DELETE') {
+        templates.removeLocal(row.id)
+        return
+      }
+      templates.applyRemoteRow(row)
+    })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
       const row = payload.new as { user_id?: string; preferences?: unknown } | null
       if (!row?.user_id || row.user_id !== session.user?.id) {
@@ -367,6 +390,7 @@ export function resetAccountSession() {
   usePurchaseStore().reset()
   useIncomeRuleStore().reset()
   useExpenseRuleStore().reset()
+  useOperationTemplateStore().reset()
   useTransactionStore().reset()
   useActivityStore().reset()
   usePreferencesStore().reset()

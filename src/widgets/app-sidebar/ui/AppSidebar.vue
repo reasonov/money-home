@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import {
   ArrowLeftRight,
+  Bookmark,
   CalendarCheck,
   CalendarClock,
   ChevronRight,
@@ -35,6 +36,7 @@ const links = [
   { to: '/stats', label: 'Статистика', icon: PieChart },
   { to: '/calendar', label: 'Планирование', icon: CalendarCheck },
   { to: '/categories', label: 'Категории', icon: FolderTree },
+  { to: '/templates', label: 'Избранное', icon: Bookmark },
   { to: '/income', label: 'Регулярные операции', icon: CalendarClock },
 ]
 

@@ -2,6 +2,7 @@ import type { Account, AccountMember } from '@/entities/account'
 import type { Category } from '@/entities/category'
 import type { ExpenseRule } from '@/entities/expense-rule'
 import type { IncomeRule } from '@/entities/income-rule'
+import type { OperationTemplate } from '@/entities/operation-template'
 import type { Purchase } from '@/entities/purchase'
 import type { Transaction } from '@/entities/transaction'
 import type { ExpenseOccurrenceRow, OccurrenceRow } from '@/entities/transaction'
@@ -18,6 +19,7 @@ export interface ReplicaPayload {
   transactions: Transaction[]
   occurrences: OccurrenceRow[]
   expenseOccurrences: ExpenseOccurrenceRow[]
+  operationTemplates: OperationTemplate[]
   selectedAccountId: string
   skippedDueKeys: string[]
 }
@@ -51,3 +53,5 @@ export type OutboxType =
   | 'skipDueExpense'
   | 'adjustDueIncome'
   | 'adjustDueExpense'
+  | 'upsertOperationTemplate'
+  | 'deleteOperationTemplate'

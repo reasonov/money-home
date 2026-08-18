@@ -37,7 +37,11 @@ const overrides = computed(() => naiveThemeOverrides(theme.resolved))
       <p class="boot-fail__text">{{ bootError }}</p>
       <AppButton @click="retryBoot">Повторить</AppButton>
     </div>
-    <NMessageProvider v-else placement="bottom">
+    <NMessageProvider
+      v-else
+      placement="bottom"
+      :container-style="{ zIndex: 2000000200 }"
+    >
       <NDialogProvider>
         <RouterView />
         <AppToastHost />

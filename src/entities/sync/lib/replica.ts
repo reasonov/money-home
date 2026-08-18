@@ -2,6 +2,7 @@ import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useTransactionStore } from '@/entities/transaction'
 import { loadReplica, saveReplica } from '@/shared/lib/localDb'
@@ -21,6 +22,7 @@ export function snapshotStores(): ReplicaPayload {
     transactions: transactions.items.filter((item) => !localOnly.has(item.id)),
     occurrences: transactions.occurrences.filter((item) => !localOnly.has(item.id)),
     expenseOccurrences: transactions.expenseOccurrences.filter((item) => !localOnly.has(item.id)),
+    operationTemplates: [...useOperationTemplateStore().items],
     selectedAccountId: useAccountStore().selectedAccountId,
     skippedDueKeys: [...getSkippedDueKeys()],
   }
@@ -45,6 +47,7 @@ export function hydrateStores(payload: ReplicaPayload): void {
   usePurchaseStore().hydrate(payload.purchases)
   useIncomeRuleStore().hydrate(payload.incomeRules)
   useExpenseRuleStore().hydrate(payload.expenseRules)
+  useOperationTemplateStore().hydrate(payload.operationTemplates ?? [])
   useTransactionStore().hydrate(
     payload.transactions,
     payload.occurrences,
@@ -75,6 +78,7 @@ export async function tryHydrateReplica(userId: string): Promise<boolean> {
     transactions: payload.transactions ?? [],
     occurrences: payload.occurrences ?? [],
     expenseOccurrences: payload.expenseOccurrences ?? [],
+    operationTemplates: payload.operationTemplates ?? [],
     selectedAccountId: payload.selectedAccountId ?? ALL_ACCOUNTS_ID,
     skippedDueKeys: payload.skippedDueKeys ?? [],
   })

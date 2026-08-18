@@ -5,36 +5,12 @@ description: Implements and tests per-account balance projection for purchase af
 
 # Balance projection
 
-## When
+Read `docs/SPEC.md` § Balance Projection Algorithm. Do not re-derive the formula.
 
-Any change to affordability, income/expense schedules, planned purchases calendar, auto-income/expense occurrences, or transfer suggestions.
+1. Keep logic in `shared` (`projectBalance` and due-date helpers). No I/O. One account.
+2. Frequencies: `weekly`, `biweekly` (+ anchor), `monthly` (day 1–28). Skip dates with an occurrence.
+3. On `!canAfford`: breakdown + `suggestTransfer` from the user's other accounts when surplus ≥ shortfall.
+4. UI: short `message` in banner; full refusal in drawer; transfer CTA when applicable.
+5. Update Vitest in `src/shared/lib/__tests__/projectBalance.spec.ts` (curtain fixture, exclude self, skipped dates, expense rules, transfer). Run `npm run test:unit`.
 
-## Spec source
-
-Read `docs/SPEC.md` § Balance Projection Algorithm first.
-
-## Algorithm (must match SPEC)
-
-```
-projected = currentBalance
-           + sum(future incomes on d where asOf < d <= target and no occurrence)
-           - sum(planned purchases on d where asOf < d <= target)
-           - sum(future expense rules on d where asOf < d <= target and no occurrence)
-canAfford = projected >= candidateAmount
-```
-
-Purchases dated `asOfDate` are excluded (already in account balance). Posted auto-income and auto-expense are already in `currentBalance`.
-
-## Implementation checklist
-
-1. Keep logic pure in `shared` (no Supabase calls inside). Scope one account.
-2. Cover frequencies: `weekly`, `biweekly` (+ anchor), `monthly` (day 1–28).
-3. Exclude `postedOccurrenceDates` / `postedExpenseOccurrenceDates` from future sums.
-4. On fail, return breakdown plus `suggestTransfer` candidates from other accounts the user can spend from.
-5. UI: short `message` in banner; full refusal in bottom drawer; transfer CTA when surplus ≥ shortfall.
-6. Add/update Vitest cases (curtain fixture, exclude self, skipped dates, expense rules, transfer suggestion).
-
-## Fixture
-
-- Candidate: title «штора», 2300 RUB, target 25 Aug.
-- If projected is 1500 → reject, do not insert purchase.
+Fixture: «штора», 2300 ₽, 25 Aug; projected 1500 → reject, do not insert.

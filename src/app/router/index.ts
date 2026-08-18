@@ -132,6 +132,12 @@ const router = createRouter({
           meta: { title: 'Категории' },
         },
         {
+          path: 'templates',
+          name: 'templates',
+          component: () => import('@/pages/templates/ui/TemplatesPage.vue'),
+          meta: { title: 'Избранное' },
+        },
+        {
           path: 'stats',
           name: 'stats',
           component: () => import('@/pages/stats/ui/StatsPage.vue'),

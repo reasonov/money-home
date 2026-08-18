@@ -2,8 +2,8 @@
 
 PWA для учёта расходов и доходов по счетам, с планированием покупок.
 
-**Спецификация для разработки:** [docs/SPEC.md](docs/SPEC.md)  
-**Настройка агентов / MCP:** [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md)
+**Продуктовая спека:** [docs/SPEC.md](docs/SPEC.md) (агенту — только нужная секция)  
+**MCP / env:** [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md)
 
 ## Recommended IDE Setup
 

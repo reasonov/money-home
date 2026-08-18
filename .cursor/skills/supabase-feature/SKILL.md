@@ -5,20 +5,10 @@ description: Adds Supabase tables, RLS, and client wiring for account-scoped fea
 
 # Supabase feature
 
-## Steps
+RLS and client conventions live in the Supabase rule. This skill is only for **adding** persistence.
 
-1. Write migration in `supabase/migrations/` (tables + indexes).
-2. Enable RLS; policies: access iff user is member of the row's account.
-3. Account join: RPC validating `invite_code` — do not open writes broadly.
-4. Categories: member of at least one linked account.
-5. Regenerate/update DB types used by the app.
-6. Client calls from slice `api/` via shared Supabase client.
-7. Subscribe Realtime only to the current user's accounts.
-8. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` only in the SPA.
-
-## Checklist
-
-- [ ] Migration applied locally
-- [ ] RLS tested for non-member denial
-- [ ] No `service_role` in frontend
-- [ ] Feature layer uses typed client, not ad-hoc SQL strings in UI
+1. Migration in `supabase/migrations/` (tables + indexes).
+2. Enable RLS using existing account-membership / category-link patterns. Join-by-code stays an RPC.
+3. Regenerate DB types. Client calls from slice `api/` via the shared typed client — no ad-hoc SQL in UI.
+4. Realtime only for the current user's accounts.
+5. SPA env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` only.
