@@ -72,7 +72,7 @@ export const TOUR_STEPS: TourStepDef[] = [
     match: () => true,
     selector: '[data-tour="header-menu"]',
     title: 'Меню',
-    description: 'В меню — счета, категории, регулярные операции, перевод между счетами и настройки.',
+    description: 'В меню — счета, история, категории, регулярные операции, перевод между счетами и настройки.',
     skipIf: () => false,
     to: '/',
     side: 'bottom',

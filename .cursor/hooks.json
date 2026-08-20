@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/refresh-db-dump.sh",
+        "timeout": 8
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": ".cursor/hooks/refresh-db-dump.sh",
+        "timeout": 8
+      }
+    ]
+  }
+}

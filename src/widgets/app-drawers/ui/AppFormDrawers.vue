@@ -113,6 +113,7 @@ async function onOperationSaved(tx: Transaction) {
       :key="formDrawer.transactionId"
       :transaction-id="formDrawer.transactionId"
       @saved="closeFormDrawer"
+      @repeated="onOperationSaved"
       @cancel="closeFormDrawer"
     />
   </AppDrawer>

@@ -144,7 +144,7 @@ const filtered = computed(() => {
       return false
     }
     if (needle) {
-      const haystack = `${item.title ?? ''} ${item.categoryName ?? ''}`.toLowerCase()
+      const haystack = `${item.title ?? ''} ${item.categoryName ?? ''} ${item.notes ?? ''}`.toLowerCase()
       if (!haystack.includes(needle)) {
         return false
       }

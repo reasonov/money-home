@@ -13,11 +13,21 @@ const viewOptions: { value: 'list' | 'month'; label: string }[] = [
   { value: 'month', label: 'Месяц' },
 ]
 
+function ruleAccountId() {
+  return accounts.selectedAccountId !== ALL_ACCOUNTS_ID ? accounts.selectedAccountId : undefined
+}
+
 function openIncomeRule() {
   openFormDrawer({
     name: 'income-rule',
-    accountId:
-      accounts.selectedAccountId !== ALL_ACCOUNTS_ID ? accounts.selectedAccountId : undefined,
+    accountId: ruleAccountId(),
+  })
+}
+
+function openExpenseRule() {
+  openFormDrawer({
+    name: 'expense-rule',
+    accountId: ruleAccountId(),
   })
 }
 
@@ -30,7 +40,10 @@ function openIncomeRule() {
     </div>
     <div class="calendar__cta" data-tour="calendar-cta">
       <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
-      <AppButton variant="secondary" block @click="openIncomeRule">Регулярное пополнение</AppButton>
+      <div class="calendar__cta-row">
+        <AppButton variant="secondary" block @click="openIncomeRule">Пополнение</AppButton>
+        <AppButton variant="secondary" block @click="openExpenseRule">Регулярный расход</AppButton>
+      </div>
     </div>
     <PlanningCalendar v-if="view === 'month'" />
     <PurchaseList v-else />
@@ -49,6 +62,12 @@ function openIncomeRule() {
 }
 
 .calendar__cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.calendar__cta-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);

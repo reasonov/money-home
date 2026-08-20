@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { ArrowLeftRight, CalendarCheck, House, PieChart, Plus } from '@lucide/vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { formDrawer, openFormDrawer } from '@/shared'
+import { openFormDrawer } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 
 const HOLD_MS = 400
@@ -29,7 +29,6 @@ const rightLink = {
   icon: CalendarCheck,
 } as const
 
-const menuOpen = ref(false)
 const held = ref(false)
 let holdTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -49,12 +48,7 @@ function clearHoldTimer() {
   }
 }
 
-function closeMenu() {
-  menuOpen.value = false
-}
-
 function openPrimary() {
-  closeMenu()
   if (!hasAccounts.value) {
     openFormDrawer({ name: 'account' })
     return
@@ -62,21 +56,15 @@ function openPrimary() {
   openFormDrawer({ name: 'expense' })
 }
 
-function openMore() {
+function openIncome() {
   if (!hasAccounts.value) {
     openFormDrawer({ name: 'account' })
     return
   }
-  menuOpen.value = true
-}
-
-function openIncome() {
-  closeMenu()
   openFormDrawer({ name: 'income' })
 }
 
 function openTransfer() {
-  closeMenu()
   openFormDrawer({ name: 'transfer' })
 }
 
@@ -89,7 +77,7 @@ function onPointerDown(event: PointerEvent) {
   holdTimer = setTimeout(() => {
     held.value = true
     holdTimer = null
-    openMore()
+    openIncome()
   }, HOLD_MS)
 }
 
@@ -121,19 +109,6 @@ function onClick(event: MouseEvent) {
   openPrimary()
 }
 
-watch(
-  () => route.fullPath,
-  () => {
-    closeMenu()
-  },
-)
-
-watch(formDrawer, (drawer) => {
-  if (drawer) {
-    closeMenu()
-  }
-})
-
 onBeforeUnmount(() => {
   clearHoldTimer()
 })
@@ -157,9 +132,7 @@ onBeforeUnmount(() => {
         <button
           type="button"
           class="nav__plus"
-          aria-label="Добавить расход"
-          aria-haspopup="menu"
-          :aria-expanded="menuOpen"
+          aria-label="Добавить расход. Удерживайте, чтобы добавить доход"
           data-tour="nav-expense"
           @pointerdown="onPointerDown"
           @pointerup="onPointerUp"
@@ -170,11 +143,6 @@ onBeforeUnmount(() => {
         >
           <Plus :size="24" :stroke-width="2.2" />
         </button>
-        <div v-if="menuOpen" class="nav__menu" role="menu">
-          <button type="button" class="nav__menu-item" role="menuitem" @click="openIncome">
-            Доход
-          </button>
-        </div>
       </div>
     </div>
 
@@ -201,9 +169,6 @@ onBeforeUnmount(() => {
       </span>
     </div>
   </nav>
-  <Teleport to="body">
-    <div v-if="menuOpen" class="mh-nav-scrim" @pointerdown="closeMenu" />
-  </Teleport>
 </template>
 
 <style scoped>
@@ -316,47 +281,5 @@ onBeforeUnmount(() => {
 
 .nav__plus:active {
   background: var(--color-accent-hover);
-}
-
-.nav__menu {
-  position: absolute;
-  bottom: calc(100% + var(--space-2));
-  left: 50%;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 160px;
-  padding: var(--space-1);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 8px 24px var(--color-shadow);
-  transform: translateX(-50%);
-}
-
-.nav__menu-item {
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--color-text);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-}
-
-.nav__menu-item:hover,
-.nav__menu-item:focus-visible {
-  background: var(--color-accent-soft);
-}
-</style>
-
-<style>
-.mh-nav-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 19;
 }
 </style>

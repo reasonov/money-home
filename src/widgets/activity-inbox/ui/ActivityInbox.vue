@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { Bell } from '@lucide/vue'
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { AppDrawer, openFormDrawer } from '@/shared'
 import { formatRelativeTime, useActivityStore, type ActivityItem } from '@/entities/activity'
 import { usePurchaseStore } from '@/entities/purchase'
 import { AutoIncomeActions } from '@/features/review-auto-income'
 
-const router = useRouter()
 const store = useActivityStore()
 const purchases = usePurchaseStore()
 const open = ref(false)
@@ -26,25 +24,23 @@ watch(open, (value) => {
   highlightIds.value = new Set()
 })
 
-function openActivity(item: ActivityItem) {
-  if (!item.purchaseId) {
-    return
-  }
+function canOpen(item: ActivityItem) {
+  return Boolean(item.purchaseId || item.transactionId)
+}
 
-  const purchase = purchases.getById(item.purchaseId)
+function openActivity(item: ActivityItem) {
   open.value = false
 
-  if (!purchase) {
-    return
+  if (item.purchaseId) {
+    const purchase = purchases.getById(item.purchaseId)
+    if (purchase?.status === 'planned') {
+      openFormDrawer({ name: 'purchase-edit', purchaseId: purchase.id })
+      return
+    }
   }
 
-  if (purchase.status === 'planned') {
-    openFormDrawer({ name: 'purchase-edit', purchaseId: purchase.id })
-    return
-  }
-
-  if (purchase.status === 'done') {
-    void router.push({ name: 'home' })
+  if (item.transactionId) {
+    openFormDrawer({ name: 'transaction-edit', transactionId: item.transactionId })
   }
 }
 </script>
@@ -74,13 +70,13 @@ function openActivity(item: ActivityItem) {
           class="feed__item"
           :class="{
             'is-unseen': highlightIds.has(item.id),
-            'is-clickable': Boolean(item.purchaseId || item.transactionId),
+            'is-clickable': canOpen(item),
           }"
         >
           <button
-            v-if="item.purchaseId"
+            v-if="canOpen(item)"
             type="button"
-            class="feed__button"
+            class="feed__main"
             @click="openActivity(item)"
           >
             <span class="feed__dot" aria-hidden="true" />
@@ -93,7 +89,7 @@ function openActivity(item: ActivityItem) {
               </span>
             </span>
           </button>
-          <template v-else>
+          <div v-else class="feed__main">
             <span class="feed__dot" aria-hidden="true" />
             <div class="feed__body">
               <p class="feed__summary">{{ item.summary }}</p>
@@ -102,18 +98,20 @@ function openActivity(item: ActivityItem) {
                 <span aria-hidden="true">·</span>
                 <time :datetime="item.createdAt">{{ formatRelativeTime(item.createdAt) }}</time>
               </p>
-              <AutoIncomeActions
-                v-if="item.kind === 'income_auto_posted' && item.transactionId"
-                :transaction-id="item.transactionId"
-                kind="income"
-              />
-              <AutoIncomeActions
-                v-else-if="item.kind === 'expense_auto_posted' && item.transactionId"
-                :transaction-id="item.transactionId"
-                kind="expense"
-              />
             </div>
-          </template>
+          </div>
+          <div
+            v-if="item.kind === 'income_auto_posted' && item.transactionId"
+            class="feed__extra"
+          >
+            <AutoIncomeActions :transaction-id="item.transactionId" kind="income" />
+          </div>
+          <div
+            v-else-if="item.kind === 'expense_auto_posted' && item.transactionId"
+            class="feed__extra"
+          >
+            <AutoIncomeActions :transaction-id="item.transactionId" kind="expense" />
+          </div>
         </li>
       </ul>
       <p v-else class="feed__empty">Пока нет изменений</p>
@@ -177,7 +175,8 @@ function openActivity(item: ActivityItem) {
 
 .feed__item {
   display: flex;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: stretch;
   padding: var(--space-3);
   border-radius: var(--radius-sm);
 }
@@ -186,7 +185,7 @@ function openActivity(item: ActivityItem) {
   background: var(--color-accent-soft);
 }
 
-.feed__button {
+.feed__main {
   display: flex;
   gap: var(--space-3);
   width: 100%;
@@ -195,9 +194,16 @@ function openActivity(item: ActivityItem) {
   border: 0;
   background: transparent;
   text-align: left;
-  cursor: pointer;
   color: inherit;
   font: inherit;
+}
+
+button.feed__main {
+  cursor: pointer;
+}
+
+.feed__extra {
+  padding-left: calc(8px + var(--space-3));
 }
 
 .feed__dot {

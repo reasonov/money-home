@@ -27,6 +27,17 @@ VITE_SUPABASE_ANON_KEY=
 
 Шаблон: скопируй в `.env.local` (файл в `.gitignore` / `.cursorignore`). `service_role` в браузер не класть.
 
+## Локальный db dump
+
+Хук `.cursor/hooks/refresh-db-dump.sh` на каждый промпт и старт сессии: если `supabase/backups/.last-dump` старше 24 часов — обновляет дамп в фоне (не блокирует чат). Файлы в `supabase/backups/` (gitignored).
+
+Нужно один раз:
+
+1. Access token: Dashboard → Account → Access Tokens → в `.env.local` как `SUPABASE_ACCESS_TOKEN`. Без него хук молча пропускает дамп.
+2. Опционально `SUPABASE_DB_PASSWORD` и Docker Desktop — тогда пишется `pg_dump` (SQL). Иначе JSON через Management API (`supabase/backups/data.json`), Docker не нужен.
+
+Проверка вручную: `.cursor/hooks/refresh-db-dump.sh --run`. Лог: `supabase/backups/dump.log`. Промпт не блокируется.
+
 ## Figma MCP
 
 Уже доступен в Cursor для design-to-code. Для money-home не обязателен.

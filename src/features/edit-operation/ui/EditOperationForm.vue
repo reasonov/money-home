@@ -15,6 +15,7 @@ import {
   getErrorMessage,
   openFormDrawer,
   showToast,
+  todayLocal,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import {
@@ -25,7 +26,8 @@ import {
   type CategoryKind,
 } from '@/entities/category'
 import { findMatchingTemplate, useOperationTemplateStore } from '@/entities/operation-template'
-import { ruleDraftFromOperation, useTransactionStore } from '@/entities/transaction'
+import { useSessionStore } from '@/entities/session'
+import { ruleDraftFromOperation, useTransactionStore, type Transaction } from '@/entities/transaction'
 
 const props = defineProps<{
   transactionId: string
@@ -33,9 +35,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   saved: []
+  repeated: [tx: Transaction]
   cancel: []
 }>()
 
+const session = useSessionStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const transactions = useTransactionStore()
@@ -191,6 +195,42 @@ function makeRegular() {
       categoryId: categoryId.value,
     }),
   })
+}
+
+async function repeatToday() {
+  error.value = ''
+  if (isTransfer.value) {
+    return
+  }
+  const value = Number(amount.value)
+  const category = categories.getById(categoryId.value)
+  const userId = session.user?.id
+  if (!userId || !accountId.value || !category || !Number.isFinite(value) || value <= 0) {
+    error.value = 'Выберите счёт и категорию, затем укажите сумму больше 0 ₽'
+    return
+  }
+  pending.value = true
+  try {
+    const created = await transactions.addManual({
+      accountId: accountId.value,
+      kind: categoryKind.value,
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryColor: category.color,
+      categoryIcon: category.icon,
+      title: title.value || category.name,
+      amount: value,
+      occurredOn: todayLocal(),
+      notes: notes.value,
+      createdBy: userId,
+    })
+    showToast(categoryKind.value === 'expense' ? 'Расход сохранён' : 'Доход сохранён')
+    emit('repeated', created)
+  } catch (err) {
+    error.value = getErrorMessage(err, 'Не удалось сохранить')
+  } finally {
+    pending.value = false
+  }
 }
 
 async function onSubmit() {
@@ -375,17 +415,29 @@ async function onDelete() {
     </AppField>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
-    <AppButton type="submit" block :disabled="pending || (!isTransfer && !availableCats.length)">
-      {{ pending ? 'Сохраняем…' : 'Сохранить' }}
-    </AppButton>
-    <AppButton type="button" variant="danger" block :disabled="pending" @click="onDelete">
-      {{
-        isAutoRule
-          ? source === 'expense_rule'
-            ? 'Отменить расход'
-            : 'Отменить пополнение'
-          : 'Удалить'
-      }}
+    <div class="form__submit">
+      <AppButton type="submit" block :disabled="pending || (!isTransfer && !availableCats.length)">
+        {{ pending ? 'Сохраняем…' : 'Сохранить' }}
+      </AppButton>
+      <AppButton type="button" variant="danger" block :disabled="pending" @click="onDelete">
+        {{
+          isAutoRule
+            ? source === 'expense_rule'
+              ? 'Отменить расход'
+              : 'Отменить пополнение'
+            : 'Удалить'
+        }}
+      </AppButton>
+    </div>
+    <AppButton
+      v-if="!isTransfer"
+      type="button"
+      variant="secondary"
+      block
+      :disabled="pending || !availableCats.length"
+      @click="repeatToday"
+    >
+      Повторить
     </AppButton>
   </form>
 
@@ -426,6 +478,12 @@ async function onDelete() {
   min-width: 44px;
   padding-left: 0;
   padding-right: 0;
+}
+
+.form__submit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
 .hint {

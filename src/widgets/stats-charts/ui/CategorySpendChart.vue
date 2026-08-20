@@ -144,8 +144,8 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
               aria-hidden="true"
             />
             <span class="legend__name">{{ slice.name }}</span>
-            <span class="legend__amount">{{ formatMoney(slice.amount) }}</span>
             <span class="legend__share">{{ formatShare(slice.amount, total) }}</span>
+            <span class="legend__amount">{{ formatMoney(slice.amount) }}</span>
           </button>
         </li>
       </ul>
@@ -212,12 +212,18 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) max-content max-content;
+  column-gap: var(--space-2);
   margin-top: var(--space-4);
   padding: 0;
   list-style: none;
+}
+
+.legend > li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
@@ -239,10 +245,9 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 
 .legend__item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto 5ch;
-  column-gap: var(--space-2);
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: center;
-  width: 100%;
   min-height: 32px;
   margin: 0;
   padding: 0 var(--space-1);
@@ -280,7 +285,6 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .legend__share {
-  width: 5ch;
   color: var(--color-text-muted);
 }
 </style>

@@ -11,6 +11,8 @@ coverage/
 .env.*
 !.env.example
 
+supabase/backups/
+
 **/*.log
 .DS_Store
 *.local
