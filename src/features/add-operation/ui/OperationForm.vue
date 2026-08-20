@@ -132,21 +132,16 @@ const amountMatches = computed(() => {
   })
 })
 
-const amountFocused = ref(false)
+const matchDismissed = ref(false)
 
-const matchesOpen = computed(() => amountFocused.value && amountMatches.value.length > 0)
+watch(amount, () => {
+  matchDismissed.value = false
+})
+
+const matchesOpen = computed(() => !matchDismissed.value && amountMatches.value.length > 0)
 
 function matchLabel(item: Transaction) {
   return item.title || item.categoryName || 'Операция'
-}
-
-function onAmountFocusOut(event: FocusEvent) {
-  const root = event.currentTarget as HTMLElement
-  const next = event.relatedTarget as Node | null
-  if (next && root.contains(next)) {
-    return
-  }
-  amountFocused.value = false
 }
 
 function applyMatch(item: Transaction) {
@@ -155,7 +150,7 @@ function applyMatch(item: Transaction) {
   }
   title.value = item.title ?? ''
   notes.value = item.notes ?? ''
-  amountFocused.value = false
+  matchDismissed.value = true
 }
 
 function applyTemplate(item: OperationTemplate) {
@@ -280,8 +275,8 @@ async function onSubmit() {
         <Bookmark :size="20" :stroke-width="2.2" :fill="inFavorites ? 'currentColor' : 'none'" />
       </AppButton>
     </div>
-    <AppField class="amount-field" label="Сумма, ₽" for-id="op-amount">
-      <div class="amount" @focusin="amountFocused = true" @focusout="onAmountFocusOut">
+    <AppField label="Сумма, ₽" for-id="op-amount">
+      <div class="amount">
         <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
         <ul v-if="matchesOpen" class="matches" role="listbox" aria-label="Похожие операции">
           <li v-for="item in amountMatches" :key="item.id" role="none">
@@ -391,21 +386,13 @@ async function onSubmit() {
   padding-right: 0;
 }
 
-.amount-field :deep(.n-form-item-blank) {
-  overflow: visible;
-}
-
 .amount {
-  position: relative;
-  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .matches {
-  position: absolute;
-  z-index: 8;
-  top: calc(100% + 4px);
-  right: 0;
-  left: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);

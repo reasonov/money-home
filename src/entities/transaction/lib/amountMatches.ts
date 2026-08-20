@@ -25,7 +25,10 @@ export function matchOperationsByAmount(
     return []
   }
   const matches = items.filter((item) => {
-    if (item.status !== 'posted' || item.kind !== input.kind || item.amount !== amount) {
+    if (item.status !== 'posted' || item.kind !== input.kind) {
+      return false
+    }
+    if (Math.round(Number(item.amount)) !== amount) {
       return false
     }
     return item.categoryId != null && allowed.has(item.categoryId)

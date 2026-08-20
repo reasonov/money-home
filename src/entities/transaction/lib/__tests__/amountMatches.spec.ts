@@ -81,4 +81,13 @@ describe('matchOperationsByAmount', () => {
       ),
     ).toEqual(['c', 'b'])
   })
+
+  it('matches numeric strings from replica payloads', () => {
+    const items = [tx({ id: 'ok', kind: 'expense', amount: '250' as unknown as number, occurredOn: '2026-08-10' })]
+    expect(
+      matchOperationsByAmount(items, { amount: 250, kind: 'expense', accountId: 'a1', categoryIds: cats }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(['ok'])
+  })
 })
