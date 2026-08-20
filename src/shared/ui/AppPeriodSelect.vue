@@ -12,9 +12,13 @@ const PERIOD_OPTIONS = [
   { key: 'custom', label: 'Период' },
 ] as const
 
-const props = defineProps<{
-  label: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    label: string
+    showAll?: boolean
+  }>(),
+  { showAll: false },
+)
 
 const period = defineModel<string>({ required: true })
 const from = defineModel<string>('from', { required: true })
@@ -22,12 +26,16 @@ const to = defineModel<string>('to', { required: true })
 
 const rangeOpen = ref(false)
 
-const menuOptions = computed<DropdownOption[]>(() =>
-  PERIOD_OPTIONS.map((item) => ({
+const menuOptions = computed<DropdownOption[]>(() => {
+  const items: DropdownOption[] = PERIOD_OPTIONS.map((item) => ({
     key: item.key,
     label: item.label,
-  })),
-)
+  }))
+  if (props.showAll) {
+    items.push({ key: 'all', label: 'За все время' })
+  }
+  return items
+})
 
 const rangeValue = computed({
   get: (): [string, string] | null => {

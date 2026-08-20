@@ -12,7 +12,7 @@ import {
 } from '@/entities/transaction'
 import { TransactionList } from '@/widgets/transaction-list'
 
-const CHART_PERIODS: ChartPeriod[] = ['day', 'week', 'month', 'year', 'custom']
+const CHART_PERIODS: ChartPeriod[] = ['day', 'week', 'month', 'year', 'custom', 'all']
 
 const route = useRoute()
 const accounts = useAccountStore()
@@ -99,6 +99,7 @@ const periodItems = computed(() => {
           v-model:from="customFrom"
           v-model:to="customTo"
           :label="periodLabel"
+          show-all
         />
       </div>
 

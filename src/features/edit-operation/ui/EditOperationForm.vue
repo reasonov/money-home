@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Plus } from '@lucide/vue'
+import { Bookmark, Plus } from '@lucide/vue'
 import {
   AppButton,
   AppDrawer,
@@ -13,6 +13,7 @@ import {
   confirmAction,
   formatMoney,
   getErrorMessage,
+  openFormDrawer,
   showToast,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
@@ -23,7 +24,8 @@ import {
   type Category,
   type CategoryKind,
 } from '@/entities/category'
-import { useTransactionStore } from '@/entities/transaction'
+import { findMatchingTemplate, useOperationTemplateStore } from '@/entities/operation-template'
+import { ruleDraftFromOperation, useTransactionStore } from '@/entities/transaction'
 
 const props = defineProps<{
   transactionId: string
@@ -37,11 +39,13 @@ const emit = defineEmits<{
 const accounts = useAccountStore()
 const categories = useCategoryStore()
 const transactions = useTransactionStore()
+const templates = useOperationTemplateStore()
 
 const ready = ref(false)
 const pending = ref(false)
 const error = ref('')
 const createOpen = ref(false)
+const savingTemplate = ref(false)
 
 const kind = ref<CategoryKind | 'transfer'>('expense')
 const source = ref('')
@@ -117,6 +121,76 @@ function swap() {
   const previous = accountId.value
   accountId.value = toAccountId.value
   toAccountId.value = previous
+}
+
+const canSaveTemplate = computed(() => {
+  const value = Number(amount.value)
+  return Boolean(categoryId.value && Number.isFinite(value) && value > 0)
+})
+
+const matchingTemplate = computed(() => {
+  if (isTransfer.value || !canSaveTemplate.value) {
+    return null
+  }
+  return (
+    findMatchingTemplate(templates.items, {
+      kind: categoryKind.value,
+      categoryId: categoryId.value,
+      amount: Number(amount.value),
+      title: title.value,
+      notes: notes.value,
+    }) ?? null
+  )
+})
+
+const inFavorites = computed(() => Boolean(matchingTemplate.value))
+
+async function toggleCurrentTemplate() {
+  if (!canSaveTemplate.value || savingTemplate.value || isTransfer.value) {
+    return
+  }
+  const existing = matchingTemplate.value
+  savingTemplate.value = true
+  try {
+    if (existing) {
+      await templates.remove(existing.id)
+      showToast('Удалено из избранного')
+    } else {
+      await templates.save({
+        kind: categoryKind.value,
+        categoryId: categoryId.value,
+        amount: Number(amount.value),
+        title: title.value,
+        notes: notes.value,
+      })
+      showToast('Добавлено в избранное')
+    }
+  } catch (err) {
+    showToast(
+      getErrorMessage(err, existing ? 'Не удалось удалить избранное' : 'Не удалось сохранить избранное'),
+    )
+  } finally {
+    savingTemplate.value = false
+  }
+}
+
+function makeRegular() {
+  const value = Number(amount.value)
+  if (!Number.isFinite(value) || value <= 0 || !accountId.value) {
+    error.value = 'Укажите сумму'
+    return
+  }
+  openFormDrawer({
+    name: kind.value === 'income' ? 'income-rule' : 'expense-rule',
+    accountId: accountId.value,
+    draft: ruleDraftFromOperation({
+      accountId: accountId.value,
+      amount: value,
+      occurredOn: occurredOn.value,
+      title: title.value,
+      categoryId: categoryId.value,
+    }),
+  })
 }
 
 async function onSubmit() {
@@ -210,6 +284,28 @@ async function onDelete() {
     <p v-if="isAutoRule" class="hint">
       {{ source === 'expense_rule' ? 'Регулярный расход' : 'Регулярное пополнение' }}: можно изменить только сумму
     </p>
+
+    <div v-if="!isTransfer" class="form__actions">
+      <AppButton
+        v-if="!isAutoRule"
+        type="button"
+        variant="secondary"
+        class="form__rule"
+        @click="makeRegular"
+      >
+        Сделать регулярной
+      </AppButton>
+      <AppButton
+        type="button"
+        class="form__fav-add"
+        :aria-label="inFavorites ? 'Удалить из избранного' : 'Добавить в избранное'"
+        :aria-pressed="inFavorites"
+        :disabled="!canSaveTemplate || savingTemplate"
+        @click="toggleCurrentTemplate"
+      >
+        <Bookmark :size="20" :stroke-width="2.2" :fill="inFavorites ? 'currentColor' : 'none'" />
+      </AppButton>
+    </div>
 
     <AppField label="Сумма, ₽" for-id="edit-amount">
       <AppInputNumber id="edit-amount" v-model="amount" :min="1" placeholder="0" />
@@ -311,6 +407,27 @@ async function onDelete() {
   gap: var(--space-4);
 }
 
+.form__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.form__actions :deep(.form__rule) {
+  flex: 1;
+  min-width: 0;
+}
+
+.form__actions :deep(.form__fav-add) {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 44px;
+  min-width: 44px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .hint {
   margin: 0;
   font-size: 0.875rem;
@@ -324,7 +441,7 @@ async function onDelete() {
   width: 100%;
 }
 
-.cat :deep(.app-select) {
+.cat :deep(.cat-select) {
   flex: 1;
   min-width: 0;
 }

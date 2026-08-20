@@ -8,6 +8,7 @@ import {
   type CategoryIconKey,
   type CategoryKind,
 } from '../model/types'
+import { matchCategoryIcon } from '../lib/matchIcon'
 import { useCategoryStore } from '../model/store'
 import CategoryIconPicker from './CategoryIconPicker.vue'
 
@@ -29,6 +30,7 @@ const kind = ref<CategoryKind>(props.lockedKind ?? props.category?.kind ?? 'expe
 const name = ref('')
 const color = ref<string>(CATEGORY_COLORS[0])
 const icon = ref<CategoryIconKey>('other')
+const iconTouched = ref(false)
 const selected = ref<string[]>(props.accounts.map((item) => item.id))
 const error = ref('')
 const pending = ref(false)
@@ -49,6 +51,7 @@ const nameModel = computed({
 
 function applyCategory(category: Category | null | undefined) {
   if (category) {
+    iconTouched.value = true
     kind.value = props.lockedKind ?? category.kind
     name.value = capitalizeName(category.name)
     color.value = category.color
@@ -61,6 +64,7 @@ function applyCategory(category: Category | null | undefined) {
     error.value = ''
     return
   }
+  iconTouched.value = false
   kind.value = props.lockedKind ?? props.initialKind ?? 'expense'
   name.value = ''
   color.value = CATEGORY_COLORS[0]
@@ -68,6 +72,20 @@ function applyCategory(category: Category | null | undefined) {
   selected.value = props.accounts.map((item) => item.id)
   error.value = ''
 }
+
+const iconModel = computed({
+  get: () => icon.value,
+  set: (value: CategoryIconKey) => {
+    iconTouched.value = true
+    icon.value = value
+  },
+})
+
+watch(name, (value) => {
+  if (iconTouched.value) return
+  const matched = matchCategoryIcon(value)
+  if (matched) icon.value = matched
+})
 
 watch(
   () => [props.category, props.lockedKind, props.initialKind] as const,
@@ -126,7 +144,7 @@ async function onSubmit() {
         @click="color = item"
       />
     </fieldset>
-    <CategoryIconPicker v-model="icon" :color="color" />
+    <CategoryIconPicker v-model="iconModel" :color="color" />
     <AppField v-if="accounts.length" label="Счета" for-id="cat-accounts">
       <AppSelect
         id="cat-accounts"

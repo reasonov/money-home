@@ -17,7 +17,7 @@ import {
   showToast,
   todayLocal,
 } from '@/shared'
-import { useAccountStore } from '@/entities/account'
+import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
   CategoryForm,
   CategoryIcon,
@@ -30,8 +30,14 @@ import {
 } from '@/entities/category'
 import { usePreferencesStore } from '@/entities/preferences'
 import { useSessionStore } from '@/entities/session'
-import { matchOperationsByAmount, useTransactionStore, type Transaction } from '@/entities/transaction'
 import {
+  lastOperationAccountId,
+  matchOperationsByAmount,
+  useTransactionStore,
+  type Transaction,
+} from '@/entities/transaction'
+import {
+  findMatchingTemplate,
   TemplatePicker,
   useOperationTemplateStore,
   type OperationTemplate,
@@ -43,7 +49,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  saved: []
+  saved: [tx: Transaction]
 }>()
 
 const session = useSessionStore()
@@ -53,9 +59,26 @@ const transactions = useTransactionStore()
 const templates = useOperationTemplateStore()
 const prefs = usePreferencesStore()
 
-const accountId = ref(
-  accounts.getById(props.accountId ?? '')?.id ?? accounts.preferredAccountId,
-)
+function resolveDefaultAccountId() {
+  const fromProp = accounts.getById(props.accountId ?? '')?.id
+  if (fromProp) {
+    return fromProp
+  }
+  if (accounts.selectedAccountId !== ALL_ACCOUNTS_ID && accounts.selectedAccount) {
+    return accounts.selectedAccount.id
+  }
+  return (
+    lastOperationAccountId(
+      transactions.items,
+      props.kind,
+      accounts.items.map((item) => item.id),
+    ) ??
+    accounts.items[0]?.id ??
+    ''
+  )
+}
+
+const accountId = ref(resolveDefaultAccountId())
 const categoryId = ref('')
 const amount = ref<string | number>('')
 const occurredOn = ref(todayLocal())
@@ -154,17 +177,14 @@ const matchingTemplate = computed(() => {
   if (!canSaveTemplate.value) {
     return null
   }
-  const amountValue = Math.round(Number(amount.value))
-  const titleValue = title.value.trim()
-  const notesValue = notes.value.trim()
   return (
-    templates.forKind(props.kind).find(
-      (item) =>
-        item.categoryId === categoryId.value &&
-        item.amount === amountValue &&
-        (item.title ?? '') === titleValue &&
-        (item.notes ?? '') === notesValue,
-    ) ?? null
+    findMatchingTemplate(templates.items, {
+      kind: props.kind,
+      categoryId: categoryId.value,
+      amount: Number(amount.value),
+      title: title.value,
+      notes: notes.value,
+    }) ?? null
   )
 })
 
@@ -215,7 +235,7 @@ async function onSubmit() {
   }
   pending.value = true
   try {
-    await transactions.addManual({
+    const created = await transactions.addManual({
       accountId: accountId.value,
       kind: props.kind,
       categoryId: category.id,
@@ -230,7 +250,7 @@ async function onSubmit() {
     })
     saveLastCategoryId(props.kind, category.id)
     showToast(props.kind === 'expense' ? 'Расход сохранён' : 'Доход сохранён')
-    emit('saved')
+    emit('saved', created)
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить')
   } finally {
@@ -452,7 +472,7 @@ async function onSubmit() {
   width: 100%;
 }
 
-.cat :deep(.app-select) {
+.cat :deep(.cat-select) {
   flex: 1;
   min-width: 0;
 }

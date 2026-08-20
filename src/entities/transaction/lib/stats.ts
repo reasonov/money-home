@@ -2,7 +2,7 @@ import { addDays, formatLocalDate, parseLocalDate, todayLocal } from '@/shared'
 import type { Transaction, TransactionKind } from '../model/types'
 
 export type StatsPeriod = 'this_month' | 'last_month' | 'days_90' | 'all'
-export type ChartPeriod = 'day' | 'week' | 'month' | 'year' | 'custom'
+export type ChartPeriod = 'day' | 'week' | 'month' | 'year' | 'custom' | 'all'
 export type PeriodKey = StatsPeriod | ChartPeriod
 
 export interface StatsFilters {
@@ -516,6 +516,10 @@ export function formatPeriodLabel(
   asOf = todayLocal(),
   custom?: DateRange,
 ): string {
+  if (period === 'all') {
+    return 'За все время'
+  }
+
   if (period === 'day') {
     return asOf === todayLocal() ? 'Сегодня' : formatDayMonthPlain(parseLocalDate(asOf))
   }

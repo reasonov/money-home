@@ -22,6 +22,8 @@ import {
   type ChartPeriod,
 } from '@/entities/transaction'
 import { InstallHint } from '@/features/install-pwa'
+import { RepeatHint } from '@/features/suggest-repeat'
+import { AccountAvailableHint } from '@/widgets/account-available'
 import { CategorySpendChart } from '@/widgets/stats-charts'
 import { UpcomingEvents } from '@/widgets/upcoming-events'
 
@@ -100,9 +102,16 @@ function openCategoryHistory(slice: CategorySpendSlice) {
     </AppEmpty>
 
     <template v-else>
+      <RepeatHint />
       <section class="hero" data-tour="home-balance">
         <p class="hero__label">{{ totalLabel }}</p>
         <p class="hero__total">{{ formatMoney(accounts.displayedTotal) }}</p>
+        <AccountAvailableHint
+          v-if="accounts.selectedAccount"
+          :account-id="accounts.selectedAccount.id"
+          :balance="accounts.selectedAccount.amount"
+        />
+        <AccountAvailableHint v-else />
         <div class="hero__cta" data-tour="home-cta">
           <AppButton block @click="openFormDrawer({ name: 'expense' })">
             <template #icon>

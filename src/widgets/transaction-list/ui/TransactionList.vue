@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   AppInput,
-  AppSegmented,
   AppSelect,
   formatDisplayDate,
   formatMoney,
@@ -11,8 +10,25 @@ import {
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { CategoryIcon, useCategoryStore } from '@/entities/category'
-import { type Transaction, type TransactionKind } from '@/entities/transaction'
+import {
+  statsSummary,
+  type Transaction,
+  type TransactionKind,
+} from '@/entities/transaction'
 import { PendingDot } from '@/entities/sync'
+
+type KindFilter = TransactionKind | 'income_rule' | 'expense_rule'
+
+const KIND_OPTIONS: { value: KindFilter; label: string }[] = [
+  { value: 'expense', label: 'Расходы' },
+  { value: 'income', label: 'Доходы' },
+  { value: 'transfer', label: 'Переводы' },
+  { value: 'income_rule', label: 'Пополнения' },
+  { value: 'expense_rule', label: 'Регулярные расходы' },
+]
+
+const EXPENSE_KINDS: KindFilter[] = ['expense', 'expense_rule']
+const INCOME_KINDS: KindFilter[] = ['income', 'income_rule']
 
 const props = defineProps<{
   items: Transaction[]
@@ -24,31 +40,38 @@ const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const categories = useCategoryStore()
 
-const kind = ref<'all' | TransactionKind | 'income_rule' | 'expense_rule'>('all')
+const kinds = ref<string[]>([])
 const categoryId = ref('all')
 const query = ref('')
 
 watch(
   () => [props.initialKind, props.initialCategoryId] as const,
   ([nextKind, nextCategory]) => {
-    kind.value = nextKind ?? 'all'
+    kinds.value = nextKind ? [nextKind] : []
     categoryId.value = nextCategory ?? 'all'
   },
   { immediate: true },
 )
 
-const kindOptions: { value: 'all' | TransactionKind | 'income_rule' | 'expense_rule'; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'expense', label: 'Расходы' },
-  { value: 'income', label: 'Доходы' },
-  { value: 'transfer', label: 'Переводы' },
-  { value: 'income_rule', label: 'Пополнения' },
-  { value: 'expense_rule', label: 'Регулярные расходы' },
-]
+const selectedKinds = computed(() => kinds.value as KindFilter[])
+
+const categoryKindFilter = computed<'expense' | 'income' | null>(() => {
+  const selected = selectedKinds.value
+  if (!selected.length) {
+    return null
+  }
+  if (selected.every((key) => EXPENSE_KINDS.includes(key))) {
+    return 'expense'
+  }
+  if (selected.every((key) => INCOME_KINDS.includes(key))) {
+    return 'income'
+  }
+  return null
+})
 
 const categoryOptions = computed(() => {
   const map = new Map<string, string>()
-  const kindFilter = kind.value === 'expense' || kind.value === 'income' ? kind.value : null
+  const kindFilter = categoryKindFilter.value
 
   for (const cat of categories.items) {
     if (
@@ -88,18 +111,26 @@ watch(categoryOptions, (options) => {
   }
 })
 
+function matchesKind(item: Transaction, selected: KindFilter[]): boolean {
+  if (!selected.length) {
+    return true
+  }
+  return selected.some((key) => {
+    if (key === 'income_rule') {
+      return item.source === 'income_rule'
+    }
+    if (key === 'expense_rule') {
+      return item.source === 'expense_rule'
+    }
+    return item.kind === key
+  })
+}
+
 const filtered = computed(() => {
   const needle = query.value.trim().toLowerCase()
+  const selected = selectedKinds.value
   return props.items.filter((item) => {
-    if (kind.value === 'income_rule') {
-      if (item.source !== 'income_rule') {
-        return false
-      }
-    } else if (kind.value === 'expense_rule') {
-      if (item.source !== 'expense_rule') {
-        return false
-      }
-    } else if (kind.value !== 'all' && item.kind !== kind.value) {
+    if (!matchesKind(item, selected)) {
       return false
     }
     if (categoryId.value === 'none' && item.categoryId) {
@@ -122,6 +153,30 @@ const filtered = computed(() => {
   })
 })
 
+function itemsTotal(list: Transaction[]): number {
+  if (list.length > 0 && list.every((item) => item.kind === 'transfer')) {
+    return -list.reduce((sum, item) => sum + item.amount, 0)
+  }
+  return statsSummary(list).net
+}
+
+function formatSigned(amount: number): string {
+  const prefix = amount > 0 ? '+' : amount < 0 ? '−' : ''
+  return `${prefix}${formatMoney(Math.abs(amount))}`
+}
+
+function amountClass(amount: number): string {
+  if (amount > 0) {
+    return 'is-in'
+  }
+  if (amount < 0) {
+    return 'is-out'
+  }
+  return ''
+}
+
+const periodTotal = computed(() => itemsTotal(filtered.value))
+
 const groups = computed(() => {
   const map = new Map<string, Transaction[]>()
   for (const item of filtered.value) {
@@ -131,21 +186,24 @@ const groups = computed(() => {
   }
   return [...map.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([date, items]) => ({
-      date,
-      items: [...items].sort(
+    .map(([date, items]) => {
+      const sorted = [...items].sort(
         (a, b) =>
           (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.id.localeCompare(a.id),
-      ),
-    }))
+      )
+      const total = itemsTotal(sorted)
+      return {
+        date,
+        items: sorted,
+        total,
+        totalText: formatSigned(total),
+        totalClass: amountClass(total),
+      }
+    })
 })
 
 const emptyText = computed(() => {
-  if (
-    kind.value !== 'all' ||
-    categoryId.value !== 'all' ||
-    query.value.trim()
-  ) {
+  if (kinds.value.length || categoryId.value !== 'all' || query.value.trim()) {
     return 'Ничего не найдено'
   }
   return 'Операций пока нет'
@@ -173,8 +231,20 @@ const showAuthor = computed(
 <template>
   <div class="list">
     <div class="filters">
-      <AppSegmented v-model="kind" compact :options="kindOptions" aria-label="Тип операций" />
       <div class="filters__row">
+        <AppSelect
+          id="tx-kind"
+          v-model="kinds"
+          multiple
+          clearable
+          size="medium"
+          placeholder="Все типы"
+          aria-label="Тип операций"
+        >
+          <option v-for="option in KIND_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </AppSelect>
         <AppSelect id="tx-category" v-model="categoryId" size="medium" filterable aria-label="Категория">
           <option value="all">Все категории</option>
           <option value="none">Без категории</option>
@@ -182,13 +252,20 @@ const showAuthor = computed(
             {{ cat.name }}
           </option>
         </AppSelect>
-        <AppInput id="tx-query" v-model="query" size="medium" placeholder="Поиск" />
       </div>
+      <AppInput id="tx-query" v-model="query" size="medium" placeholder="Поиск" />
     </div>
 
-    <p v-if="!groups.length" class="empty">{{ emptyText }}</p>
+    <p v-if="groups.length" class="total">
+      <span>Итого</span>
+      <span class="row__amount" :class="amountClass(periodTotal)">{{ formatSigned(periodTotal) }}</span>
+    </p>
+    <p v-else class="empty">{{ emptyText }}</p>
     <section v-for="group in groups" :key="group.date" class="group">
-      <h2>{{ formatDisplayDate(group.date) }}</h2>
+      <h2 class="group__head">
+        <span>{{ formatDisplayDate(group.date) }}</span>
+        <span class="row__amount" :class="group.totalClass">{{ group.totalText }}</span>
+      </h2>
       <button
         v-for="item in group.items"
         :key="item.id"
@@ -246,15 +323,25 @@ const showAuthor = computed(
   gap: var(--space-3);
 }
 
+.total,
+.group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.total {
+  font-weight: 700;
+}
+
 .group {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.group h2 {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
 }
 
 .row {

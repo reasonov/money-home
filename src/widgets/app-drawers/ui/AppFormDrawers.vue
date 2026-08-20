@@ -9,6 +9,8 @@ import { EditPurchaseForm } from '@/features/edit-purchase'
 import { IncomeRuleForm } from '@/features/manage-income'
 import { ExpenseRuleForm } from '@/features/manage-expense'
 import { EditOperationForm } from '@/features/edit-operation'
+import { offerRepeatSuggestion } from '@/features/suggest-repeat'
+import type { Transaction } from '@/entities/transaction'
 
 const open = formDrawerOpen
 
@@ -40,6 +42,19 @@ const title = computed(() => {
       return ''
   }
 })
+
+const ruleFormKey = computed(() => {
+  const current = formDrawer.value
+  if (!current || (current.name !== 'income-rule' && current.name !== 'expense-rule')) {
+    return 'rule'
+  }
+  return current.ruleId ?? JSON.stringify(current.draft) ?? 'new'
+})
+
+async function onOperationSaved(tx: Transaction) {
+  closeFormDrawer()
+  await offerRepeatSuggestion(tx)
+}
 </script>
 
 <template>
@@ -48,13 +63,13 @@ const title = computed(() => {
       v-if="formDrawer?.name === 'expense'"
       kind="expense"
       :account-id="formDrawer.accountId"
-      @saved="closeFormDrawer"
+      @saved="onOperationSaved"
     />
     <OperationForm
       v-else-if="formDrawer?.name === 'income'"
       kind="income"
       :account-id="formDrawer.accountId"
-      @saved="closeFormDrawer"
+      @saved="onOperationSaved"
     />
     <TransferForm
       v-else-if="formDrawer?.name === 'transfer'"
@@ -79,14 +94,18 @@ const title = computed(() => {
     />
     <IncomeRuleForm
       v-else-if="formDrawer?.name === 'income-rule'"
+      :key="ruleFormKey"
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
+      :draft="formDrawer.draft"
       @saved="closeFormDrawer"
     />
     <ExpenseRuleForm
       v-else-if="formDrawer?.name === 'expense-rule'"
+      :key="ruleFormKey"
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
+      :draft="formDrawer.draft"
       @saved="closeFormDrawer"
     />
     <EditOperationForm

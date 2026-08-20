@@ -9,6 +9,7 @@ import {
   getErrorMessage,
   todayLocal,
   type IncomeFrequency,
+  type RuleFormDraft,
 } from '@/shared'
 import { useIncomeRuleStore, type IncomeRule } from '@/entities/income-rule'
 import { useSessionStore } from '@/entities/session'
@@ -28,6 +29,7 @@ const WEEKDAYS = [
 const props = defineProps<{
   ruleId?: string
   accountId?: string
+  draft?: RuleFormDraft
 }>()
 
 const emit = defineEmits<{
@@ -40,14 +42,21 @@ const accounts = useAccountStore()
 const categories = useCategoryStore()
 
 const existing = props.ruleId ? store.items.find((item) => item.id === props.ruleId) : undefined
+const draft = existing ? undefined : props.draft
 
-const accountId = ref(existing?.accountId ?? accounts.getById(props.accountId ?? '')?.id ?? accounts.items[0]?.id ?? '')
-const title = ref(existing?.title ?? '')
-const categoryId = ref(existing?.categoryId ?? '')
-const amount = ref(existing ? String(existing.amount) : '')
-const frequency = ref<IncomeFrequency>(existing?.frequency ?? 'monthly')
-const weekday = ref(String(existing?.weekday ?? 5))
-const monthDay = ref(String(existing?.monthDay ?? 10))
+const accountId = ref(
+  existing?.accountId ??
+    draft?.accountId ??
+    accounts.getById(props.accountId ?? '')?.id ??
+    accounts.items[0]?.id ??
+    '',
+)
+const title = ref(existing?.title ?? draft?.title ?? '')
+const categoryId = ref(existing?.categoryId ?? draft?.categoryId ?? '')
+const amount = ref(existing ? String(existing.amount) : draft ? String(draft.amount) : '')
+const frequency = ref<IncomeFrequency>(existing?.frequency ?? draft?.frequency ?? 'monthly')
+const weekday = ref(String(existing?.weekday ?? draft?.weekday ?? 5))
+const monthDay = ref(String(existing?.monthDay ?? draft?.monthDay ?? 10))
 const anchorDate = ref(existing?.anchorDate ?? todayLocal())
 const error = ref('')
 const pending = ref(false)

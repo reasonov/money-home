@@ -20,6 +20,16 @@ export const CATEGORY_COLORS = [
   '#0E7490',
   '#334155',
   '#64748B',
+  '#9A3412',
+  '#BE123C',
+  '#B91C1C',
+  '#4338CA',
+  '#1E3A8A',
+  '#047857',
+  '#3F6212',
+  '#B45309',
+  '#0369A1',
+  '#78716C',
 ] as const
 
 export const CATEGORY_ICONS = [

@@ -1,5 +1,6 @@
 export { useOperationTemplateStore } from './model/store'
 export type { OperationTemplate, OperationTemplateInput } from './model/types'
+export { findMatchingTemplate } from './lib/matchTemplate'
 export {
   deleteOperationTemplate,
   upsertOperationTemplate,

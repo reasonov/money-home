@@ -1,5 +1,16 @@
 export { useTransactionStore } from './model/store'
 export { matchOperationsByAmount } from './lib/amountMatches'
+export { lastOperationAccountId } from './lib/lastAccount'
+export { ruleDraftFromOperation } from './lib/ruleDraft'
+export {
+  detectRepeatSuggestion,
+  detectRepeatSuggestions,
+  type DetectRepeatInput,
+  type RepeatRuleMatch,
+  type RepeatSeed,
+  type RepeatSuggestion,
+  type RepeatTemplateMatch,
+} from './lib/detectRepeat'
 export type {
   Transaction,
   TransactionKind,

@@ -552,7 +552,7 @@ describe('formatPeriodLabel', () => {
     )
   })
 
-  it('falls back to Период without custom dates', () => {
-    expect(formatPeriodLabel('custom', '2026-08-14', {})).toBe('Период')
+  it('uses За все время for the unbounded period', () => {
+    expect(formatPeriodLabel('all', '2026-08-14')).toBe('За все время')
   })
 })
