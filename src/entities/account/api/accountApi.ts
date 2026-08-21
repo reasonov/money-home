@@ -1,4 +1,4 @@
-import { getErrorMessage, supabase } from '@/shared'
+import { getErrorMessage, roundMoney, supabase } from '@/shared'
 import type { Account, AccountMember } from '../model/types'
 
 type AccountRow = {
@@ -14,7 +14,7 @@ export function mapAccount(row: AccountRow): Account {
   return {
     id: row.id,
     name: row.name,
-    amount: Math.round(Number(row.amount)),
+    amount: roundMoney(Number(row.amount)),
     ownerId: row.owner_id,
     inviteCode: row.invite_code,
     excludeFromTotal: Boolean(row.exclude_from_total),
@@ -78,7 +78,7 @@ export async function createAccount(input: {
   const { data, error } = await supabase
     .rpc('create_account', {
       p_name: input.name,
-      p_opening_amount: Math.round(input.openingAmount),
+      p_opening_amount: roundMoney(input.openingAmount),
       p_category_ids: input.categoryIds?.length ? input.categoryIds : undefined,
       ...(input.id ? { p_id: input.id } : {}),
     })
@@ -132,7 +132,7 @@ export async function updateAccount(
     updated_by: string
   } = { updated_by: userId }
   if (patch.name != null) payload.name = patch.name.trim()
-  if (patch.amount != null) payload.amount = Math.round(patch.amount)
+  if (patch.amount != null) payload.amount = roundMoney(patch.amount)
   if (patch.excludeFromTotal != null) payload.exclude_from_total = patch.excludeFromTotal
 
   const { data, error } = await supabase
@@ -152,7 +152,7 @@ export async function adjustAccountAmount(id: string, delta: number): Promise<Ac
   const { data, error } = await supabase
     .rpc('adjust_account_amount', {
       p_account_id: id,
-      p_delta: Math.round(delta),
+      p_delta: roundMoney(delta),
     })
     .single()
 
@@ -184,7 +184,7 @@ export async function transferBetweenAccounts(input: {
     .rpc('transfer_between_accounts', {
       p_from_account_id: input.fromAccountId,
       p_to_account_id: input.toAccountId,
-      p_amount: Math.round(input.amount),
+      p_amount: roundMoney(input.amount),
       p_occurred_on: input.occurredOn,
       p_notes: input.notes,
       ...(input.id ? { p_id: input.id } : {}),

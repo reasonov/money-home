@@ -13,7 +13,9 @@ import {
   formatMoney,
   formatShortDate,
   getErrorMessage,
+  isBrowserOnline,
   openFormDrawer,
+  roundMoney,
   showToast,
   todayLocal,
 } from '@/shared'
@@ -42,6 +44,14 @@ import {
   useOperationTemplateStore,
   type OperationTemplate,
 } from '@/entities/operation-template'
+import { fetchParsedOperationLine } from '../api/parseOperationApi'
+import {
+  hasParseFields,
+  isParseComplete,
+  mergeParsedOperationLine,
+  parseOperationLine,
+  type ParsedOperationLine,
+} from '../lib/parseOperationLine'
 
 const props = defineProps<{
   kind: CategoryKind
@@ -89,8 +99,139 @@ const pending = ref(false)
 const createOpen = ref(false)
 const templatesOpen = ref(false)
 const savingTemplate = ref(false)
+const line = ref('')
+const parsePending = ref(false)
+const parseSuggestion = ref<ParsedOperationLine | null>(null)
+let parseTimer: ReturnType<typeof setTimeout> | null = null
+let parseSeq = 0
+
+const PARSE_DEBOUNCE_MS = 600
 
 const availableCats = computed(() => categories.forAccount(accountId.value, props.kind))
+
+const parseCategories = computed(() =>
+  availableCats.value.map((item) => ({ id: item.id, name: item.name })),
+)
+
+function applyParse(parsed: ParsedOperationLine) {
+  if (parsed.amount && parsed.amount > 0) {
+    amount.value = parsed.amount
+  }
+  if (parsed.occurredOn && /^\d{4}-\d{2}-\d{2}$/.test(parsed.occurredOn)) {
+    occurredOn.value = parsed.occurredOn
+  }
+  if (parsed.categoryId && availableCats.value.some((item) => item.id === parsed.categoryId)) {
+    categoryId.value = parsed.categoryId
+  }
+  if (parsed.title) {
+    title.value = parsed.title
+  }
+  parseSuggestion.value = null
+}
+
+function applySuggestion() {
+  if (parseSuggestion.value) {
+    applyParse(parseSuggestion.value)
+  }
+}
+
+function suggestionLabel(parsed: ParsedOperationLine) {
+  const parts: string[] = []
+  if (parsed.amount && parsed.amount > 0) {
+    parts.push(formatMoney(parsed.amount))
+  }
+  const category = availableCats.value.find((item) => item.id === parsed.categoryId)
+  if (category) {
+    parts.push(category.name)
+  }
+  if (parsed.title) {
+    parts.push(parsed.title)
+  }
+  if (parsed.occurredOn) {
+    parts.push(formatShortDate(parsed.occurredOn))
+  }
+  return parts.join(' · ')
+}
+
+async function runParse(text: string) {
+  const seq = ++parseSeq
+  const cats = parseCategories.value
+  const today = todayLocal()
+  const local = parseOperationLine(text, today, cats)
+  if (isParseComplete(local)) {
+    if (seq !== parseSeq) {
+      return
+    }
+    applyParse(local)
+    return
+  }
+  if (!isBrowserOnline() || !accountId.value) {
+    parseSuggestion.value = hasParseFields(local) ? local : null
+    return
+  }
+  parsePending.value = true
+  try {
+    const remote = await fetchParsedOperationLine({
+      accountId: accountId.value,
+      kind: props.kind,
+      today,
+      text,
+      categories: cats,
+    })
+    if (seq !== parseSeq) {
+      return
+    }
+    const merged = mergeParsedOperationLine(local, remote, cats, text)
+    if (isParseComplete(merged)) {
+      applyParse(merged)
+      return
+    }
+    parseSuggestion.value = hasParseFields(merged) ? merged : hasParseFields(local) ? local : null
+  } catch {
+    if (seq !== parseSeq) {
+      return
+    }
+    parseSuggestion.value = hasParseFields(local) ? local : null
+  } finally {
+    if (seq === parseSeq) {
+      parsePending.value = false
+    }
+  }
+}
+
+function scheduleParse(text: string) {
+  parseSuggestion.value = null
+  if (parseTimer) {
+    clearTimeout(parseTimer)
+    parseTimer = null
+  }
+  const trimmed = text.trim()
+  if (!trimmed || !/\d/.test(trimmed)) {
+    parseSeq += 1
+    parsePending.value = false
+    return
+  }
+  parseTimer = setTimeout(() => {
+    parseTimer = null
+    void runParse(trimmed)
+  }, PARSE_DEBOUNCE_MS)
+}
+
+function onLineEnter(event: KeyboardEvent) {
+  event.preventDefault()
+  if (parseTimer) {
+    clearTimeout(parseTimer)
+    parseTimer = null
+  }
+  const trimmed = line.value.trim()
+  if (trimmed && /\d/.test(trimmed)) {
+    void runParse(trimmed)
+  }
+}
+
+watch(line, (text) => {
+  scheduleParse(text)
+})
 
 function pickDefaultCategory(list: Category[]) {
   const last = loadLastCategoryId(props.kind)
@@ -120,7 +261,7 @@ const amountMatches = computed(() => {
   if (!prefs.amountSuggestions) {
     return []
   }
-  const value = Math.round(Number(amount.value))
+  const value = roundMoney(Number(amount.value))
   if (!Number.isFinite(value) || value <= 0) {
     return []
   }
@@ -275,6 +416,23 @@ async function onSubmit() {
         <Bookmark :size="20" :stroke-width="2.2" :fill="inFavorites ? 'currentColor' : 'none'" />
       </AppButton>
     </div>
+    <AppField label="Что записать" for-id="op-line">
+      <div class="line" @keydown.enter.prevent="onLineEnter">
+        <AppInput
+          id="op-line"
+          v-model="line"
+          :placeholder="kind === 'expense' ? 'пятёрочка 1840' : 'зарплата 80 000'"
+          autocomplete="off"
+        />
+        <p v-if="parsePending" class="line-hint">Разбираем…</p>
+        <div v-else-if="parseSuggestion" class="line-suggest">
+          <p>Похоже: {{ suggestionLabel(parseSuggestion) }}</p>
+          <AppButton type="button" variant="secondary" block @click="applySuggestion">
+            Подставить
+          </AppButton>
+        </div>
+      </div>
+    </AppField>
     <AppField label="Сумма, ₽" for-id="op-amount">
       <div class="amount">
         <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
@@ -384,6 +542,33 @@ async function onSubmit() {
   min-width: 44px;
   padding-left: 0;
   padding-right: 0;
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.line-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.line-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.line-suggest p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
 }
 
 .amount {

@@ -9,6 +9,7 @@ export type ActivityKind =
   | 'transaction_created'
   | 'income_auto_posted'
   | 'expense_auto_posted'
+  | 'savings_goal_changed'
 
 export interface ActivityItem {
   id: string
@@ -18,6 +19,7 @@ export interface ActivityItem {
   purchaseId?: string
   transactionId?: string
   occurrenceId?: string
+  savingsGoalId?: string
   summary: string
   createdAt: string
   seenAt: string | null

@@ -1,3 +1,4 @@
+import { roundMoney } from '@/shared'
 import type { Transaction, TransactionKind } from '../model/types'
 
 const DEFAULT_LIMIT = 3
@@ -16,7 +17,7 @@ export function matchOperationsByAmount(
     limit?: number
   },
 ): Transaction[] {
-  const amount = Math.round(input.amount)
+  const amount = roundMoney(input.amount)
   if (!Number.isFinite(amount) || amount <= 0 || !input.accountId) {
     return []
   }
@@ -28,7 +29,7 @@ export function matchOperationsByAmount(
     if (item.status !== 'posted' || item.kind !== input.kind) {
       return false
     }
-    if (Math.round(Number(item.amount)) !== amount) {
+    if (roundMoney(Number(item.amount)) !== amount) {
       return false
     }
     return item.categoryId != null && allowed.has(item.categoryId)

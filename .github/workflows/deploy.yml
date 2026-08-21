@@ -44,11 +44,13 @@ jobs:
 
           git fetch --tags --force
 
+          pkg_version="$(node -p "require('./package.json').version")"
           latest_tag="$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1 || true)"
-          if [ -n "$latest_tag" ]; then
-            base_version="${latest_tag#v}"
+          tag_version="${latest_tag#v}"
+          if [ -n "$tag_version" ]; then
+            base_version="$(printf '%s\n%s\n' "$pkg_version" "$tag_version" | sort -V | tail -n1)"
           else
-            base_version="$(node -p "require('./package.json').version")"
+            base_version="$pkg_version"
           fi
 
           major="${base_version%%.*}"

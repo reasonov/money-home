@@ -1,1 +1,10 @@
 project_id = "qegoivwsbvjhkemmcyqv"
+
+[functions.savings-advice]
+verify_jwt = true
+
+[functions.parse-operation]
+verify_jwt = true
+
+[functions.stats-insight]
+verify_jwt = true

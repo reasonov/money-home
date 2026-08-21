@@ -6,6 +6,7 @@ import {
   createUuid,
   enqueueMutation,
   getErrorMessage,
+  roundMoney,
 } from '@/shared'
 import { useSessionStore } from '@/entities/session'
 import { useCategoryStore } from '@/entities/category'
@@ -75,7 +76,7 @@ export const useAccountStore = defineStore('account', () => {
     if (!account || !delta) {
       return
     }
-    upsert({ ...account, amount: account.amount + delta })
+    upsert({ ...account, amount: roundMoney(account.amount + delta) })
   }
 
   function hydrate(accounts: Account[], nextMembers: AccountMember[], selectedId?: string) {
@@ -122,7 +123,7 @@ export const useAccountStore = defineStore('account', () => {
     const account: Account = {
       id,
       name: input.name.trim() || 'Основной счёт',
-      amount: Math.round(input.openingAmount),
+      amount: roundMoney(input.openingAmount),
       ownerId: userId,
       inviteCode: null,
       excludeFromTotal: false,
@@ -194,7 +195,7 @@ export const useAccountStore = defineStore('account', () => {
     }
     if (patch.amount != null) {
       const latest = getById(id)!
-      const delta = Math.round(patch.amount) - latest.amount
+      const delta = roundMoney(patch.amount - latest.amount)
       if (delta) {
         applyAmountDelta(id, delta)
         await enqueueMutation(userId, 'adjustAccountBalance', { id, delta }, id)
@@ -220,7 +221,7 @@ export const useAccountStore = defineStore('account', () => {
     assertWritable()
     const userId = requireUserId()
     const id = createUuid()
-    const amount = Math.round(input.amount)
+    const amount = roundMoney(input.amount)
     applyAmountDelta(input.fromAccountId, -amount)
     applyAmountDelta(input.toAccountId, amount)
     await enqueueMutation(

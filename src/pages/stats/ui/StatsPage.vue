@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
+  AppButton,
+  AppDrawer,
   AppEmpty,
   AppPeriodSelect,
   AppSegmented,
@@ -43,6 +45,14 @@ import {
   TrendChart,
   WeekdaySpendChart,
 } from '@/widgets/stats-charts'
+import {
+  StatsInsightPanel,
+  buildInsightCategories,
+  buildInsightLevers,
+  forecastMinBalance,
+  type InsightChartId,
+  type StatsInsightSummary,
+} from '@/features/stats-insight'
 
 type StatsChartId = 'category' | 'weekday' | 'heatmap' | 'trend' | 'top' | 'accounts' | 'members' | 'forecast'
 
@@ -59,6 +69,7 @@ const kind = ref<'expense' | 'income'>('expense')
 const forecastHorizon = ref<'30' | '90'>('30')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
+const insightOpen = ref(false)
 
 const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'expense', label: 'Расходы' },
@@ -100,19 +111,23 @@ const summary = computed(() => statsSummary(filtered.value))
 const previousRange = computed(() =>
   previousStatsDateRange(period.value, undefined, customRange.value),
 )
-const previousSummary = computed(() => {
+const previousFiltered = computed(() => {
   const prev = previousRange.value
   if (!prev?.from || !prev.to) {
+    return []
+  }
+  return filterStatsTransactions(transactions.posted, {
+    accountId: selectedAccountId.value,
+    period: 'custom',
+    from: prev.from,
+    to: prev.to,
+  })
+})
+const previousSummary = computed(() => {
+  if (!previousRange.value?.from || !previousRange.value.to) {
     return null
   }
-  return statsSummary(
-    filterStatsTransactions(transactions.posted, {
-      accountId: selectedAccountId.value,
-      period: 'custom',
-      from: prev.from,
-      to: prev.to,
-    }),
-  )
+  return statsSummary(previousFiltered.value)
 })
 
 const dayCount = computed(() => periodDayCount(range.value, undefined, filtered.value))
@@ -145,7 +160,7 @@ const memberSlices = computed(() =>
   })),
 )
 
-const forecastSlices = computed(() => {
+function forecastSeries(horizonDays: number) {
   const asOf = parseLocalDate(todayLocal())
   const source =
     selectedAccountId.value === ALL_ACCOUNTS_ID
@@ -156,7 +171,7 @@ const forecastSlices = computed(() => {
     const series = forecastBalanceSeries({
       currentBalance: account.amount,
       asOfDate: asOf,
-      horizonDays: forecastHorizon.value === '90' ? 90 : 30,
+      horizonDays,
       incomeRules: incomeRules.forAccount(account.id).filter((rule) => rule.active),
       plannedPurchases: purchases.plannedFor(account.id),
       expenseRules: expenseRules.forAccount(account.id).filter((rule) => rule.active),
@@ -177,6 +192,48 @@ const forecastSlices = computed(() => {
     }
   }
   return [...byDate.values()]
+}
+
+const forecastSlices = computed(() => forecastSeries(forecastHorizon.value === '90' ? 90 : 30))
+
+const insightForecastMin = computed(() => forecastMinBalance(forecastSeries(30)))
+
+const insightScope = computed(() =>
+  selectedAccountId.value === ALL_ACCOUNTS_ID ? 'по выбранным счетам' : 'на этом счёте',
+)
+
+const insightSummary = computed((): StatsInsightSummary => {
+  const hasPrevious = Boolean(previousRange.value?.from && previousRange.value.to)
+  const levers = buildInsightLevers({
+    period: period.value,
+    hasPrevious,
+    scopeLabel: insightScope.value,
+    currentExpense: summary.value.expenseTotal,
+    categories: buildInsightCategories(filtered.value, previousFiltered.value),
+    topExpenses: topTransactions(filtered.value, 'expense', 3).map((item) => ({
+      id: item.id,
+      amount: item.amount,
+      ...(item.categoryId ? { categoryId: item.categoryId } : {}),
+      ...(item.categoryName ? { categoryName: item.categoryName } : {}),
+      occurredOn: item.occurredOn,
+    })),
+    forecastMin: insightForecastMin.value,
+  })
+  return {
+    accountId: selectedAccountId.value,
+    period: period.value,
+    periodLabel: periodLabel.value,
+    scopeLabel: insightScope.value,
+    ...(period.value === 'custom'
+      ? { from: customFrom.value, to: customTo.value }
+      : {}),
+    hasPrevious,
+    currentExpense: summary.value.expenseTotal,
+    previousExpense: previousSummary.value?.expenseTotal ?? 0,
+    currentIncome: summary.value.incomeTotal,
+    previousIncome: previousSummary.value?.incomeTotal ?? 0,
+    levers,
+  }
 })
 
 const forecastHorizonOptions: { value: '30' | '90'; label: string }[] = [
@@ -192,6 +249,9 @@ const chartTitle = computed(() =>
 const centerLabel = computed(() => (kind.value === 'expense' ? 'Потрачено' : 'Получено'))
 const kindEmpty = computed(() =>
   kind.value === 'expense' ? 'Нет расходов за период' : 'Нет доходов за период',
+)
+const showSummary = computed(
+  () => filtered.value.length > 0 || insightSummary.value.levers.length > 0,
 )
 
 function formatShare(value: number | null) {
@@ -216,6 +276,14 @@ function deltaClass(current: number, previous: number, invert = false) {
   }
   const better = invert ? delta < 0 : delta > 0
   return better ? 'is-in' : 'is-out'
+}
+
+function onInsightChart(id: InsightChartId) {
+  insightOpen.value = false
+  chart.value = id
+  if (id === 'category' || id === 'top') {
+    kind.value = 'expense'
+  }
 }
 </script>
 
@@ -242,59 +310,13 @@ function deltaClass(current: number, previous: number, invert = false) {
       />
     </div>
 
+    <AppButton v-if="showSummary" variant="secondary" block @click="insightOpen = true">
+      Сводка и советы
+    </AppButton>
+
     <AppEmpty v-if="!filtered.length && chart !== 'forecast'" description="Нет операций за период" />
 
     <template v-if="filtered.length || chart === 'forecast'">
-      <section v-if="filtered.length" class="summary" aria-label="Сводка">
-        <div class="summary__row">
-          <div class="summary__item">
-            <p class="summary__label">Расходы</p>
-            <p class="summary__value is-out">{{ formatMoney(summary.expenseTotal) }}</p>
-            <p
-              v-if="previousSummary && formatDelta(summary.expenseTotal, previousSummary.expenseTotal)"
-              class="summary__delta"
-              :class="deltaClass(summary.expenseTotal, previousSummary.expenseTotal, true)"
-            >
-              {{ formatDelta(summary.expenseTotal, previousSummary.expenseTotal) }}
-            </p>
-          </div>
-          <div class="summary__item">
-            <p class="summary__label">Доходы</p>
-            <p class="summary__value is-in">{{ formatMoney(summary.incomeTotal) }}</p>
-            <p
-              v-if="previousSummary && formatDelta(summary.incomeTotal, previousSummary.incomeTotal)"
-              class="summary__delta"
-              :class="deltaClass(summary.incomeTotal, previousSummary.incomeTotal)"
-            >
-              {{ formatDelta(summary.incomeTotal, previousSummary.incomeTotal) }}
-            </p>
-          </div>
-          <div class="summary__item">
-            <p class="summary__label">Итого</p>
-            <p class="summary__value" :class="summary.net >= 0 ? 'is-in' : 'is-out'">
-              {{ formatMoney(summary.net) }}
-            </p>
-            <p
-              v-if="previousSummary && formatDelta(summary.net, previousSummary.net)"
-              class="summary__delta"
-              :class="deltaClass(summary.net, previousSummary.net)"
-            >
-              {{ formatDelta(summary.net, previousSummary.net) }}
-            </p>
-          </div>
-        </div>
-        <div class="summary__row summary__row--rates">
-          <div class="summary__item">
-            <p class="summary__label">Средний расход в день</p>
-            <p class="summary__value">{{ formatMoney(dailyExpense) }}</p>
-          </div>
-          <div class="summary__item">
-            <p class="summary__label">Расходы от доходов</p>
-            <p class="summary__value">{{ formatShare(share) }}</p>
-          </div>
-        </div>
-      </section>
-
       <section class="stats__chart">
         <AppSegmented
           v-if="showKind"
@@ -363,6 +385,67 @@ function deltaClass(current: number, previous: number, invert = false) {
         </template>
       </section>
     </template>
+
+    <AppDrawer v-model:open="insightOpen" title="Сводка и советы" height="90%">
+      <div class="insight-drawer">
+        <section v-if="filtered.length" class="summary" aria-label="Сводка">
+          <div class="summary__row">
+            <div class="summary__item">
+              <p class="summary__label">Расходы</p>
+              <p class="summary__value is-out">{{ formatMoney(summary.expenseTotal) }}</p>
+              <p
+                v-if="previousSummary && formatDelta(summary.expenseTotal, previousSummary.expenseTotal)"
+                class="summary__delta"
+                :class="deltaClass(summary.expenseTotal, previousSummary.expenseTotal, true)"
+              >
+                {{ formatDelta(summary.expenseTotal, previousSummary.expenseTotal) }}
+              </p>
+            </div>
+            <div class="summary__item">
+              <p class="summary__label">Доходы</p>
+              <p class="summary__value is-in">{{ formatMoney(summary.incomeTotal) }}</p>
+              <p
+                v-if="previousSummary && formatDelta(summary.incomeTotal, previousSummary.incomeTotal)"
+                class="summary__delta"
+                :class="deltaClass(summary.incomeTotal, previousSummary.incomeTotal)"
+              >
+                {{ formatDelta(summary.incomeTotal, previousSummary.incomeTotal) }}
+              </p>
+            </div>
+            <div class="summary__item">
+              <p class="summary__label">Итого</p>
+              <p class="summary__value" :class="summary.net >= 0 ? 'is-in' : 'is-out'">
+                {{ formatMoney(summary.net) }}
+              </p>
+              <p
+                v-if="previousSummary && formatDelta(summary.net, previousSummary.net)"
+                class="summary__delta"
+                :class="deltaClass(summary.net, previousSummary.net)"
+              >
+                {{ formatDelta(summary.net, previousSummary.net) }}
+              </p>
+            </div>
+          </div>
+          <div class="summary__row summary__row--rates">
+            <div class="summary__item">
+              <p class="summary__label">Средний расход в день</p>
+              <p class="summary__value">{{ formatMoney(dailyExpense) }}</p>
+            </div>
+            <div class="summary__item">
+              <p class="summary__label">Расходы от доходов</p>
+              <p class="summary__value">{{ formatShare(share) }}</p>
+            </div>
+          </div>
+        </section>
+
+        <StatsInsightPanel
+          v-if="insightOpen && insightSummary.levers.length"
+          plain
+          :summary="insightSummary"
+          @select-chart="onInsightChart"
+        />
+      </div>
+    </AppDrawer>
   </div>
 </template>
 
@@ -390,14 +473,16 @@ function deltaClass(current: number, previous: number, invert = false) {
   box-shadow: var(--shadow-soft);
 }
 
+.insight-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .summary {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
 }
 
 .summary__row {

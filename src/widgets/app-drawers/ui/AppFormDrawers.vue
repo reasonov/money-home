@@ -9,6 +9,8 @@ import { EditPurchaseForm } from '@/features/edit-purchase'
 import { IncomeRuleForm } from '@/features/manage-income'
 import { ExpenseRuleForm } from '@/features/manage-expense'
 import { EditOperationForm } from '@/features/edit-operation'
+import { SavingsGoalForm } from '@/features/edit-savings-goal'
+import { SavingsAdvicePanel } from '@/features/savings-advice'
 import { offerRepeatSuggestion } from '@/features/suggest-repeat'
 import type { Transaction } from '@/entities/transaction'
 
@@ -38,6 +40,10 @@ const title = computed(() => {
       return current.ruleId ? 'Изменить регулярный расход' : 'Регулярный расход'
     case 'transaction-edit':
       return 'Изменить операцию'
+    case 'savings-goal':
+      return current.goalId ? 'Копилка' : 'Новая копилка'
+    case 'savings-advice':
+      return 'Как накопить'
     default:
       return ''
   }
@@ -115,6 +121,19 @@ async function onOperationSaved(tx: Transaction) {
       @saved="closeFormDrawer"
       @repeated="onOperationSaved"
       @cancel="closeFormDrawer"
+    />
+    <SavingsGoalForm
+      v-else-if="formDrawer?.name === 'savings-goal'"
+      :key="formDrawer.goalId ?? formDrawer.accountId ?? 'new'"
+      :account-id="formDrawer.accountId"
+      :goal-id="formDrawer.goalId"
+      @saved="closeFormDrawer"
+    />
+    <SavingsAdvicePanel
+      v-else-if="formDrawer?.name === 'savings-advice'"
+      :key="formDrawer.goalId"
+      :account-id="formDrawer.accountId"
+      :goal-id="formDrawer.goalId"
     />
   </AppDrawer>
 </template>

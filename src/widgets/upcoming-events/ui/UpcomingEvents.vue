@@ -8,7 +8,6 @@ import {
   formatShortDate,
   incomeOccurrences,
   isPastDate,
-  openFormDrawer,
   parseLocalDate,
   todayLocal,
 } from '@/shared'
@@ -134,7 +133,7 @@ function dateLabel(iso: string, overdue: boolean) {
 
 function openEvent(item: UpcomingEvent) {
   if (item.purchaseId) {
-    openFormDrawer({ name: 'purchase-edit', purchaseId: item.purchaseId })
+    void router.push({ name: 'calendar', query: { purchase: item.purchaseId } })
     return
   }
   void router.push({ name: 'income' })

@@ -1,3 +1,4 @@
+import { roundMoney } from '@/shared'
 import type { OperationTemplate } from '../model/types'
 
 export type TemplateMatchFields = {
@@ -14,7 +15,7 @@ export function findMatchingTemplate(
 ): OperationTemplate | undefined {
   const title = fields.title?.trim() ?? ''
   const notes = fields.notes?.trim() ?? ''
-  const amount = Math.round(fields.amount)
+  const amount = roundMoney(fields.amount)
   return templates.find(
     (item) =>
       item.kind === fields.kind &&

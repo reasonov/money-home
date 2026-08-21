@@ -4,9 +4,11 @@ import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePurchaseStore } from '@/entities/purchase'
+import { useSavingsGoalStore } from '@/entities/savings-goal'
 import { useTransactionStore } from '@/entities/transaction'
 import { loadReplica, saveReplica } from '@/shared/lib/localDb'
 import { getLocalOnlyIds, getSkippedDueKeys, setSkippedDueKeys } from '@/shared/lib/offlineMeta'
+import { roundMoney } from '@/shared/lib/parseAmount'
 import type { ReplicaPayload } from '../model/types'
 
 export function snapshotStores(): ReplicaPayload {
@@ -17,6 +19,7 @@ export function snapshotStores(): ReplicaPayload {
     members: [...useAccountStore().members],
     categories: [...useCategoryStore().items],
     purchases: [...usePurchaseStore().items],
+    savingsGoals: [...useSavingsGoalStore().items],
     incomeRules: [...useIncomeRuleStore().items],
     expenseRules: [...useExpenseRuleStore().items],
     transactions: transactions.items.filter((item) => !localOnly.has(item.id)),
@@ -30,7 +33,7 @@ export function snapshotStores(): ReplicaPayload {
 
 function normalizeAccountAmount(amount: unknown) {
   const value = Number(amount)
-  return Number.isFinite(value) ? Math.round(value) : 0
+  return Number.isFinite(value) ? roundMoney(value) : 0
 }
 
 export function hydrateStores(payload: ReplicaPayload): void {
@@ -48,6 +51,7 @@ export function hydrateStores(payload: ReplicaPayload): void {
   )
   useCategoryStore().hydrate(payload.categories)
   usePurchaseStore().hydrate(payload.purchases)
+  useSavingsGoalStore().hydrate(payload.savingsGoals ?? [])
   useIncomeRuleStore().hydrate(payload.incomeRules)
   useExpenseRuleStore().hydrate(payload.expenseRules)
   useOperationTemplateStore().hydrate(payload.operationTemplates ?? [])
@@ -76,6 +80,7 @@ export async function tryHydrateReplica(userId: string): Promise<boolean> {
     members: payload.members ?? [],
     categories: payload.categories ?? [],
     purchases: payload.purchases ?? [],
+    savingsGoals: payload.savingsGoals ?? [],
     incomeRules: payload.incomeRules ?? [],
     expenseRules: payload.expenseRules ?? [],
     transactions: payload.transactions ?? [],

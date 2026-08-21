@@ -11,6 +11,7 @@ import {
   House,
   List,
   PieChart,
+  PiggyBank,
   Plus,
   Settings,
   Wallet,
@@ -40,6 +41,7 @@ const links = [
   { to: '/categories', label: 'Категории', icon: FolderTree },
   { to: '/templates', label: 'Избранное', icon: Bookmark },
   { to: '/income', label: 'Регулярные операции', icon: CalendarClock },
+  { to: '/savings', label: 'Копилки', icon: PiggyBank },
 ]
 
 function go(path: string) {

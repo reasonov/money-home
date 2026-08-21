@@ -1,4 +1,4 @@
-import { getErrorMessage, supabase, type IncomeFrequency } from '@/shared'
+import { getErrorMessage, roundMoney, supabase, type IncomeFrequency } from '@/shared'
 import type { ExpenseRule } from '../model/types'
 
 type ExpenseRuleRow = {
@@ -20,7 +20,7 @@ export function mapExpenseRule(row: ExpenseRuleRow): ExpenseRule {
   return {
     id: row.id,
     accountId: row.account_id,
-    amount: Math.round(Number(row.amount)),
+    amount: roundMoney(Number(row.amount)),
     frequency: row.frequency as IncomeFrequency,
     active: row.active,
     ...(row.starts_on ? { startsOn: row.starts_on } : {}),
@@ -47,7 +47,7 @@ function toRow(input: Omit<ExpenseRule, 'id'>, userId: string, id?: string) {
   return {
     ...(id ? { id } : {}),
     account_id: input.accountId,
-    amount: Math.round(input.amount),
+    amount: roundMoney(input.amount),
     frequency: input.frequency,
     weekday: input.weekday ?? null,
     month_day: input.monthDay ?? null,
@@ -99,7 +99,7 @@ export async function updateExpenseRule(
     category_id?: string | null
   } = { updated_by: userId }
   if (patch.accountId != null) payload.account_id = patch.accountId
-  if (patch.amount != null) payload.amount = Math.round(patch.amount)
+  if (patch.amount != null) payload.amount = roundMoney(patch.amount)
   if (patch.frequency != null) payload.frequency = patch.frequency
   if (patch.active != null) payload.active = patch.active
   if ('weekday' in patch) payload.weekday = patch.weekday ?? null

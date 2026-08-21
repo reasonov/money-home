@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAccountStore } from '@/entities/account'
-import { assertWritable, createUuid, enqueueMutation } from '@/shared'
+import { assertWritable, createUuid, enqueueMutation, roundMoney } from '@/shared'
 import {
   fetchPurchases,
   mapPurchase,
@@ -74,7 +74,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
       categoryColor: input.categoryColor,
       categoryIcon: input.categoryIcon,
       title: input.title,
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       plannedDate: input.plannedDate,
       status: 'planned',
       createdBy: input.createdBy,
@@ -108,7 +108,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
     const purchase: Purchase = {
       ...current,
       ...input,
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
     }
     upsert(purchase)
     await enqueueMutation(userId, 'updatePurchase', { id, userId, input }, id)

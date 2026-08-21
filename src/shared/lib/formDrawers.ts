@@ -20,6 +20,8 @@ export type FormDrawer =
   | { name: 'income-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
   | { name: 'expense-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
   | { name: 'transaction-edit'; transactionId: string }
+  | { name: 'savings-goal'; accountId?: string; goalId?: string }
+  | { name: 'savings-advice'; accountId: string; goalId: string }
 
 export const formDrawer = ref<FormDrawer | null>(null)
 

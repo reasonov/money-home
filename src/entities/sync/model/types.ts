@@ -4,6 +4,7 @@ import type { ExpenseRule } from '@/entities/expense-rule'
 import type { IncomeRule } from '@/entities/income-rule'
 import type { OperationTemplate } from '@/entities/operation-template'
 import type { Purchase } from '@/entities/purchase'
+import type { SavingsGoal } from '@/entities/savings-goal'
 import type { Transaction } from '@/entities/transaction'
 import type { ExpenseOccurrenceRow, OccurrenceRow } from '@/entities/transaction'
 
@@ -14,6 +15,7 @@ export interface ReplicaPayload {
   members: AccountMember[]
   categories: Category[]
   purchases: Purchase[]
+  savingsGoals: SavingsGoal[]
   incomeRules: IncomeRule[]
   expenseRules: ExpenseRule[]
   transactions: Transaction[]
@@ -55,3 +57,6 @@ export type OutboxType =
   | 'adjustDueExpense'
   | 'upsertOperationTemplate'
   | 'deleteOperationTemplate'
+  | 'insertSavingsGoal'
+  | 'updateSavingsGoal'
+  | 'deleteSavingsGoal'

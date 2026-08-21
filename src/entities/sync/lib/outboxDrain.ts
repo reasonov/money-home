@@ -16,6 +16,11 @@ import {
   updatePurchaseRow,
 } from '@/entities/purchase'
 import {
+  deleteSavingsGoal,
+  insertSavingsGoal,
+  updateSavingsGoalRow,
+} from '@/entities/savings-goal'
+import {
   adjustExpenseOccurrence,
   adjustIncomeOccurrence,
   cancelPostedTransaction,
@@ -177,6 +182,19 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       return
     case 'deleteOperationTemplate':
       await deleteOperationTemplate(String(payload.id))
+      return
+    case 'insertSavingsGoal':
+      await insertSavingsGoal(payload as Parameters<typeof insertSavingsGoal>[0])
+      return
+    case 'updateSavingsGoal':
+      await updateSavingsGoalRow(
+        String(payload.id),
+        String(payload.userId),
+        payload.input as Parameters<typeof updateSavingsGoalRow>[2],
+      )
+      return
+    case 'deleteSavingsGoal':
+      await deleteSavingsGoal(String(payload.id), String(payload.userId))
       return
     default:
       if (String(item.type) === 'insertOperationTemplate') {

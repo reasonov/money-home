@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { AppButton, AppSegmented, openFormDrawer } from '@/shared'
 import { PurchaseList } from '@/widgets/purchase-list'
 import { PlanningCalendar } from '@/widgets/planning-calendar'
 
+const route = useRoute()
+const router = useRouter()
 const accounts = useAccountStore()
 const view = ref<'list' | 'month'>('list')
 
@@ -12,6 +15,30 @@ const viewOptions: { value: 'list' | 'month'; label: string }[] = [
   { value: 'list', label: 'Список' },
   { value: 'month', label: 'Месяц' },
 ]
+
+const focusPurchaseId = computed(() => {
+  const value = route.query.purchase
+  return typeof value === 'string' && value ? value : undefined
+})
+
+watch(
+  focusPurchaseId,
+  (id) => {
+    if (id) {
+      view.value = 'list'
+    }
+  },
+  { immediate: true },
+)
+
+function onPurchaseFocused() {
+  if (!focusPurchaseId.value) {
+    return
+  }
+  const query = { ...route.query }
+  delete query.purchase
+  void router.replace({ query })
+}
 
 function ruleAccountId() {
   return accounts.selectedAccountId !== ALL_ACCOUNTS_ID ? accounts.selectedAccountId : undefined
@@ -30,7 +57,6 @@ function openExpenseRule() {
     accountId: ruleAccountId(),
   })
 }
-
 </script>
 
 <template>
@@ -46,7 +72,7 @@ function openExpenseRule() {
       </div>
     </div>
     <PlanningCalendar v-if="view === 'month'" />
-    <PurchaseList v-else />
+    <PurchaseList v-else :focus-id="focusPurchaseId" @focused="onPurchaseFocused" />
   </div>
 </template>
 

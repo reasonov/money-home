@@ -13,6 +13,7 @@ import {
   AppSkeleton,
   AppTextarea,
   compareDates,
+  floorMoney,
   formatLocalDate,
   formatMoney,
   formatProjectionDate,
@@ -154,7 +155,7 @@ function applyProjectedAmount() {
   if (!projected || projected <= 0) {
     return
   }
-  amount.value = String(Math.floor(projected))
+  amount.value = String(floorMoney(projected))
   error.value = ''
   detailsOpen.value = false
 }
@@ -386,7 +387,7 @@ async function onSubmit() {
           block
           @click="applyProjectedAmount"
         >
-          Изменить сумму покупки на {{ formatMoney(Math.floor(projection.projectedBalance)) }}
+          Изменить сумму покупки на {{ formatMoney(floorMoney(projection.projectedBalance)) }}
         </AppButton>
         <AppButton type="button" variant="ghost" block @click="detailsOpen = false">
           Понятно

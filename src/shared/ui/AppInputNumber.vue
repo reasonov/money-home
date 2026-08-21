@@ -14,7 +14,7 @@ const props = defineProps<{
 const model = defineModel<string | number>({ required: true })
 
 const value = computed({
-  get: () => sanitizeAmountInput(String(model.value ?? '')),
+  get: () => sanitizeAmountInput(String(model.value ?? '')).replace('.', ','),
   set: (next: string) => {
     const sanitized = sanitizeAmountInput(next)
     if (sanitized === '') {
@@ -40,8 +40,7 @@ const value = computed({
     :placeholder="placeholder"
     :input-props="{
       id,
-      inputmode: 'numeric',
-      pattern: '[0-9]*',
+      inputmode: 'decimal',
       autocomplete: 'off',
     }"
   />

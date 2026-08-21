@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAccountStore } from '@/entities/account'
-import { dueKey } from '@/shared'
+import { assertWritable, createUuid, dueKey, enqueueMutation, roundMoney } from '@/shared'
 import { rememberSkippedDue, isLocalOnlyId } from '@/shared/lib/offlineMeta'
 import {
   applyDueExpenseRules,
@@ -14,7 +14,6 @@ import {
   type OccurrenceRow,
 } from '../api/transactionApi'
 import type { Transaction } from './types'
-import { assertWritable, createUuid, enqueueMutation } from '@/shared'
 
 export const useTransactionStore = defineStore('transaction', () => {
   const items = ref<Transaction[]>([])
@@ -155,7 +154,7 @@ export const useTransactionStore = defineStore('transaction', () => {
   }) {
     assertWritable()
     const id = createUuid()
-    const amount = Math.round(input.amount)
+    const amount = roundMoney(input.amount)
     const tx: Transaction = {
       id,
       accountId: input.accountId,
@@ -240,7 +239,7 @@ export const useTransactionStore = defineStore('transaction', () => {
 
   async function adjustOccurrence(occurrenceId: string, amount: number) {
     assertWritable()
-    const value = Math.round(amount)
+    const value = roundMoney(amount)
     const income = occurrences.value.find((item) => item.id === occurrenceId)
     const expense = expenseOccurrences.value.find((item) => item.id === occurrenceId)
     const occ = income ?? expense
@@ -301,7 +300,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     const next: Transaction = {
       ...current,
       accountId: input.accountId,
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       occurredOn: input.occurredOn,
       ...(input.counterpartyAccountId
         ? { counterpartyAccountId: input.counterpartyAccountId }

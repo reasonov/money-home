@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { addDays, formatLocalDate, formatMoney, parseLocalDate, requestPersist, supabase, todayLocal } from '@/shared'
+import { addDays, formatLocalDate, formatMoney, parseLocalDate, requestPersist, roundMoney, supabase, todayLocal } from '@/shared'
 import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
@@ -7,6 +7,7 @@ import { useIncomeRuleStore } from '@/entities/income-rule'
 import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePreferencesStore } from '@/entities/preferences'
 import { usePurchaseStore } from '@/entities/purchase'
+import { useSavingsGoalStore } from '@/entities/savings-goal'
 import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
 import { ensureProfile } from '../api/accountApi'
@@ -15,13 +16,14 @@ import { useAccountStore } from '../model/store'
 let channel: RealtimeChannel | null = null
 
 function formatAmount(value: unknown) {
-  return formatMoney(Math.round(Number(value)))
+  return formatMoney(roundMoney(Number(value)))
 }
 
 export async function loadAccountData() {
   const accounts = useAccountStore()
   const categories = useCategoryStore()
   const purchases = usePurchaseStore()
+  const savingsGoals = useSavingsGoalStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
   const templates = useOperationTemplateStore()
@@ -31,6 +33,7 @@ export async function loadAccountData() {
     accounts.load(),
     categories.load(),
     purchases.load(),
+    savingsGoals.load(),
     incomeRules.load(),
     expenseRules.load(),
     templates.load(),
@@ -53,6 +56,7 @@ export function startAccountRealtime() {
   const accounts = useAccountStore()
   const categories = useCategoryStore()
   const purchases = usePurchaseStore()
+  const savingsGoals = useSavingsGoalStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
   const templates = useOperationTemplateStore()
@@ -230,6 +234,43 @@ export function startAccountRealtime() {
             : `${actorName}: регулярный расход изменён`,
       })
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'savings_goals' }, (payload) => {
+      const eventType = payload.eventType
+      const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
+        id: string
+        account_id: string
+        title: string
+        target_amount: number
+        target_date: string
+        saved_amount: number
+        started_on: string
+        status: string
+        created_by: string
+        updated_by?: string | null
+      } | null
+      if (!row) return
+      if (eventType === 'DELETE') {
+        savingsGoals.remove(row.id)
+      } else {
+        savingsGoals.applyRemoteRow(row)
+      }
+      const actorId = eventType === 'INSERT' ? row.created_by : (row.updated_by ?? row.created_by)
+      if (!actorId || actorId === session.user?.id) return
+      const actorName = accounts.memberName(actorId)
+      const title = row.title.trim() || 'Копилка'
+      activity.push({
+        kind: 'savings_goal_changed',
+        actorId,
+        actorName,
+        savingsGoalId: row.id,
+        summary:
+          eventType === 'DELETE'
+            ? `${actorName}: копилка «${title}» удалена`
+            : eventType === 'INSERT'
+              ? `${actorName}: новая копилка «${title}»`
+              : `${actorName}: копилка «${title}» изменена`,
+      })
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => {
       const eventType = payload.eventType
       const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
@@ -388,6 +429,7 @@ export function resetAccountSession() {
   useAccountStore().reset()
   useCategoryStore().reset()
   usePurchaseStore().reset()
+  useSavingsGoalStore().reset()
   useIncomeRuleStore().reset()
   useExpenseRuleStore().reset()
   useOperationTemplateStore().reset()

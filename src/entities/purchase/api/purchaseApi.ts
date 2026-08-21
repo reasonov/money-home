@@ -1,4 +1,4 @@
-import { getErrorMessage, supabase } from '@/shared'
+import { getErrorMessage, roundMoney, supabase } from '@/shared'
 import type { Purchase, PurchaseStatus } from '../model/types'
 
 type PurchaseRow = {
@@ -25,7 +25,7 @@ export function mapPurchase(row: PurchaseRow): Purchase {
     id: row.id,
     accountId: row.account_id,
     title: row.title,
-    amount: Math.round(Number(row.amount)),
+    amount: roundMoney(Number(row.amount)),
     plannedDate: row.planned_date,
     status: row.status as PurchaseStatus,
     createdBy: row.created_by,
@@ -72,7 +72,7 @@ export async function insertPurchase(input: {
       category_color: input.categoryColor,
       category_icon: input.categoryIcon,
       title: input.title.trim(),
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       planned_date: input.plannedDate,
       notes: input.notes?.trim() || null,
       status: 'planned',
@@ -119,7 +119,7 @@ export async function updatePurchaseRow(
       category_color: input.categoryColor,
       category_icon: input.categoryIcon,
       title: input.title.trim(),
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       planned_date: input.plannedDate,
       notes: input.notes?.trim() || null,
       updated_by: userId,

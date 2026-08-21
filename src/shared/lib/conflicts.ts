@@ -1,3 +1,5 @@
+import { roundMoney } from './parseAmount'
+
 export type PurchaseRemoteStatus = 'planned' | 'done' | 'cancelled'
 
 export function purchaseConflictMessage(
@@ -20,7 +22,7 @@ export function purchaseConflictMessage(
 }
 
 export function accountBalanceAfterDelta(current: number, delta: number): number {
-  return current + delta
+  return roundMoney(current + delta)
 }
 
 export function isRetryableSyncError(message: string): boolean {

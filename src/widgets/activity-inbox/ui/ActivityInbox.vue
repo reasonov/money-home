@@ -4,10 +4,12 @@ import { ref, watch } from 'vue'
 import { AppDrawer, openFormDrawer } from '@/shared'
 import { formatRelativeTime, useActivityStore, type ActivityItem } from '@/entities/activity'
 import { usePurchaseStore } from '@/entities/purchase'
+import { useSavingsGoalStore } from '@/entities/savings-goal'
 import { AutoIncomeActions } from '@/features/review-auto-income'
 
 const store = useActivityStore()
 const purchases = usePurchaseStore()
+const savingsGoals = useSavingsGoalStore()
 const open = ref(false)
 const highlightIds = ref(new Set<string>())
 
@@ -25,7 +27,7 @@ watch(open, (value) => {
 })
 
 function canOpen(item: ActivityItem) {
-  return Boolean(item.purchaseId || item.transactionId)
+  return Boolean(item.purchaseId || item.transactionId || item.savingsGoalId)
 }
 
 function openActivity(item: ActivityItem) {
@@ -35,6 +37,14 @@ function openActivity(item: ActivityItem) {
     const purchase = purchases.getById(item.purchaseId)
     if (purchase?.status === 'planned') {
       openFormDrawer({ name: 'purchase-edit', purchaseId: purchase.id })
+      return
+    }
+  }
+
+  if (item.savingsGoalId) {
+    const goal = savingsGoals.getById(item.savingsGoalId)
+    if (goal?.status === 'active') {
+      openFormDrawer({ name: 'savings-goal', accountId: goal.accountId, goalId: goal.id })
       return
     }
   }

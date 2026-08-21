@@ -1,4 +1,4 @@
-import { getErrorMessage, isUniqueViolation, supabase } from '@/shared'
+import { getErrorMessage, isUniqueViolation, roundMoney, supabase } from '@/shared'
 import type {
   Transaction,
   TransactionKind,
@@ -34,7 +34,7 @@ export function mapTransaction(row: TransactionRow): Transaction {
     kind: row.kind as TransactionKind,
     status: row.status as TransactionStatus,
     source: row.source as TransactionSource,
-    amount: Math.round(Number(row.amount)),
+    amount: roundMoney(Number(row.amount)),
     occurredOn: row.occurred_on,
     createdBy: row.created_by,
     ...(row.created_at ? { createdAt: row.created_at } : {}),
@@ -91,7 +91,7 @@ export async function insertTransaction(input: {
       category_color: input.categoryColor ?? null,
       category_icon: input.categoryIcon ?? null,
       title: input.title?.trim() || null,
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       occurred_on: input.occurredOn,
       notes: input.notes?.trim() || null,
       created_by: input.createdBy,
@@ -140,7 +140,7 @@ export async function adjustIncomeOccurrence(occurrenceId: string, amount: numbe
   const { data, error } = await supabase
     .rpc('adjust_income_occurrence', {
       p_occurrence_id: occurrenceId,
-      p_new_amount: Math.round(amount),
+      p_new_amount: roundMoney(amount),
     })
     .single()
 
@@ -161,7 +161,7 @@ export async function adjustExpenseOccurrence(occurrenceId: string, amount: numb
   const { data, error } = await supabase
     .rpc('adjust_expense_occurrence', {
       p_occurrence_id: occurrenceId,
-      p_new_amount: Math.round(amount),
+      p_new_amount: roundMoney(amount),
     })
     .single()
 
@@ -257,7 +257,7 @@ export async function updatePostedTransaction(input: {
     .rpc('update_posted_transaction', {
       p_id: input.id,
       p_account_id: input.accountId,
-      p_amount: Math.round(input.amount),
+      p_amount: roundMoney(input.amount),
       p_occurred_on: input.occurredOn,
       p_counterparty_account_id: input.counterpartyAccountId,
       p_category_id: input.categoryId,

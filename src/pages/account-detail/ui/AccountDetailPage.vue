@@ -21,6 +21,7 @@ import { loadAccountData, useAccountStore } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 import { useSyncStore } from '@/entities/sync'
 import { AccountAvailableHint } from '@/widgets/account-available'
+import { SavingsGoals } from '@/widgets/savings-goals'
 
 const route = useRoute()
 const router = useRouter()
@@ -248,6 +249,13 @@ async function removeAccount() {
       </AppButton>
     </div>
     <AppButton
+      variant="secondary"
+      block
+      @click="openFormDrawer({ name: 'savings-goal', accountId: account.id })"
+    >
+      Копить
+    </AppButton>
+    <AppButton
       v-if="canTransfer"
       variant="ghost"
       block
@@ -255,6 +263,8 @@ async function removeAccount() {
     >
       Перевод между счетами
     </AppButton>
+
+    <SavingsGoals :account-id="account.id" />
 
     <section class="block">
       <h2>Участники</h2>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   AppButton,
   AppInput,
@@ -22,6 +22,14 @@ import { CategoryIcon, useCategoryStore } from '@/entities/category'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 
+const props = defineProps<{
+  focusId?: string
+}>()
+
+const emit = defineEmits<{
+  focused: []
+}>()
+
 const store = usePurchaseStore()
 const accounts = useAccountStore()
 const categories = useCategoryStore()
@@ -33,6 +41,16 @@ const swipeOpenId = ref<string | null>(null)
 const menuButtons = new Map<string, HTMLElement>()
 const query = ref('')
 const categoryId = ref('all')
+const highlightedId = ref<string | null>(null)
+const itemEls = new Map<string, HTMLElement>()
+
+function setItemEl(id: string, el: unknown) {
+  if (el instanceof HTMLElement) {
+    itemEls.set(id, el)
+    return
+  }
+  itemEls.delete(id)
+}
 
 function setMenuButton(id: string, el: unknown) {
   if (el instanceof HTMLElement) {
@@ -239,6 +257,25 @@ const categoryOptions = computed(() => {
 })
 
 const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.value.trim()))
+
+async function revealFocused(id: string) {
+  query.value = ''
+  categoryId.value = 'all'
+  highlightedId.value = id
+  await nextTick()
+  itemEls.get(id)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  emit('focused')
+}
+
+watch(
+  () => props.focusId,
+  (id) => {
+    if (id) {
+      void revealFocused(id)
+    }
+  },
+  { immediate: true, flush: 'post' },
+)
 </script>
 
 <template>
@@ -267,8 +304,9 @@ const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.va
               @action="markDone(item.id, { confirm: false })"
             >
               <div
+                :ref="(el) => setItemEl(item.id, el)"
                 class="item"
-                :class="{ 'is-overdue': group.overdue }"
+                :class="{ 'is-overdue': group.overdue, 'is-focus': highlightedId === item.id }"
                 @click="edit(item.id, $event)"
               >
                 <div class="item__main">
@@ -400,6 +438,10 @@ const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.va
 .item.is-overdue {
   border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
   background: var(--color-warning-soft);
+}
+
+.item.is-focus {
+  border-color: var(--color-accent);
 }
 
 .item__main {

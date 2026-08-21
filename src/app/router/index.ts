@@ -126,6 +126,12 @@ const router = createRouter({
           meta: { title: 'Регулярные операции' },
         },
         {
+          path: 'savings',
+          name: 'savings',
+          component: () => import('@/pages/savings/ui/SavingsPage.vue'),
+          meta: { title: 'Копилки', accountSelect: true },
+        },
+        {
           path: 'categories',
           name: 'categories',
           component: () => import('@/pages/categories/ui/CategoriesPage.vue'),

@@ -8,12 +8,14 @@ export {
 } from './api'
 export { APP_VERSION } from './config/version'
 export { formatMoney, formatMoneyPlain } from './lib/formatMoney'
+export { roundMoney, floorMoney } from './lib/parseAmount'
 export {
   parseLocalDate,
   formatLocalDate,
   todayLocal,
   formatDisplayDate,
   formatShortDate,
+  formatNumericDate,
   formatRelativeDisplayDate,
   isPastDate,
   addDays,
@@ -40,6 +42,16 @@ export {
   forecastBalanceSeries,
   type ForecastSlice,
 } from './lib/projectBalance'
+export {
+  planSavingsGoals,
+  SAVINGS_AVERAGE_WINDOW_DAYS,
+  SAVINGS_DAYS_PER_MONTH,
+  type SavingsPlanGoalInput,
+  type SavingsPlanInput,
+  type SavingsPlanResult,
+  type SavingsPlanTransaction,
+  type SavingsGoalPlan,
+} from './lib/planSavingsGoals'
 export { createId, createInviteCode, createUuid } from './lib/id'
 export {
   assertOnline,

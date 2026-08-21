@@ -54,6 +54,7 @@ export const useActivityStore = defineStore('activity', () => {
     purchaseId?: string
     transactionId?: string
     occurrenceId?: string
+    savingsGoalId?: string
     createdAt?: string
     seenAt?: string | null
   }) {
@@ -68,6 +69,7 @@ export const useActivityStore = defineStore('activity', () => {
       ...(input.purchaseId ? { purchaseId: input.purchaseId } : {}),
       ...(input.transactionId ? { transactionId: input.transactionId } : {}),
       ...(input.occurrenceId ? { occurrenceId: input.occurrenceId } : {}),
+      ...(input.savingsGoalId ? { savingsGoalId: input.savingsGoalId } : {}),
     }
     items.value = [item, ...items.value].slice(0, MAX_ITEMS)
     persist()

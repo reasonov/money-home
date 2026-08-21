@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { assertWritable, createUuid, enqueueMutation } from '@/shared'
+import { assertWritable, createUuid, enqueueMutation, roundMoney } from '@/shared'
 import { useSessionStore } from '@/entities/session'
 import { fetchOperationTemplates, mapOperationTemplate } from '../api/operationTemplateApi'
 import type { OperationTemplate, OperationTemplateInput } from './types'
@@ -58,7 +58,7 @@ export const useOperationTemplateStore = defineStore('operation-template', () =>
       id,
       kind: input.kind,
       categoryId: input.categoryId,
-      amount: Math.round(input.amount),
+      amount: roundMoney(input.amount),
       ...(input.title?.trim() ? { title: input.title.trim() } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
     }

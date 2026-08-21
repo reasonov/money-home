@@ -4,6 +4,7 @@
   "env": {
     "browser": true
   },
+  "ignorePatterns": ["supabase/functions/**"],
   "categories": {
     "correctness": "error"
   }

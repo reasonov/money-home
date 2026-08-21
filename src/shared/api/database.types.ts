@@ -409,6 +409,59 @@ export type Database = {
         }
         Relationships: []
       }
+      savings_goals: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string
+          id: string
+          saved_amount: number
+          started_on: string
+          status: string
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          saved_amount?: number
+          started_on?: string
+          status?: string
+          target_amount: number
+          target_date: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          saved_amount?: number
+          started_on?: string
+          status?: string
+          target_amount?: number
+          target_date?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'savings_goals_account_id_fkey'
+            columns: ['account_id']
+            isOneToOne: false
+            referencedRelation: 'accounts'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string

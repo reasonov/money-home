@@ -1,4 +1,4 @@
-import { getErrorMessage, supabase } from '@/shared'
+import { getErrorMessage, roundMoney, supabase } from '@/shared'
 import type { OperationTemplate, OperationTemplateInput } from '../model/types'
 
 type TemplateRow = {
@@ -17,7 +17,7 @@ export function mapOperationTemplate(row: TemplateRow): OperationTemplate {
     id: row.id,
     kind: row.kind as OperationTemplate['kind'],
     categoryId: row.category_id,
-    amount: Math.round(Number(row.amount)),
+    amount: roundMoney(Number(row.amount)),
     ...(title ? { title } : {}),
     ...(notes ? { notes } : {}),
   }
@@ -31,7 +31,7 @@ function toRow(userId: string, input: OperationTemplateInput) {
     user_id: userId,
     kind: input.kind,
     category_id: input.categoryId,
-    amount: Math.round(input.amount),
+    amount: roundMoney(input.amount),
     title: input.title?.trim() || null,
     notes: input.notes?.trim() || null,
   }

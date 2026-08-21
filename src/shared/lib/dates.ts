@@ -50,6 +50,14 @@ export function formatShortDate(iso: string): string {
     .replace('.', '')
 }
 
+export function formatNumericDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  if (!year || !month || !day) {
+    return iso
+  }
+  return `${day}.${month}.${year}`
+}
+
 export function isPastDate(iso: string, asOfIso = todayLocal()): boolean {
   return compareDates(parseLocalDate(iso), parseLocalDate(asOfIso)) < 0
 }
