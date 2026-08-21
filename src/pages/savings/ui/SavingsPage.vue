@@ -44,7 +44,7 @@ function openCreate() {
     <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
   </AppEmpty>
 
-  <div v-else class="page">
+  <div v-else class="page" data-tour="savings">
     <AppEmpty v-if="!hasGoals" description="Пока нет копилок. Задайте сумму и дату — подскажем, сколько вносить">
       <AppButton block @click="openCreate">Копить</AppButton>
     </AppEmpty>

@@ -105,13 +105,13 @@ async function onSubmit() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
-    <AppField label="Сумма, ₽" for-id="tr-amount">
+    <AppField label="Сумма, ₽" for-id="tr-amount" required>
       <AppInputNumber id="tr-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
     <p v-if="fromAccount" class="hint">
       На счёте «{{ fromAccount.name }}»: {{ formatMoney(fromAccount.amount) }}
     </p>
-    <AppField label="Откуда" for-id="tr-from">
+    <AppField label="Откуда" for-id="tr-from" required>
       <AppSelect id="tr-from" v-model="fromId">
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
@@ -119,7 +119,7 @@ async function onSubmit() {
       </AppSelect>
     </AppField>
     <AppButton type="button" variant="ghost" block @click="swap">Поменять местами</AppButton>
-    <AppField label="Куда" for-id="tr-to">
+    <AppField label="Куда" for-id="tr-to" required>
       <AppSelect id="tr-to" v-model="toId">
         <option
           v-for="account in accounts.items.filter((item) => item.id !== fromId)"

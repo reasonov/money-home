@@ -1,16 +1,19 @@
 export const TOUR_STEP_IDS = [
   'home-create',
   'home-balance',
+  'home-upcoming',
   'home-cta',
   'nav-expense',
   'home-chart',
   'header-account',
+  'header-inbox',
   'header-menu',
-  'settings-theme',
-  'categories',
+  'history',
   'income-rules',
-  'stats-chart',
+  'savings',
   'calendar-cta',
+  'stats-chart',
+  'categories',
   'account-share',
 ] as const
 
@@ -20,6 +23,7 @@ export type TourStatus = 'idle' | 'active' | 'done'
 export type TourContext = {
   accountCount: number
   firstAccountId: string | null
+  hasUpcoming: boolean
   path: string
 }
 

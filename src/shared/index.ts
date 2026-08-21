@@ -103,6 +103,7 @@ export {
   AppTextarea,
   AppSelect,
   AppField,
+  AppHelpTip,
   AppBanner,
   AppDrawer,
   AppSkeleton,

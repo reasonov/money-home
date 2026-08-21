@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   AppButton,
   AppField,
+  AppHelpTip,
   AppInput,
   AppInputNumber,
   AppSelect,
@@ -267,10 +268,17 @@ async function removeAccount() {
     <SavingsGoals :account-id="account.id" />
 
     <section class="block">
-      <h2>Участники</h2>
+      <h2 class="block__title">
+        Участники
+        <AppHelpTip
+          text="Общий счёт с другим пользователем: один баланс и общие операции. Человек вводит код — увидит тот же счёт, не копию."
+        />
+      </h2>
       <ul class="members">
         <li v-for="member in members" :key="member.userId" class="member">
-          <span class="member__avatar" aria-hidden="true">{{ memberInitials(member.displayName) }}</span>
+          <span class="member__avatar" aria-hidden="true">{{
+            memberInitials(member.displayName)
+          }}</span>
           <span class="member__body">
             <span class="member__name">{{ member.displayName }}</span>
             <span class="member__tags">
@@ -308,19 +316,21 @@ async function removeAccount() {
         {{ settingsOpen ? 'Скрыть настройки' : 'Изменить счёт' }}
       </button>
       <div v-if="settingsOpen" class="settings">
-        <p class="share-hint">
-          Изменит текущую сумму на счёте, но не затронет историю операций.
-        </p>
-        <AppField label="Название" for-id="d-name">
+        <p class="share-hint">Изменит текущую сумму на счёте, но не затронет историю операций.</p>
+        <AppField label="Название" for-id="d-name" required>
           <AppInput id="d-name" v-model="name" />
         </AppField>
-        <AppField label="Баланс, ₽" for-id="d-amount">
+        <AppField label="Баланс, ₽" for-id="d-amount" required>
           <AppInputNumber id="d-amount" v-model="amount" :min="0" />
         </AppField>
         <div class="exclude" @click="setExcludeFromTotal(!excludeFromTotal)">
           <span class="exclude__text">
-            <span class="exclude__label">Не учитывать в общем балансе</span>
-            <span class="exclude__hint">Не входит в сумму «все счета» на главной</span>
+            <span class="exclude__label">
+              Не учитывать в общем балансе
+              <span @click.stop>
+                <AppHelpTip text="Не входит в сумму «все счета» на главной." />
+              </span>
+            </span>
           </span>
           <span @click.stop>
             <AppSwitch
@@ -409,6 +419,12 @@ async function removeAccount() {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+.block__title {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1rem;
 }
 
 .members {
@@ -523,13 +539,9 @@ async function removeAccount() {
 }
 
 .exclude__label {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
-}
-
-.exclude__hint {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.35;
 }
 
 .settings-toggle {

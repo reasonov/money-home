@@ -257,20 +257,20 @@ async function onSubmit() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
-    <AppField label="Сумма, ₽" for-id="purchase-amount">
+    <AppField label="Сумма, ₽" for-id="purchase-amount" required>
       <AppInputNumber id="purchase-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
-    <AppField label="Что купить" for-id="purchase-title">
+    <AppField label="Что купить" for-id="purchase-title" required>
       <AppInput id="purchase-title" v-model="title" placeholder="Штора" required />
     </AppField>
-    <AppField label="Счёт списания" for-id="purchase-account">
+    <AppField label="Счёт списания" for-id="purchase-account" required>
       <AppSelect id="purchase-account" v-model="accountId" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
         </option>
       </AppSelect>
     </AppField>
-    <AppField label="Категория" for-id="purchase-cat">
+    <AppField label="Категория" for-id="purchase-cat" required>
       <CategorySelect
         id="purchase-cat"
         v-model="categoryId"
@@ -286,7 +286,7 @@ async function onSubmit() {
         <AppButton variant="secondary" block @click="navigate">Добавить категорию</AppButton>
       </RouterLink>
     </AppEmpty>
-    <AppField label="Дата покупки" for-id="purchase-date">
+    <AppField label="Дата покупки" for-id="purchase-date" required>
       <AppInput id="purchase-date" v-model="plannedDate" type="date" required />
     </AppField>
     <AppField

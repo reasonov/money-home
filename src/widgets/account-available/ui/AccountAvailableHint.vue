@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import {
+  AppHelpTip,
   availableUntilNextIncome,
   compareDates,
   formatLocalDate,
@@ -82,12 +83,19 @@ const text = computed(() => {
 </script>
 
 <template>
-  <span class="hint" :class="{ 'is-compact': compact }">{{ text }}</span>
+  <span class="hint" :class="{ 'is-compact': compact }">
+    {{ text }}
+    <AppHelpTip
+      v-if="!compact"
+      text="Уже вычтены плановые покупки и регулярные расходы до следующего пополнения. Копилки деньги не резервируют."
+    />
+  </span>
 </template>
 
 <style scoped>
 .hint {
-  display: block;
+  display: flex;
+  align-items: center;
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -96,6 +104,7 @@ const text = computed(() => {
 }
 
 .is-compact {
+  display: block;
   font-size: 0.75rem;
   font-weight: 600;
 }

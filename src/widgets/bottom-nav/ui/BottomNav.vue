@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <nav class="nav" aria-label="Основная навигация">
+  <nav class="nav" data-tour="nav-expense" aria-label="Основная навигация">
     <div class="nav__cluster">
       <span v-for="link in leftLinks" :key="link.to" class="nav__hit">
         <RouterLink class="nav__link" :class="{ 'is-active': isActive(link.to) }" :to="link.to">
@@ -133,7 +133,6 @@ onBeforeUnmount(() => {
           type="button"
           class="nav__plus"
           aria-label="Добавить расход. Удерживайте, чтобы добавить доход"
-          data-tour="nav-expense"
           @pointerdown="onPointerDown"
           @pointerup="onPointerUp"
           @pointercancel="onPointerCancel"

@@ -54,7 +54,7 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField label="Почта" for-id="login-email">
+    <AppField label="Почта" for-id="login-email" required>
       <AppInput
         id="login-email"
         v-model="email"
@@ -64,7 +64,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField v-if="!resetMode" label="Пароль" for-id="login-password">
+    <AppField v-if="!resetMode" label="Пароль" for-id="login-password" required>
       <AppInput
         id="login-password"
         v-model="password"

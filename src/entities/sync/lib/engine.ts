@@ -133,21 +133,34 @@ export function initOfflineRuntime(): void {
   startNetworkListeners()
 }
 
+let bootstrapInFlight: { userId: string; promise: Promise<void> } | null = null
+
 export async function bootstrapAccountSession(): Promise<void> {
   const userId = useSessionStore().user?.id
   if (!userId) {
     return
   }
-  initOfflineRuntime()
-  usePreferencesStore().hydrateLocal(userId)
-  const hydrated = await tryHydrateReplica(userId)
-  if (hydrated) {
-    applyDueSimulation()
-    void runSync()
-    return
+  if (bootstrapInFlight?.userId === userId) {
+    return bootstrapInFlight.promise
   }
-  await bootstrapFromNetwork()
-  await persistReplica(userId)
+  const promise = (async () => {
+    initOfflineRuntime()
+    usePreferencesStore().hydrateLocal(userId)
+    const hydrated = await tryHydrateReplica(userId)
+    if (hydrated) {
+      applyDueSimulation()
+      void runSync()
+      return
+    }
+    await bootstrapFromNetwork()
+    await persistReplica(userId)
+  })().finally(() => {
+    if (bootstrapInFlight?.promise === promise) {
+      bootstrapInFlight = null
+    }
+  })
+  bootstrapInFlight = { userId, promise }
+  return promise
 }
 
 export async function bootstrapOfflineFirst(): Promise<boolean> {

@@ -200,7 +200,7 @@ async function remove() {
   </AppEmpty>
 
   <form v-else class="form" @submit.prevent="onSubmit">
-    <AppField v-if="!existing" label="Счёт" for-id="savings-account">
+    <AppField v-if="!existing" label="Счёт" for-id="savings-account" required>
       <AppSelect id="savings-account" v-model="accountId" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
@@ -210,16 +210,16 @@ async function remove() {
     <AppField label="Название" for-id="savings-title">
       <AppInput id="savings-title" v-model="title" placeholder="Отпуск" />
     </AppField>
-    <AppField label="Сумма цели, ₽" for-id="savings-amount">
+    <AppField label="Сумма цели, ₽" for-id="savings-amount" required>
       <AppInputNumber id="savings-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
-    <AppField label="К какой дате" for-id="savings-date">
+    <AppField label="К какой дате" for-id="savings-date" required>
       <AppInput id="savings-date" v-model="targetDate" type="date" required />
     </AppField>
     <AppField
       label="Уже отложено, ₽"
       for-id="savings-saved"
-      hint="Метка на деньгах счёта, не перевод"
+      help="Не списывает со счёта — только метка, сколько из баланса уже считаете отложенным."
     >
       <AppInputNumber id="savings-saved" v-model="savedAmount" :min="0" placeholder="0" />
     </AppField>

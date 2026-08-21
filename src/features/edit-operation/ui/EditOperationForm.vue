@@ -347,7 +347,7 @@ async function onDelete() {
       </AppButton>
     </div>
 
-    <AppField label="Сумма, ₽" for-id="edit-amount">
+    <AppField label="Сумма, ₽" for-id="edit-amount" required>
       <AppInputNumber id="edit-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
 
@@ -355,7 +355,7 @@ async function onDelete() {
       <p v-if="fromAccount" class="hint">
         На счёте «{{ fromAccount.name }}»: {{ formatMoney(transferAvailable) }}
       </p>
-      <AppField label="Откуда" for-id="edit-from">
+      <AppField label="Откуда" for-id="edit-from" required>
         <AppSelect id="edit-from" v-model="accountId">
           <option v-for="account in accounts.items" :key="account.id" :value="account.id">
             {{ account.name }} · {{ formatMoney(account.amount) }}
@@ -363,7 +363,7 @@ async function onDelete() {
         </AppSelect>
       </AppField>
       <AppButton type="button" variant="ghost" block @click="swap">Поменять местами</AppButton>
-      <AppField label="Куда" for-id="edit-to">
+      <AppField label="Куда" for-id="edit-to" required>
         <AppSelect id="edit-to" v-model="toAccountId">
           <option
             v-for="account in accounts.items.filter((item) => item.id !== accountId)"
@@ -376,7 +376,7 @@ async function onDelete() {
       </AppField>
     </template>
 
-    <AppField v-else label="Счёт" for-id="edit-account">
+    <AppField v-else label="Счёт" for-id="edit-account" required>
       <AppSelect id="edit-account" v-model="accountId" :disabled="isAutoRule" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
@@ -385,7 +385,7 @@ async function onDelete() {
     </AppField>
 
     <template v-if="!isTransfer">
-      <AppField label="Категория" for-id="edit-cat">
+      <AppField label="Категория" for-id="edit-cat" required>
         <div class="cat">
           <CategorySelect id="edit-cat" v-model="categoryId" :categories="availableCats" required />
           <AppButton
@@ -403,7 +403,7 @@ async function onDelete() {
       </AppEmpty>
     </template>
 
-    <AppField label="Дата" for-id="edit-date">
+    <AppField label="Дата" for-id="edit-date" required>
       <AppInput id="edit-date" v-model="occurredOn" type="date" :disabled="isAutoRule" required />
     </AppField>
     <AppField v-if="!isTransfer" label="Название" for-id="edit-title">

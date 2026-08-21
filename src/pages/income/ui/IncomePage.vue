@@ -1,16 +1,27 @@
 <script setup lang="ts">
+import { AppHelpTip } from '@/shared'
 import { IncomeRulesPanel } from '@/features/manage-income'
 import { ExpenseRulesPanel } from '@/features/manage-expense'
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" data-tour="income-rules">
     <section class="section">
-      <h2 class="section__title">Регулярные пополнения</h2>
+      <h2 class="section__title">
+        Регулярные пополнения
+        <AppHelpTip
+          text="В назначенный день сумма зачислится сама. Придёт уведомление — операцию можно отменить."
+        />
+      </h2>
       <IncomeRulesPanel />
     </section>
     <section class="section">
-      <h2 class="section__title">Регулярные расходы</h2>
+      <h2 class="section__title">
+        Регулярные расходы
+        <AppHelpTip
+          text="В назначенный день сумма спишется сама. Придёт уведомление — операцию можно отменить."
+        />
+      </h2>
       <ExpenseRulesPanel />
     </section>
   </div>
@@ -30,6 +41,8 @@ import { ExpenseRulesPanel } from '@/features/manage-expense'
 }
 
 .section__title {
+  display: inline-flex;
+  align-items: center;
   margin: 0;
   font-size: 0.75rem;
   font-weight: 800;

@@ -89,10 +89,10 @@ async function onSubmit() {
     </div>
 
     <template v-if="mode === 'create'">
-      <AppField label="Название" for-id="acc-name">
+      <AppField label="Название" for-id="acc-name" required>
         <AppInput id="acc-name" v-model="name" placeholder="Наличные" required />
       </AppField>
-      <AppField label="Стартовый баланс, ₽" for-id="acc-open">
+      <AppField label="Стартовый баланс, ₽" for-id="acc-open" required>
         <AppInputNumber id="acc-open" v-model="opening" :min="0" placeholder="0" />
       </AppField>
       <AppField v-if="categories.items.length" label="Категории" for-id="acc-cats">
@@ -111,7 +111,7 @@ async function onSubmit() {
       </AppField>
     </template>
 
-    <AppField v-else label="Код счёта" for-id="acc-code" hint="Запросите код у владельца общего счёта">
+    <AppField v-else label="Код счёта" for-id="acc-code" hint="Запросите код у владельца общего счёта" required>
       <AppInput id="acc-code" v-model="code" placeholder="ABCD2345" required :disabled="joinBlocked" />
     </AppField>
     <p v-if="joinBlocked" class="error" role="alert">{{ ONLINE_ONLY_MESSAGE }}</p>

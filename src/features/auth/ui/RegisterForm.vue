@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AppButton, AppField, AppInput, getErrorMessage } from '@/shared'
+import { bootstrapAccountSession } from '@/entities/account'
 import { useSessionStore } from '@/entities/session'
 
 const router = useRouter()
@@ -31,6 +32,7 @@ async function onSubmit() {
   pending.value = true
   try {
     await session.register(email.value, password.value, displayName.value)
+    await bootstrapAccountSession()
     await router.push('/')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось создать аккаунт')
@@ -42,7 +44,7 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField label="Имя" for-id="register-name">
+    <AppField label="Имя" for-id="register-name" required>
       <AppInput
         id="register-name"
         v-model="displayName"
@@ -52,7 +54,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField label="Почта" for-id="register-email">
+    <AppField label="Почта" for-id="register-email" required>
       <AppInput
         id="register-email"
         v-model="email"
@@ -62,7 +64,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField label="Пароль" for-id="register-password" hint="Минимум 6 символов">
+    <AppField label="Пароль" for-id="register-password" hint="Минимум 6 символов" required>
       <AppInput
         id="register-password"
         v-model="password"

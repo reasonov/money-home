@@ -141,7 +141,7 @@ function openEvent(item: UpcomingEvent) {
 </script>
 
 <template>
-  <section v-if="events.length" class="upcoming" aria-label="Ближайшие 7 дней">
+  <section v-if="events.length" class="upcoming" data-tour="home-upcoming" aria-label="Ближайшие 7 дней">
     <h2 class="upcoming__title">Ближайшие 7 дней</h2>
     <ul class="upcoming__list">
       <li v-for="item in events" :key="item.id">

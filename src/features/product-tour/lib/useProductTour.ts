@@ -2,18 +2,24 @@ import { nextTick, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { closeFormDrawer, closeSidebar, confirmAction, hideToast } from '@/shared'
 import { useAccountStore } from '@/entities/account'
+import { useExpenseRuleStore } from '@/entities/expense-rule'
+import { useIncomeRuleStore } from '@/entities/income-rule'
+import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
+import { useTransactionStore } from '@/entities/transaction'
 import { TOUR_STEPS } from '../model/steps'
 import { useProductTourStore } from '../model/store'
 import type { TourContext, TourStepDef } from '../model/types'
+import { hasUpcomingEvents } from './hasUpcoming'
 import { destroyTourUi, showTourHighlight } from './runTour'
 
 function makeContext(
   path: string,
   accountCount: number,
   firstAccountId: string | null,
+  hasUpcoming: boolean,
 ): TourContext {
-  return { path, accountCount, firstAccountId }
+  return { path, accountCount, firstAccountId, hasUpcoming }
 }
 
 function firstOpenStep(fromId: string, ctx: TourContext): TourStepDef | null {
@@ -88,9 +94,25 @@ export function useProductTour() {
   const router = useRouter()
   const session = useSessionStore()
   const accounts = useAccountStore()
+  const purchases = usePurchaseStore()
+  const incomeRules = useIncomeRuleStore()
+  const expenseRules = useExpenseRuleStore()
+  const transactions = useTransactionStore()
 
   function ctx() {
-    return makeContext(route.path, accounts.items.length, accounts.items[0]?.id ?? null)
+    return makeContext(
+      route.path,
+      accounts.items.length,
+      accounts.items[0]?.id ?? null,
+      hasUpcomingEvents({
+        selectedAccountId: accounts.selectedAccountId,
+        planned: purchases.planned,
+        incomeRules: incomeRules.items,
+        expenseRules: expenseRules.items,
+        occurrenceDatesFor: (ruleId) => transactions.occurrenceDatesFor(ruleId),
+        expenseOccurrenceDatesFor: (ruleId) => transactions.expenseOccurrenceDatesFor(ruleId),
+      }),
+    )
   }
 
   let celebrating = false
@@ -142,7 +164,7 @@ export function useProductTour() {
       return
     }
 
-    if (tour.status === 'idle' && accounts.items.length === 0) {
+    if (tour.status === 'idle') {
       tour.start()
       return
     }
@@ -241,6 +263,10 @@ export function useProductTour() {
       tour.stepId,
       route.path,
       accounts.items.length,
+      accounts.selectedAccountId,
+      purchases.planned.length,
+      incomeRules.items.length,
+      expenseRules.items.length,
     ],
     () => {
       void sync()

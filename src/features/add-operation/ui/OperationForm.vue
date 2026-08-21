@@ -416,7 +416,11 @@ async function onSubmit() {
         <Bookmark :size="20" :stroke-width="2.2" :fill="inFavorites ? 'currentColor' : 'none'" />
       </AppButton>
     </div>
-    <AppField label="Что записать" for-id="op-line">
+    <AppField
+      label="Что записать"
+      for-id="op-line"
+      help="Строка вроде «пятёрочка 1840» или «вчера такси 500» разберётся в сумму, категорию, название и дату. Сохранить нужно отдельно. Офлайн — только сумма, дата и имя категории."
+    >
       <div class="line" @keydown.enter.prevent="onLineEnter">
         <AppInput
           id="op-line"
@@ -433,7 +437,12 @@ async function onSubmit() {
         </div>
       </div>
     </AppField>
-    <AppField label="Сумма, ₽" for-id="op-amount">
+    <AppField
+      label="Сумма, ₽"
+      for-id="op-amount"
+      required
+      help="При вводе покажем до трёх операций из истории с такой суммой. Выбор подставит категорию, название и комментарий. Счёт и дата не меняются."
+    >
       <div class="amount">
         <AppInputNumber id="op-amount" v-model="amount" :min="1" placeholder="0" />
         <ul v-if="matchesOpen" class="matches" role="listbox" aria-label="Похожие операции">
@@ -461,14 +470,14 @@ async function onSubmit() {
         </ul>
       </div>
     </AppField>
-    <AppField label="Счёт" for-id="op-account">
+    <AppField label="Счёт" for-id="op-account" required>
       <AppSelect id="op-account" v-model="accountId" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }} · {{ formatMoney(account.amount) }}
         </option>
       </AppSelect>
     </AppField>
-    <AppField label="Категория" for-id="op-cat">
+    <AppField label="Категория" for-id="op-cat" required>
       <div class="cat">
         <CategorySelect id="op-cat" v-model="categoryId" :categories="availableCats" required />
         <AppButton
@@ -487,7 +496,7 @@ async function onSubmit() {
     >
       <AppButton variant="secondary" block @click="createOpen = true">Добавить категорию</AppButton>
     </AppEmpty>
-    <AppField label="Дата" for-id="op-date">
+    <AppField label="Дата" for-id="op-date" required>
       <AppInput id="op-date" v-model="occurredOn" type="date" required />
     </AppField>
     <AppField label="Название" for-id="op-title">

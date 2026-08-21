@@ -8,6 +8,7 @@ import {
   AppEmpty,
   AppPeriodSelect,
   AppSegmented,
+  AppSkeleton,
   formatMoney,
   openFormDrawer,
   todayLocal,
@@ -76,9 +77,7 @@ function openCategoryHistory(slice: CategorySpendSlice) {
       category: slice.categoryId ?? 'none',
       kind: kind.value,
       period: period.value,
-      ...(period.value === 'custom'
-        ? { from: customFrom.value, to: customTo.value }
-        : {}),
+      ...(period.value === 'custom' ? { from: customFrom.value, to: customTo.value } : {}),
     },
   })
 }
@@ -88,7 +87,12 @@ function openCategoryHistory(slice: CategorySpendSlice) {
   <div class="home">
     <InstallHint />
 
-    <AppEmpty v-if="!accounts.items.length" description="Создайте счёт для учёта денег или подключитесь к общему счёту по коду">
+    <AppSkeleton v-if="!accounts.loaded" :rows="6" />
+
+    <AppEmpty
+      v-else-if="!accounts.items.length"
+      description="Создайте счёт для учёта денег или подключитесь к общему счёту по коду"
+    >
       <div class="empty-actions" data-tour="home-create">
         <AppButton block @click="openFormDrawer({ name: 'account' })">Создать счёт</AppButton>
         <AppButton
@@ -132,12 +136,7 @@ function openCategoryHistory(slice: CategorySpendSlice) {
 
       <section class="home__chart" data-tour="home-chart">
         <div class="home__toolbar">
-          <AppSegmented
-            v-model="kind"
-            compact
-            :options="kindOptions"
-            aria-label="Тип операций"
-          />
+          <AppSegmented v-model="kind" compact :options="kindOptions" aria-label="Тип операций" />
           <AppPeriodSelect
             v-model="period"
             v-model:from="customFrom"
@@ -189,14 +188,10 @@ function openCategoryHistory(slice: CategorySpendSlice) {
   font-variant-numeric: tabular-nums;
 }
 
-.hero__cta,
-.empty-actions {
+.hero__cta {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
-}
-
-.hero__cta {
   margin-top: var(--space-4);
 }
 
@@ -218,6 +213,9 @@ function openCategoryHistory(slice: CategorySpendSlice) {
 }
 
 .empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   width: min(100%, 280px);
   margin: 0 auto;
 }

@@ -101,11 +101,9 @@ function onMenu(category: Category, key: string | number) {
 
 <template>
   <div class="page">
-    <div class="toolbar">
+    <div class="toolbar" data-tour="categories">
       <AppSegmented v-model="kind" :options="kindOptions" aria-label="Тип категорий" />
-      <div data-tour="categories">
-        <AppButton variant="secondary" block @click="openCreate">Новая категория</AppButton>
-      </div>
+      <AppButton variant="secondary" block @click="openCreate">Новая категория</AppButton>
     </div>
 
     <AppEmpty v-if="!visible.length" :description="emptyText" />

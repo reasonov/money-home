@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AppButton, formatMoney, formatShortDate, openFormDrawer } from '@/shared'
+import { AppHelpTip, formatMoney, formatShortDate, openFormDrawer } from '@/shared'
 import { useSavingsGoalStore } from '@/entities/savings-goal'
 import { savingsPlanForAccount } from '@/features/edit-savings-goal'
 import { openSavingsAdvice } from '@/features/savings-advice'
@@ -79,14 +79,10 @@ function openAdvice(id: string) {
             <span>до {{ formatShortDate(goal.targetDate) }}</span>
           </span>
         </button>
-        <AppButton
-          v-if="goal.id && !goal.onTrack"
-          variant="secondary"
-          block
-          @click="openAdvice(goal.id)"
-        >
-          Как накопить
-        </AppButton>
+        <div v-if="goal.id && !goal.onTrack" class="card__advice">
+          <button type="button" class="card__link" @click="openAdvice(goal.id)">Как накопить</button>
+          <AppHelpTip text="Предложения от ИИ, как быстрее накопить. Нужен интернет." />
+        </div>
       </li>
     </ul>
   </section>
@@ -153,6 +149,27 @@ function openAdvice(id: string) {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-2);
+}
+
+.card__advice {
+  display: flex;
+  align-items: center;
+}
+
+.card__link {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card__link:hover {
+  text-decoration: underline;
 }
 
 .card__title {

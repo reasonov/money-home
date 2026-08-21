@@ -1,21 +1,33 @@
 <script setup lang="ts">
 import { NFormItem } from 'naive-ui'
+import AppHelpTip from './AppHelpTip.vue'
 
-defineProps<{
-  label: string
-  forId?: string
-  hint?: string
-}>()
+withDefaults(
+  defineProps<{
+    label: string
+    forId?: string
+    hint?: string
+    help?: string
+    required?: boolean
+  }>(),
+  { required: false },
+)
 </script>
 
 <template>
   <NFormItem
     class="app-field"
-    :label="label"
     label-placement="top"
     :show-feedback="false"
     :show-require-mark="false"
   >
+    <template #label>
+      <span class="app-field__label">
+        {{ label }}
+        <span v-if="required" class="app-field__req" aria-hidden="true">*</span>
+        <AppHelpTip v-if="help" :text="help" />
+      </span>
+    </template>
     <div class="app-field__body">
       <slot />
       <p v-if="hint" class="app-field__hint">{{ hint }}</p>
@@ -33,6 +45,22 @@ defineProps<{
   display: block;
   width: 100%;
   min-width: 0;
+}
+
+.app-field :deep(.n-form-item-label) {
+  overflow: visible;
+}
+
+.app-field__label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-field__req {
+  flex-shrink: 0;
+  margin-left: 0.15em;
+  color: var(--color-danger);
+  font-weight: 700;
 }
 
 .app-field__body {

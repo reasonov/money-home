@@ -122,13 +122,13 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField v-if="!lockedKind" label="Тип" for-id="cat-kind">
+    <AppField v-if="!lockedKind" label="Тип" for-id="cat-kind" required>
       <AppSelect id="cat-kind" v-model="kind">
         <option value="expense">Расход</option>
         <option value="income">Доход</option>
       </AppSelect>
     </AppField>
-    <AppField label="Название" for-id="cat-name">
+    <AppField label="Название" for-id="cat-name" required>
       <AppInput id="cat-name" v-model="nameModel" required />
     </AppField>
     <fieldset class="palette">
@@ -145,7 +145,13 @@ async function onSubmit() {
       />
     </fieldset>
     <CategoryIconPicker v-model="iconModel" :color="color" />
-    <AppField v-if="accounts.length" label="Счета" for-id="cat-accounts">
+    <AppField
+      v-if="accounts.length"
+      label="Счета"
+      for-id="cat-accounts"
+      required
+      help="Категория видна только на выбранных счетах. При создании по умолчанию — все текущие."
+    >
       <AppSelect
         id="cat-accounts"
         v-model="selected"

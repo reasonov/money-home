@@ -93,27 +93,35 @@ const periodItems = computed(() => {
     </AppEmpty>
 
     <template v-else>
-      <div class="history__toolbar">
-        <AppPeriodSelect
-          v-model="period"
-          v-model:from="customFrom"
-          v-model:to="customTo"
-          :label="periodLabel"
-          show-all
+      <div class="history__body" data-tour="history">
+        <div class="history__toolbar">
+          <AppPeriodSelect
+            v-model="period"
+            v-model:from="customFrom"
+            v-model:to="customTo"
+            :label="periodLabel"
+            show-all
+          />
+        </div>
+
+        <TransactionList
+          :items="periodItems"
+          :initial-kind="listKind"
+          :initial-category-id="listCategoryId"
         />
       </div>
-
-      <TransactionList
-        :items="periodItems"
-        :initial-kind="listKind"
-        :initial-category-id="listCategoryId"
-      />
     </template>
   </div>
 </template>
 
 <style scoped>
 .history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.history__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);

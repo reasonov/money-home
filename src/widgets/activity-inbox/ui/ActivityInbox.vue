@@ -60,6 +60,7 @@ function openActivity(item: ActivityItem) {
     <button
       type="button"
       class="inbox__bell"
+      data-tour="header-inbox"
       aria-label="Уведомления"
       :aria-expanded="open"
       @click="openInbox"

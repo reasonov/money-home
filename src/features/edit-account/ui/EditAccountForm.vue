@@ -43,7 +43,7 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField label="Имя" for-id="account-name">
+    <AppField label="Имя" for-id="account-name" required>
       <AppInput
         id="account-name"
         v-model="value"

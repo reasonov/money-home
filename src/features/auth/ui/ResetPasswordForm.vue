@@ -39,7 +39,7 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField label="Новый пароль" for-id="reset-password" hint="Минимум 6 символов">
+    <AppField label="Новый пароль" for-id="reset-password" hint="Минимум 6 символов" required>
       <AppInput
         id="reset-password"
         v-model="password"
@@ -48,7 +48,7 @@ async function onSubmit() {
         required
       />
     </AppField>
-    <AppField label="Подтвердите пароль" for-id="reset-confirm">
+    <AppField label="Подтвердите пароль" for-id="reset-confirm" required>
       <AppInput
         id="reset-confirm"
         v-model="confirm"

@@ -111,7 +111,7 @@ function onMenu(rule: IncomeRule, key: string | number) {
 </script>
 
 <template>
-  <div class="income" data-tour="income-rules">
+  <div class="income">
     <ul v-if="store.items.length" class="income__list">
       <li
         v-for="rule in store.items"

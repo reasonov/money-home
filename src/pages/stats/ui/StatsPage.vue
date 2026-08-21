@@ -289,8 +289,8 @@ function onInsightChart(id: InsightChartId) {
 
 <template>
   <div class="stats">
-    <div class="stats__toolbar">
-      <div data-tour="stats-chart">
+    <div class="stats__intro" data-tour="stats-chart">
+      <div class="stats__toolbar">
         <AppSelect id="stats-chart" v-model="chart" size="medium" aria-label="Вид статистики">
           <option value="category">По категориям</option>
           <option value="weekday">По дням недели</option>
@@ -301,18 +301,18 @@ function onInsightChart(id: InsightChartId) {
           <option v-if="showMembers" value="members">По участникам</option>
           <option value="forecast">Прогноз баланса</option>
         </AppSelect>
+        <AppPeriodSelect
+          v-model="period"
+          v-model:from="customFrom"
+          v-model:to="customTo"
+          :label="periodLabel"
+        />
       </div>
-      <AppPeriodSelect
-        v-model="period"
-        v-model:from="customFrom"
-        v-model:to="customTo"
-        :label="periodLabel"
-      />
-    </div>
 
-    <AppButton v-if="showSummary" variant="secondary" block @click="insightOpen = true">
-      Сводка и советы
-    </AppButton>
+      <AppButton v-if="showSummary" variant="secondary" block @click="insightOpen = true">
+        Сводка и советы
+      </AppButton>
+    </div>
 
     <AppEmpty v-if="!filtered.length && chart !== 'forecast'" description="Нет операций за период" />
 
@@ -388,6 +388,7 @@ function onInsightChart(id: InsightChartId) {
 
     <AppDrawer v-model:open="insightOpen" title="Сводка и советы" height="90%">
       <div class="insight-drawer">
+        <p class="insight-drawer__lead">Сравнение выбранного периода с таким же прошлым</p>
         <section v-if="filtered.length" class="summary" aria-label="Сводка">
           <div class="summary__row">
             <div class="summary__item">
@@ -456,6 +457,12 @@ function onInsightChart(id: InsightChartId) {
   gap: var(--space-4);
 }
 
+.stats__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .stats__toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 9.75rem;
@@ -477,6 +484,13 @@ function onInsightChart(id: InsightChartId) {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+.insight-drawer__lead {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }
 
 .summary {

@@ -61,14 +61,16 @@ function openExpenseRule() {
 
 <template>
   <div class="calendar">
-    <div class="calendar__toolbar">
-      <AppSegmented v-model="view" compact :options="viewOptions" aria-label="Вид планирования" />
-    </div>
-    <div class="calendar__cta" data-tour="calendar-cta">
-      <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
-      <div class="calendar__cta-row">
-        <AppButton variant="secondary" block @click="openIncomeRule">Пополнение</AppButton>
-        <AppButton variant="secondary" block @click="openExpenseRule">Регулярный расход</AppButton>
+    <div class="calendar__intro" data-tour="calendar-cta">
+      <div class="calendar__toolbar">
+        <AppSegmented v-model="view" compact :options="viewOptions" aria-label="Вид планирования" />
+      </div>
+      <div class="calendar__cta">
+        <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
+        <div class="calendar__cta-row">
+          <AppButton variant="secondary" block @click="openIncomeRule">Пополнение</AppButton>
+          <AppButton variant="secondary" block @click="openExpenseRule">Регулярный расход</AppButton>
+        </div>
       </div>
     </div>
     <PlanningCalendar v-if="view === 'month'" />
@@ -85,6 +87,12 @@ function openExpenseRule() {
 
 .calendar__toolbar {
   display: flex;
+}
+
+.calendar__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .calendar__cta {

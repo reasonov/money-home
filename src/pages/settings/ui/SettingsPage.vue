@@ -20,12 +20,10 @@ function replay() {
     <section class="settings__block">
       <h2 class="settings__heading">Оформление</h2>
       <p class="settings__hint">Светлая, тёмная или как в системе</p>
-      <div data-tour="settings-theme">
-        <ThemeSwitch />
-      </div>
+      <ThemeSwitch />
 
       <h2 class="settings__heading settings__heading--spaced">Подсказки</h2>
-      <p class="settings__hint">Короткий гайд по счетам, категориям и планированию</p>
+      <p class="settings__hint">Гайд по экранам и неочевидным жестам — расход, планирование, копилки, статистика</p>
       <AppButton variant="secondary" block @click="replay">Показать подсказки</AppButton>
     </section>
 

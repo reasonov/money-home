@@ -88,16 +88,16 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField v-if="!template" label="Тип" for-id="tpl-kind">
+    <AppField v-if="!template" label="Тип" for-id="tpl-kind" required>
       <AppSelect id="tpl-kind" v-model="kind">
         <option value="expense">Расход</option>
         <option value="income">Доход</option>
       </AppSelect>
     </AppField>
-    <AppField label="Сумма, ₽" for-id="tpl-amount">
+    <AppField label="Сумма, ₽" for-id="tpl-amount" required>
       <AppInputNumber id="tpl-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
-    <AppField label="Категория" for-id="tpl-cat">
+    <AppField label="Категория" for-id="tpl-cat" required>
       <CategorySelect id="tpl-cat" v-model="categoryId" :categories="availableCats" required />
     </AppField>
     <AppField label="Название" for-id="tpl-title">

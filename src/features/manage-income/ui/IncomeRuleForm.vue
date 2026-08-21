@@ -140,7 +140,7 @@ async function onSubmit() {
 
 <template>
   <form class="form" @submit.prevent="onSubmit">
-    <AppField label="Счёт" for-id="income-account">
+    <AppField label="Счёт" for-id="income-account" required>
       <AppSelect id="income-account" v-model="accountId" required>
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
           {{ account.name }}
@@ -159,10 +159,10 @@ async function onSubmit() {
         empty-label="Без категории"
       />
     </AppField>
-    <AppField label="Сумма, ₽" for-id="income-amount">
+    <AppField label="Сумма, ₽" for-id="income-amount" required>
       <AppInputNumber id="income-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
-    <AppField label="Частота" for-id="income-frequency">
+    <AppField label="Частота" for-id="income-frequency" required>
       <AppSelect id="income-frequency" v-model="frequency">
         <option value="monthly">Ежемесячно</option>
         <option value="weekly">Еженедельно</option>
@@ -174,6 +174,7 @@ async function onSubmit() {
       label="День месяца"
       for-id="income-month-day"
       hint="До 28-го числа, чтобы дата была в каждом месяце"
+      required
     >
       <AppInput
         id="income-month-day"
@@ -188,6 +189,7 @@ async function onSubmit() {
       v-if="frequency === 'weekly' || frequency === 'biweekly'"
       label="День недели"
       for-id="income-weekday"
+      required
     >
       <AppSelect id="income-weekday" v-model="weekday">
         <option v-for="day in WEEKDAYS" :key="day.value" :value="day.value">
@@ -200,6 +202,7 @@ async function onSubmit() {
       label="Первая дата пополнения"
       for-id="income-anchor"
       hint="Дальше пополнение будет повторяться каждые две недели"
+      required
     >
       <AppInput id="income-anchor" v-model="anchorDate" type="date" required />
     </AppField>

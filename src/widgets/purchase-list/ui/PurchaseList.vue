@@ -361,11 +361,9 @@ watch(
         {{ hasFilters ? 'Ничего не найдено' : 'Пока нет запланированных покупок' }}
       </p>
       <div v-if="!hasFilters" class="list__empty-actions">
-        <div data-tour="calendar-cta">
-          <AppButton block @click="openFormDrawer({ name: 'purchase-new' })"
-            >Новая покупка</AppButton
-          >
-        </div>
+        <AppButton block @click="openFormDrawer({ name: 'purchase-new' })"
+          >Новая покупка</AppButton
+        >
         <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income-rule' })">
           Настроить пополнение
         </AppButton>
