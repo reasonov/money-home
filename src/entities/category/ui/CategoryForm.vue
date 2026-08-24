@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { AppButton, AppField, AppInput, AppSelect, getErrorMessage } from '@/shared'
+import {
+  AppButton,
+  AppField,
+  AppInput,
+  AppSelect,
+  confirmAction,
+  getErrorMessage,
+} from '@/shared'
 import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
@@ -8,6 +15,7 @@ import {
   type CategoryIconKey,
   type CategoryKind,
 } from '../model/types'
+import { familyByBase, familyPalette } from '../lib/colorFamilies'
 import { matchCategoryIcon } from '../lib/matchIcon'
 import { useCategoryStore } from '../model/store'
 import CategoryIconPicker from './CategoryIconPicker.vue'
@@ -16,6 +24,7 @@ const props = defineProps<{
   category?: Category | null
   lockedKind?: CategoryKind
   initialKind?: CategoryKind
+  initialGroupId?: string
   accounts: { id: string; name: string }[]
 }>()
 
@@ -31,11 +40,28 @@ const name = ref('')
 const color = ref<string>(CATEGORY_COLORS[0])
 const icon = ref<CategoryIconKey>('other')
 const iconTouched = ref(false)
+const groupId = ref('')
 const selected = ref<string[]>(props.accounts.map((item) => item.id))
+const colorManual = ref(false)
 const error = ref('')
 const pending = ref(false)
 
 const editingId = computed(() => props.category?.id ?? null)
+const grouped = computed(() => Boolean(groupId.value))
+
+const groupOptions = computed(() =>
+  categories.groups
+    .filter((item) => item.kind === kind.value)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ru')),
+)
+
+const palette = computed(() => {
+  if (!groupId.value) return CATEGORY_COLORS
+  const group = categories.getGroupById(groupId.value)
+  if (!group) return CATEGORY_COLORS
+  return familyPalette(group.color, 'light')
+})
 
 function capitalizeName(value: string) {
   if (!value) return ''
@@ -49,6 +75,12 @@ const nameModel = computed({
   },
 })
 
+function sameAccountSet(left: string[], right: string[]) {
+  if (left.length !== right.length) return false
+  const set = new Set(left)
+  return right.every((id) => set.has(id))
+}
+
 function applyCategory(category: Category | null | undefined) {
   if (category) {
     iconTouched.value = true
@@ -58,6 +90,8 @@ function applyCategory(category: Category | null | undefined) {
     icon.value = (CATEGORY_ICONS as readonly string[]).includes(category.icon)
       ? (category.icon as CategoryIconKey)
       : 'other'
+    groupId.value = category.groupId ?? ''
+    colorManual.value = category.colorManual
     selected.value = category.accountIds.filter((id) =>
       props.accounts.some((account) => account.id === id),
     )
@@ -67,9 +101,13 @@ function applyCategory(category: Category | null | undefined) {
   iconTouched.value = false
   kind.value = props.lockedKind ?? props.initialKind ?? 'expense'
   name.value = ''
-  color.value = CATEGORY_COLORS[0]
   icon.value = 'other'
+  groupId.value = props.initialGroupId ?? ''
+  colorManual.value = false
   selected.value = props.accounts.map((item) => item.id)
+  color.value = groupId.value
+    ? categories.autoShadeForGroup(groupId.value)
+    : CATEGORY_COLORS[0]
   error.value = ''
 }
 
@@ -88,19 +126,76 @@ watch(name, (value) => {
 })
 
 watch(
-  () => [props.category, props.lockedKind, props.initialKind] as const,
+  () => [props.category, props.lockedKind, props.initialKind, props.initialGroupId] as const,
   () => {
     applyCategory(props.category)
   },
   { immediate: true },
 )
 
+watch(kind, (value) => {
+  const group = groupId.value ? categories.getGroupById(groupId.value) : undefined
+  if (group && group.kind !== value) {
+    groupId.value = ''
+  }
+})
+
+watch(groupId, (next, prev) => {
+  if (next === prev) return
+  if (next) {
+    const group = categories.getGroupById(next)
+    if (!group) return
+    if (!colorManual.value || !familyByBase(group.color)?.light.some((item) => item === color.value)) {
+      color.value = categories.autoShadeForGroup(next, editingId.value ?? undefined)
+      colorManual.value = false
+    }
+    return
+  }
+  if (prev) {
+    const group = categories.getGroupById(prev)
+    if (group) {
+      selected.value = group.accountIds.filter((id) =>
+        props.accounts.some((account) => account.id === id),
+      )
+    }
+  }
+  if (!CATEGORY_COLORS.includes(color.value as (typeof CATEGORY_COLORS)[number])) {
+    color.value = CATEGORY_COLORS[0]
+  }
+  colorManual.value = false
+})
+
+function pickColor(item: string) {
+  color.value = item
+  const group = groupId.value ? categories.getGroupById(groupId.value) : undefined
+  colorManual.value = group ? !familyPalette(group.color).includes(item) : false
+}
+
 async function onSubmit() {
   error.value = ''
-  if (!name.value.trim() || !selected.value.length) {
+  if (!name.value.trim()) {
+    error.value = 'Укажите название'
+    return
+  }
+  if (!grouped.value && !selected.value.length) {
     error.value = 'Укажите название и хотя бы один счёт'
     return
   }
+
+  const nextGroup = groupId.value ? categories.getGroupById(groupId.value) : undefined
+  const previous = props.category
+  if (nextGroup && previous && previous.groupId !== nextGroup.id) {
+    if (!sameAccountSet(previous.accountIds, nextGroup.accountIds)) {
+      const ok = await confirmAction({
+        title: 'Перенести в группу?',
+        message:
+          'Категория потеряет свои счета и станет видна на счетах группы. История операций не изменится.',
+        confirmLabel: 'Перенести',
+      })
+      if (!ok) return
+    }
+  }
+
   pending.value = true
   try {
     const saved = await categories.save({
@@ -109,7 +204,9 @@ async function onSubmit() {
       name: name.value,
       color: color.value,
       icon: icon.value,
-      accountIds: selected.value,
+      accountIds: grouped.value ? (nextGroup?.accountIds ?? []) : selected.value,
+      groupId: groupId.value || null,
+      colorManual: colorManual.value,
     })
     emit('saved', saved)
   } catch (err) {
@@ -131,22 +228,30 @@ async function onSubmit() {
     <AppField label="Название" for-id="cat-name" required>
       <AppInput id="cat-name" v-model="nameModel" required />
     </AppField>
+    <AppField label="Группа" for-id="cat-group">
+      <AppSelect id="cat-group" v-model="groupId">
+        <option value="">Без группы</option>
+        <option v-for="group in groupOptions" :key="group.id" :value="group.id">
+          {{ group.name }}
+        </option>
+      </AppSelect>
+    </AppField>
     <fieldset class="palette">
       <legend>Цвет</legend>
       <button
-        v-for="item in CATEGORY_COLORS"
+        v-for="item in palette"
         :key="item"
         type="button"
         class="swatch"
         :class="{ 'is-on': color === item }"
         :style="{ background: item }"
         :aria-label="item"
-        @click="color = item"
+        @click="pickColor(item)"
       />
     </fieldset>
     <CategoryIconPicker v-model="iconModel" :color="color" />
     <AppField
-      v-if="accounts.length"
+      v-if="!grouped && accounts.length"
       label="Счета"
       for-id="cat-accounts"
       required
@@ -164,10 +269,11 @@ async function onSubmit() {
         </option>
       </AppSelect>
     </AppField>
+    <p v-else-if="grouped" class="hint">Счета наследуются от группы.</p>
     <p v-else class="hint">Сначала создайте счёт — категория привязывается к счетам.</p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <div class="actions">
-      <AppButton type="submit" block :disabled="pending || !accounts.length">
+      <AppButton type="submit" block :disabled="pending || (!grouped && !accounts.length)">
         {{ pending ? 'Сохраняем…' : editingId ? 'Сохранить' : 'Добавить' }}
       </AppButton>
       <AppButton type="button" variant="secondary" block @click="emit('cancel')">

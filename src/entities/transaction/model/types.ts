@@ -1,6 +1,6 @@
 export type TransactionKind = 'expense' | 'income' | 'transfer'
 export type TransactionStatus = 'posted' | 'cancelled'
-export type TransactionSource = 'manual' | 'income_rule' | 'expense_rule' | 'purchase'
+export type TransactionSource = 'manual' | 'income_rule' | 'expense_rule' | 'transfer_rule' | 'purchase'
 
 export interface Transaction {
   id: string

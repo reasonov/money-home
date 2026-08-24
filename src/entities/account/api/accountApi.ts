@@ -74,12 +74,14 @@ export async function createAccount(input: {
   name: string
   openingAmount: number
   categoryIds?: string[]
+  groupIds?: string[]
 }): Promise<Account> {
   const { data, error } = await supabase
     .rpc('create_account', {
       p_name: input.name,
       p_opening_amount: roundMoney(input.openingAmount),
       p_category_ids: input.categoryIds?.length ? input.categoryIds : undefined,
+      p_group_ids: input.groupIds?.length ? input.groupIds : undefined,
       ...(input.id ? { p_id: input.id } : {}),
     })
     .single()
@@ -162,10 +164,15 @@ export async function adjustAccountAmount(id: string, delta: number): Promise<Ac
   return mapAccount(data)
 }
 
-export async function setAccountCategories(accountId: string, categoryIds: string[]): Promise<void> {
+export async function setAccountCategories(
+  accountId: string,
+  categoryIds: string[],
+  groupIds: string[] = [],
+): Promise<void> {
   const { error } = await supabase.rpc('set_account_categories', {
     p_account_id: accountId,
     p_category_ids: categoryIds,
+    p_group_ids: groupIds,
   })
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось обновить категории счёта'))

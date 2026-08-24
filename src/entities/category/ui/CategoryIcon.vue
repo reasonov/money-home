@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, onMounted, onUnmounted, ref, type Component } from 'vue'
 import {
   Apple,
   Baby,
@@ -53,7 +53,9 @@ import {
   Wrench,
   Zap,
 } from '@lucide/vue'
+import { readDocumentTheme } from '@/shared'
 import type { CategoryIconKey } from '../model/types'
+import { resolveTone } from '../lib/colorFamilies'
 
 const props = defineProps<{
   icon: string
@@ -117,10 +119,30 @@ const ICONS: Record<CategoryIconKey, Component> = {
 
 const box = computed(() => props.size ?? 32)
 const glyph = computed(() => ICONS[props.icon as CategoryIconKey] ?? CircleHelp)
+const tick = ref(0)
+let observer: MutationObserver | undefined
+
+onMounted(() => {
+  tick.value += 1
+  observer = new MutationObserver(() => {
+    tick.value += 1
+  })
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  })
+})
+
+onUnmounted(() => observer?.disconnect())
+
+const displayColor = computed(() => {
+  void tick.value
+  return resolveTone(props.color, readDocumentTheme())
+})
 </script>
 
 <template>
-  <span class="cat-icon" :style="{ background: color, width: `${box}px`, height: `${box}px` }">
+  <span class="cat-icon" :style="{ background: displayColor, width: `${box}px`, height: `${box}px` }">
     <component :is="glyph" :size="box * 0.55" color="#fff" :stroke-width="1.8" />
   </span>
 </template>

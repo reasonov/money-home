@@ -4,6 +4,7 @@ import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePreferencesStore } from '@/entities/preferences'
 import { usePurchaseStore } from '@/entities/purchase'
@@ -12,6 +13,7 @@ import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
 import { ensureProfile } from '../api/accountApi'
 import { useAccountStore } from '../model/store'
+import { ensureStarterCategories } from './ensureStarterCategories'
 
 let channel: RealtimeChannel | null = null
 
@@ -26,6 +28,7 @@ export async function loadAccountData() {
   const savingsGoals = useSavingsGoalStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
+  const transferRules = useTransferRuleStore()
   const templates = useOperationTemplateStore()
   const transactions = useTransactionStore()
 
@@ -36,10 +39,12 @@ export async function loadAccountData() {
     savingsGoals.load(),
     incomeRules.load(),
     expenseRules.load(),
+    transferRules.load(),
     templates.load(),
     transactions.load(),
   ])
   requestPersist()
+  await ensureStarterCategories()
 }
 
 export function stopAccountRealtime() {
@@ -59,6 +64,7 @@ export function startAccountRealtime() {
   const savingsGoals = useSavingsGoalStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
+  const transferRules = useTransferRuleStore()
   const templates = useOperationTemplateStore()
   const transactions = useTransactionStore()
   const activity = useActivityStore()
@@ -98,6 +104,12 @@ export function startAccountRealtime() {
       void categories.load()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'category_accounts' }, () => {
+      void categories.load()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'category_groups' }, () => {
+      void categories.load()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'category_group_accounts' }, () => {
       void categories.load()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'purchases' }, (payload) => {
@@ -234,6 +246,41 @@ export function startAccountRealtime() {
             : `${actorName}: регулярный расход изменён`,
       })
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transfer_rules' }, (payload) => {
+      const eventType = payload.eventType
+      const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
+        id: string
+        from_account_id: string
+        to_account_id: string
+        amount: number
+        frequency: string
+        weekday: number | null
+        month_day: number | null
+        anchor_date: string | null
+        title: string | null
+        active: boolean
+        starts_on?: string
+        updated_by?: string | null
+      } | null
+      if (!row) return
+      if (eventType === 'DELETE') {
+        transferRules.removeLocal(row.id)
+      } else {
+        transferRules.applyRemoteRow(row)
+      }
+      const actorId = row.updated_by
+      if (!actorId || actorId === session.user?.id) return
+      const actorName = accounts.memberName(actorId)
+      activity.push({
+        kind: 'transfer_rule_changed',
+        actorId,
+        actorName,
+        summary:
+          eventType === 'DELETE'
+            ? `${actorName}: регулярный перевод удалён`
+            : `${actorName}: регулярный перевод изменён`,
+      })
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'savings_goals' }, (payload) => {
       const eventType = payload.eventType
       const row = (eventType === 'DELETE' ? payload.old : payload.new) as {
@@ -328,6 +375,20 @@ export function startAccountRealtime() {
         })
         return
       }
+      if (row.source === 'transfer_rule' && eventType === 'INSERT' && row.status === 'posted') {
+        if (actorId === session.user?.id) return
+        void transactions.load().then(() => {
+          activity.push({
+            kind: 'transfer_auto_posted',
+            actorId,
+            actorName,
+            transactionId: row.id,
+            occurrenceId: transactions.occurrenceByTransaction(row.id)?.id,
+            summary: `Переведено ${formatAmount(row.amount)} — ${label}`,
+          })
+        })
+        return
+      }
       if (actorId === session.user?.id) return
       if (eventType === 'INSERT' && row.status === 'posted') {
         activity.push({
@@ -343,6 +404,9 @@ export function startAccountRealtime() {
       void transactions.load()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_occurrences' }, () => {
+      void transactions.load()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transfer_occurrences' }, () => {
       void transactions.load()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'operation_templates' }, (payload) => {
@@ -387,6 +451,11 @@ function notifyRecentAutoRules() {
       .filter((item) => item.kind === 'expense_auto_posted' && item.transactionId)
       .map((item) => item.transactionId),
   )
+  const knownTransfer = new Set(
+    activity.items
+      .filter((item) => item.kind === 'transfer_auto_posted' && item.transactionId)
+      .map((item) => item.transactionId),
+  )
   const cutoff = formatLocalDate(addDays(parseLocalDate(todayLocal()), -14))
   for (const tx of transactions.posted) {
     if (tx.occurredOn < cutoff) {
@@ -412,6 +481,16 @@ function notifyRecentAutoRules() {
         summary: `Со счёта списано ${formatAmount(tx.amount)} — ${tx.title || 'Регулярный расход'}`,
       })
     }
+    if (tx.source === 'transfer_rule' && !knownTransfer.has(tx.id)) {
+      activity.push({
+        kind: 'transfer_auto_posted',
+        actorId: tx.createdBy,
+        actorName: 'Автоматически',
+        transactionId: tx.id,
+        occurrenceId: transactions.occurrenceByTransaction(tx.id)?.id,
+        summary: `Переведено ${formatAmount(tx.amount)} — ${tx.title || 'Перевод'}`,
+      })
+    }
   }
 }
 
@@ -432,6 +511,7 @@ export function resetAccountSession() {
   useSavingsGoalStore().reset()
   useIncomeRuleStore().reset()
   useExpenseRuleStore().reset()
+  useTransferRuleStore().reset()
   useOperationTemplateStore().reset()
   useTransactionStore().reset()
   useActivityStore().reset()

@@ -8,17 +8,25 @@ import type { Preferences } from './types'
 
 export const usePreferencesStore = defineStore('preferences', () => {
   const amountSuggestions = ref(DEFAULT_PREFERENCES.amountSuggestions)
+  const starterCatalogApplied = ref(DEFAULT_PREFERENCES.starterCatalogApplied)
+  const starterCatalogDismissed = ref(DEFAULT_PREFERENCES.starterCatalogDismissed)
   const userId = ref<string | null>(null)
   let extra: Record<string, Json | undefined> = {}
   let dirty = false
   let writes: Promise<void> = Promise.resolve()
 
   function snapshot(): Preferences {
-    return { amountSuggestions: amountSuggestions.value }
+    return {
+      amountSuggestions: amountSuggestions.value,
+      starterCatalogApplied: starterCatalogApplied.value,
+      starterCatalogDismissed: starterCatalogDismissed.value,
+    }
   }
 
   function apply(prefs: Preferences, persist: boolean) {
     amountSuggestions.value = prefs.amountSuggestions
+    starterCatalogApplied.value = prefs.starterCatalogApplied
+    starterCatalogDismissed.value = prefs.starterCatalogDismissed
     if (persist && userId.value) {
       savePreferences(userId.value, prefs)
     }
@@ -67,6 +75,16 @@ export const usePreferencesStore = defineStore('preferences', () => {
     void persistRemote()
   }
 
+  function setStarterCatalogApplied(next: boolean) {
+    starterCatalogApplied.value = next
+    void persistRemote()
+  }
+
+  function setStarterCatalogDismissed(next: boolean) {
+    starterCatalogDismissed.value = next
+    void persistRemote()
+  }
+
   async function flush() {
     await writes
     if (!dirty || !userId.value) {
@@ -112,9 +130,13 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   return {
     amountSuggestions,
+    starterCatalogApplied,
+    starterCatalogDismissed,
     hydrateLocal,
     applyRemote,
     setAmountSuggestions,
+    setStarterCatalogApplied,
+    setStarterCatalogDismissed,
     syncWithServer,
     reset,
   }

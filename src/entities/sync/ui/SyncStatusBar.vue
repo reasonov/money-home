@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { X } from '@lucide/vue'
-import { AppButton } from '@/shared'
+import { AppButton, track } from '@/shared'
 import { runSync } from '../lib/engine'
 import { useSyncStore } from '../model/store'
 
 const sync = useSyncStore()
+
+function retry() {
+  track('sync_retry')
+  void runSync()
+}
 </script>
 
 <template>
   <div v-if="sync.showBanner" class="bar" role="status">
     <p class="bar__text">{{ sync.bannerText }}</p>
-    <AppButton v-if="sync.status === 'error'" variant="ghost" @click="runSync">Повторить</AppButton>
+    <AppButton v-if="sync.status === 'error'" variant="ghost" @click="retry">Повторить</AppButton>
     <button type="button" class="bar__close" aria-label="Скрыть" @click="sync.dismissBanner">
       <X :size="18" :stroke-width="2" />
     </button>

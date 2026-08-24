@@ -2,6 +2,7 @@ export {
   supabase,
   getErrorMessage,
   NETWORK_ERROR_MESSAGE,
+  OFFLINE_NO_DATA_MESSAGE,
   isUniqueViolation,
   type Database,
   type Json,
@@ -29,6 +30,7 @@ export {
   availableUntilNextIncome,
   formatProjectionDate,
   suggestTransfer,
+  transferProjectionForAccount,
   type ProjectBalanceInput,
   type ProjectBalanceResult,
   type AvailableUntilNextIncomeInput,
@@ -81,6 +83,7 @@ export { confirmAction, useConfirmState, settleConfirm } from './lib/confirm'
 export {
   applyTheme,
   loadThemePreference,
+  readDocumentTheme,
   resolveTheme,
   saveThemePreference,
   type ThemePreference,
@@ -90,11 +93,14 @@ export { sidebarOpen, openSidebar, closeSidebar, toggleSidebar } from './lib/sid
 export {
   formDrawer,
   formDrawerOpen,
+  lastFormDrawerCloseReason,
   openFormDrawer,
   closeFormDrawer,
   type FormDrawer,
+  type FormDrawerCloseReason,
   type RuleFormDraft,
 } from './lib/formDrawers'
+export { track, flushAnalytics, setAnalyticsUser, trackSessionStart } from './lib/analytics'
 export {
   naiveThemeOverrides,
   AppButton,

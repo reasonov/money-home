@@ -2,8 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import type { ActiveElement, ChartEvent, ChartData, ChartOptions, TooltipItem } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
-import { formatMoney } from '@/shared'
+import { formatMoney, readDocumentTheme } from '@/shared'
 import type { CategorySpendSlice } from '@/entities/transaction'
+import { resolveTone } from '@/entities/category'
 import { registerStatsCharts } from '../lib/registerCharts'
 import { useChartTheme } from '../lib/useChartTheme'
 
@@ -63,7 +64,16 @@ function onChartClick(_event: ChartEvent, elements: ActiveElement[]) {
     selectedIndex.value = null
     return
   }
-  selectIndex(elements[0]?.index ?? null)
+  const index = elements[0]?.index ?? null
+  if (index == null) {
+    selectedIndex.value = null
+    return
+  }
+  const slice = props.slices[index]
+  if (slice) {
+    emit('legendClick', slice)
+  }
+  selectIndex(index)
 }
 
 function onLegendClick(index: number) {
@@ -79,7 +89,9 @@ const chartData = computed<ChartData<'doughnut'>>(() => ({
   datasets: [
     {
       data: props.slices.map((slice) => slice.amount),
-      backgroundColor: props.slices.map((slice) => slice.color || theme.value.muted),
+      backgroundColor: props.slices.map((slice) =>
+        slice.color ? resolveTone(slice.color, readDocumentTheme()) : theme.value.muted,
+      ),
       borderColor: theme.value.surface,
       borderWidth: 2,
     },
@@ -131,7 +143,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
         </div>
       </div>
       <ul class="legend">
-        <li v-for="(slice, index) in slices" :key="slice.categoryId ?? slice.name">
+        <li v-for="(slice, index) in slices" :key="slice.groupId ?? slice.categoryId ?? slice.name">
           <button
             type="button"
             class="legend__item"
@@ -140,7 +152,11 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
           >
             <span
               class="legend__dot"
-              :style="{ background: slice.color || theme.muted }"
+              :style="{
+                background: slice.color
+                  ? resolveTone(slice.color, readDocumentTheme())
+                  : theme.muted,
+              }"
               aria-hidden="true"
             />
             <span class="legend__name">{{ slice.name }}</span>

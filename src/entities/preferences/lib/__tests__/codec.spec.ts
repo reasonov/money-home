@@ -9,13 +9,31 @@ describe('preferences codec', () => {
   })
 
   it('reads amount_suggestions', () => {
-    expect(parsePreferences({ amount_suggestions: false })).toEqual({ amountSuggestions: false })
+    expect(parsePreferences({ amount_suggestions: false })).toEqual({
+      ...DEFAULT_PREFERENCES,
+      amountSuggestions: false,
+    })
+  })
+
+  it('reads starter catalog flags', () => {
+    expect(
+      parsePreferences({
+        starter_catalog_applied: true,
+        starter_catalog_dismissed: true,
+      }),
+    ).toEqual({
+      ...DEFAULT_PREFERENCES,
+      starterCatalogApplied: true,
+      starterCatalogDismissed: true,
+    })
   })
 
   it('keeps unknown keys when serializing', () => {
-    expect(serializePreferences({ amountSuggestions: true }, { theme: 'dark' })).toEqual({
+    expect(serializePreferences({ ...DEFAULT_PREFERENCES, amountSuggestions: true }, { theme: 'dark' })).toEqual({
       theme: 'dark',
       amount_suggestions: true,
+      starter_catalog_applied: false,
+      starter_catalog_dismissed: false,
     })
   })
 })

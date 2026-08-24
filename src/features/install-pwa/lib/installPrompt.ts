@@ -1,4 +1,5 @@
 import { readonly, ref } from 'vue'
+import { track } from '@/shared'
 
 export type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -21,6 +22,7 @@ export function listenForInstallPrompt() {
 
   window.addEventListener('appinstalled', () => {
     deferred.value = null
+    track('pwa_installed', { source: 'browser' })
   })
 }
 

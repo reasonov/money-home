@@ -4,6 +4,8 @@ export const PREFERENCES_STORAGE_KEY = 'money-home.preferences'
 
 export const DEFAULT_PREFERENCES: Preferences = {
   amountSuggestions: true,
+  starterCatalogApplied: false,
+  starterCatalogDismissed: false,
 }
 
 function storageKey(userId: string) {
@@ -24,6 +26,14 @@ function parseStored(raw: string | null): Preferences | null {
         typeof parsed.amountSuggestions === 'boolean'
           ? parsed.amountSuggestions
           : DEFAULT_PREFERENCES.amountSuggestions,
+      starterCatalogApplied:
+        typeof parsed.starterCatalogApplied === 'boolean'
+          ? parsed.starterCatalogApplied
+          : DEFAULT_PREFERENCES.starterCatalogApplied,
+      starterCatalogDismissed:
+        typeof parsed.starterCatalogDismissed === 'boolean'
+          ? parsed.starterCatalogDismissed
+          : DEFAULT_PREFERENCES.starterCatalogDismissed,
     }
   } catch {
     return null

@@ -7,6 +7,7 @@ export const INSIGHT_SLACK_RUB = 1
 export type InsightCategory = {
   name: string
   categoryId?: string
+  groupId?: string
   current: number
   previous: number
   delta: number
@@ -47,6 +48,7 @@ const KIND_ORDER: Record<InsightLeverKind, number> = {
 type CountRow = {
   name: string
   categoryId?: string | null
+  groupId?: string | null
   current: number
   previous: number
   currentCount: number
@@ -58,6 +60,8 @@ export type InsightSpendItem = {
   amount: number
   categoryId?: string | null
   categoryName?: string
+  groupId?: string | null
+  groupName?: string
 }
 
 function clipId(value: string, max = 80): string {
@@ -103,7 +107,7 @@ export function buildInsightCategories(
     if (item.kind !== 'expense') {
       return
     }
-    const name = item.categoryName?.trim() || 'Без категории'
+    const name = item.groupName?.trim() || item.categoryName?.trim() || 'Без категории'
     const row = map.get(name) ?? {
       name,
       current: 0,
@@ -111,7 +115,10 @@ export function buildInsightCategories(
       currentCount: 0,
       previousCount: 0,
     }
-    if (item.categoryId) {
+    if (item.groupId) {
+      row.groupId = item.groupId
+      row.categoryId = null
+    } else if (item.categoryId) {
       if (row.categoryId === undefined) {
         row.categoryId = item.categoryId
       } else if (row.categoryId !== item.categoryId) {
@@ -139,6 +146,7 @@ export function buildInsightCategories(
     .map((row) => ({
       name: row.name,
       ...(row.categoryId ? { categoryId: row.categoryId } : {}),
+      ...(row.groupId ? { groupId: row.groupId } : {}),
       current: roundMoney(row.current),
       previous: roundMoney(row.previous),
       delta: roundMoney(row.current - row.previous),
@@ -174,6 +182,7 @@ export function buildInsightLevers(input: BuildInsightLeversInput): InsightLever
         impact: row.delta,
         fact: `«${row.name}» вырос на ${formatMoneyPlain(row.delta)} ₽ ${input.scopeLabel} (${formatMoneyPlain(row.current)} против ${formatMoneyPlain(row.previous)}, операций ${row.currentCount} и ${row.previousCount}).`,
         ...(row.categoryId ? { categoryId: row.categoryId } : {}),
+        ...(row.groupId ? { groupId: row.groupId } : {}),
         categoryName: row.name,
       })
     }
@@ -188,6 +197,7 @@ export function buildInsightLevers(input: BuildInsightLeversInput): InsightLever
         impact: row.current,
         fact: `«${row.name}»: ${formatMoneyPlain(row.current)} ₽ ${input.scopeLabel} — одна из крупнейших категорий за период.`,
         ...(row.categoryId ? { categoryId: row.categoryId } : {}),
+        ...(row.groupId ? { groupId: row.groupId } : {}),
         categoryName: row.name,
       })
     }
@@ -266,6 +276,7 @@ export function fallbackTipsFromLevers(levers: InsightLever[], limit = 3): Insig
     impact: lever.impact,
     ...(lever.categoryName ? { categoryName: lever.categoryName } : {}),
     ...(lever.categoryId ? { categoryId: lever.categoryId } : {}),
+    ...(lever.groupId ? { groupId: lever.groupId } : {}),
     ...(lever.transactionId ? { transactionId: lever.transactionId } : {}),
   }))
 }

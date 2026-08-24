@@ -13,6 +13,8 @@ export interface SavingsAdviceTransaction {
   accountId: string
   categoryId?: string
   categoryName?: string
+  groupId?: string
+  groupName?: string
 }
 
 export interface SavingsAdviceGoalFact {
@@ -30,6 +32,7 @@ export interface SavingsAdviceGoalFact {
 export interface SavingsAdviceCategory {
   name: string
   categoryId?: string
+  groupId?: string
   current: number
   previous: number
   delta: number
@@ -78,12 +81,15 @@ function inWindow(occurredOn: string, fromExclusive: Date, toInclusive: Date): b
 }
 
 function categoryName(item: SavingsAdviceTransaction): string {
+  const group = item.groupName?.trim()
+  if (group) return group
   const name = item.categoryName?.trim()
   return name || 'Без категории'
 }
 
 type TotalsRow = {
   categoryId?: string | null
+  groupId?: string | null
   current: number
   previous: number
   currentCount: number
@@ -95,6 +101,7 @@ function toRows(totals: Map<string, TotalsRow>): SavingsAdviceCategory[] {
     .map(([name, amounts]) => ({
       name,
       ...(amounts.categoryId ? { categoryId: amounts.categoryId } : {}),
+      ...(amounts.groupId ? { groupId: amounts.groupId } : {}),
       current: roundMoney(amounts.current),
       previous: roundMoney(amounts.previous),
       delta: roundMoney(amounts.current - amounts.previous),
@@ -127,7 +134,10 @@ export function summarizeSpendingForAdvice(input: SummarizeSpendingInput): Savin
       currentCount: 0,
       previousCount: 0,
     }
-    if (item.categoryId) {
+    if (item.groupId) {
+      row.groupId = item.groupId
+      row.categoryId = null
+    } else if (item.categoryId) {
       if (row.categoryId === undefined) {
         row.categoryId = item.categoryId
       } else if (row.categoryId !== item.categoryId) {

@@ -3,11 +3,17 @@ import { isBrowserOnline } from '../lib/syncBus'
 export const NETWORK_ERROR_MESSAGE =
   'Нет соединения с интернетом. Проверьте сеть и попробуйте снова'
 
+export const OFFLINE_NO_DATA_MESSAGE =
+  'Нет сохранённых данных. Подключитесь к интернету, чтобы загрузить счета'
+
 export function isUniqueViolation(error: { code?: string } | null | undefined): boolean {
   return error?.code === '23505'
 }
 
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
+  if (error instanceof Error && error.message === OFFLINE_NO_DATA_MESSAGE) {
+    return OFFLINE_NO_DATA_MESSAGE
+  }
   if (!isBrowserOnline()) {
     return NETWORK_ERROR_MESSAGE
   }

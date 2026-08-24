@@ -8,6 +8,7 @@ export interface InsightLever {
   fact: string
   impact: number
   categoryId?: string
+  groupId?: string
   categoryName?: string
   transactionId?: string
 }
@@ -19,6 +20,7 @@ export interface InsightTip {
   detail: string
   impact: number
   categoryId?: string
+  groupId?: string
   categoryName?: string
   transactionId?: string
 }

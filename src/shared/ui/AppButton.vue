@@ -26,6 +26,8 @@ const naiveType = computed(() => {
 
 <template>
   <NButton
+    class="app-btn"
+    :class="{ 'is-secondary': variant === 'secondary' }"
     size="large"
     :attr-type="type"
     :type="naiveType"
@@ -40,3 +42,20 @@ const naiveType = computed(() => {
     <slot />
   </NButton>
 </template>
+
+<style scoped>
+.app-btn.is-secondary {
+  --n-color: var(--color-accent-soft) !important;
+  --n-color-hover: var(--color-accent-soft) !important;
+  --n-color-pressed: var(--color-accent-soft) !important;
+  --n-color-focus: var(--color-accent-soft) !important;
+  --n-text-color: var(--color-accent) !important;
+  --n-text-color-hover: var(--color-accent) !important;
+  --n-text-color-pressed: var(--color-accent) !important;
+  --n-text-color-focus: var(--color-accent) !important;
+  --n-border: 1px solid var(--color-accent) !important;
+  --n-border-hover: 1px solid var(--color-accent) !important;
+  --n-border-pressed: 1px solid var(--color-accent) !important;
+  --n-border-focus: 1px solid var(--color-accent) !important;
+}
+</style>

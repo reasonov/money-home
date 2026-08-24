@@ -9,7 +9,7 @@ import {
   openFormDrawer,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
-import { CategoryIcon, useCategoryStore } from '@/entities/category'
+import { CategoryIcon, splitCategorySections, useCategoryStore } from '@/entities/category'
 import {
   statsSummary,
   type Transaction,
@@ -34,6 +34,7 @@ const props = defineProps<{
   items: Transaction[]
   initialKind?: 'expense' | 'income'
   initialCategoryId?: string
+  initialGroupId?: string
 }>()
 
 const accounts = useAccountStore()
@@ -45,9 +46,13 @@ const categoryId = ref('all')
 const query = ref('')
 
 watch(
-  () => [props.initialKind, props.initialCategoryId] as const,
-  ([nextKind, nextCategory]) => {
+  () => [props.initialKind, props.initialCategoryId, props.initialGroupId] as const,
+  ([nextKind, nextCategory, nextGroup]) => {
     kinds.value = nextKind ? [nextKind] : []
+    if (nextGroup) {
+      categoryId.value = `group:${nextGroup}`
+      return
+    }
     categoryId.value = nextCategory ?? 'all'
   },
   { immediate: true },
@@ -69,45 +74,57 @@ const categoryKindFilter = computed<'expense' | 'income' | null>(() => {
   return null
 })
 
-const categoryOptions = computed(() => {
-  const map = new Map<string, string>()
+const visibleCategories = computed(() => {
   const kindFilter = categoryKindFilter.value
-
-  for (const cat of categories.items) {
+  return categories.items.filter((cat) => {
     if (
       selectedAccountId.value !== ALL_ACCOUNTS_ID &&
       !cat.accountIds.includes(selectedAccountId.value)
     ) {
-      continue
+      return false
     }
     if (kindFilter && cat.kind !== kindFilter) {
-      continue
+      return false
     }
-    map.set(cat.id, cat.name)
-  }
-
-  for (const item of props.items) {
-    if (!item.categoryId || !item.categoryName) {
-      continue
-    }
-    if (kindFilter && item.kind !== kindFilter) {
-      continue
-    }
-    if (!map.has(item.categoryId)) {
-      map.set(item.categoryId, item.categoryName)
-    }
-  }
-
-  return [...map.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    return true
+  })
 })
 
-watch(categoryOptions, (options) => {
-  if (categoryId.value !== 'all' && categoryId.value !== 'none') {
-    if (options.length && !options.some((item) => item.id === categoryId.value)) {
-      categoryId.value = 'all'
-    }
+const filterSections = computed(() => {
+  const kindsToShow: Array<'expense' | 'income'> = categoryKindFilter.value
+    ? [categoryKindFilter.value]
+    : ['expense', 'income']
+  const grouped = kindsToShow.flatMap(
+    (kind) => splitCategorySections(visibleCategories.value, categories.groups, kind).grouped,
+  )
+  const ungrouped = kindsToShow.flatMap(
+    (kind) => splitCategorySections(visibleCategories.value, categories.groups, kind).ungrouped,
+  )
+  const known = new Set(visibleCategories.value.map((item) => item.id))
+  const extras: { id: string; name: string }[] = []
+  for (const item of props.items) {
+    if (!item.categoryId || !item.categoryName || known.has(item.categoryId)) continue
+    if (categoryKindFilter.value && item.kind !== categoryKindFilter.value) continue
+    if (extras.some((row) => row.id === item.categoryId)) continue
+    extras.push({ id: item.categoryId, name: item.categoryName })
+  }
+  return { grouped, ungrouped, extras }
+})
+
+const filterValues = computed(() => {
+  const ids = new Set<string>(['all', 'none'])
+  for (const section of filterSections.value.grouped) ids.add(`group:${section.group.id}`)
+  for (const cat of filterSections.value.ungrouped) ids.add(cat.id)
+  for (const cat of filterSections.value.extras) ids.add(cat.id)
+  for (const section of filterSections.value.grouped) {
+    for (const cat of section.categories) ids.add(cat.id)
+  }
+  return ids
+})
+
+watch(filterValues, (ids) => {
+  if (categoryId.value !== 'all' && categoryId.value !== 'none' && !ids.has(categoryId.value)) {
+    categoryId.value = 'all'
   }
 })
 
@@ -136,7 +153,13 @@ const filtered = computed(() => {
     if (categoryId.value === 'none' && item.categoryId) {
       return false
     }
-    if (
+    if (categoryId.value.startsWith('group:')) {
+      const groupId = categoryId.value.slice(6)
+      const cat = item.categoryId ? categories.getById(item.categoryId) : undefined
+      if (cat?.groupId !== groupId) {
+        return false
+      }
+    } else if (
       categoryId.value !== 'all' &&
       categoryId.value !== 'none' &&
       item.categoryId !== categoryId.value
@@ -248,9 +271,27 @@ const showAuthor = computed(
         <AppSelect id="tx-category" v-model="categoryId" size="medium" filterable aria-label="Категория">
           <option value="all">Все категории</option>
           <option value="none">Без категории</option>
-          <option v-for="cat in categoryOptions" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
+          <optgroup
+            v-for="section in filterSections.grouped"
+            :key="section.group.id"
+            :label="section.group.name"
+          >
+            <option :value="`group:${section.group.id}`">Вся группа</option>
+            <option v-for="cat in section.categories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </optgroup>
+          <optgroup
+            v-if="filterSections.ungrouped.length || filterSections.extras.length"
+            label="Без группы"
+          >
+            <option v-for="cat in filterSections.ungrouped" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+            <option v-for="cat in filterSections.extras" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </optgroup>
         </AppSelect>
       </div>
       <AppInput id="tx-query" v-model="query" size="medium" placeholder="Поиск" />

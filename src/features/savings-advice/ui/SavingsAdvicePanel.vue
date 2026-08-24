@@ -37,6 +37,7 @@ function tipCta(tip: SavingsAdviceTip): string {
     fact: '',
     ...(tip.categoryName ? { categoryName: tip.categoryName } : {}),
     ...(tip.categoryId ? { categoryId: tip.categoryId } : {}),
+    ...(tip.groupId ? { groupId: tip.groupId } : {}),
     ...(tip.purchaseId ? { purchaseId: tip.purchaseId } : {}),
     ...(tip.ruleId ? { ruleId: tip.ruleId } : {}),
     ...(tip.newTargetDate ? { newTargetDate: tip.newTargetDate } : {}),
@@ -60,7 +61,7 @@ function openTip(tip: SavingsAdviceTip) {
     void router.push({
       name: 'history',
       query: {
-        category: tip.categoryId ?? 'none',
+        ...(tip.groupId ? { group: tip.groupId } : { category: tip.categoryId ?? 'none' }),
         kind: 'expense',
         period: 'month',
       },

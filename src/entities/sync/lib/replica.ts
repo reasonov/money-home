@@ -2,6 +2,7 @@ import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import { useOperationTemplateStore } from '@/entities/operation-template'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSavingsGoalStore } from '@/entities/savings-goal'
@@ -18,13 +19,16 @@ export function snapshotStores(): ReplicaPayload {
     accounts: [...useAccountStore().items],
     members: [...useAccountStore().members],
     categories: [...useCategoryStore().items],
+    categoryGroups: [...useCategoryStore().groups],
     purchases: [...usePurchaseStore().items],
     savingsGoals: [...useSavingsGoalStore().items],
     incomeRules: [...useIncomeRuleStore().items],
     expenseRules: [...useExpenseRuleStore().items],
+    transferRules: [...useTransferRuleStore().items],
     transactions: transactions.items.filter((item) => !localOnly.has(item.id)),
     occurrences: transactions.occurrences.filter((item) => !localOnly.has(item.id)),
     expenseOccurrences: transactions.expenseOccurrences.filter((item) => !localOnly.has(item.id)),
+    transferOccurrences: transactions.transferOccurrences.filter((item) => !localOnly.has(item.id)),
     operationTemplates: [...useOperationTemplateStore().items],
     selectedAccountId: useAccountStore().selectedAccountId,
     skippedDueKeys: [...getSkippedDueKeys()],
@@ -49,16 +53,18 @@ export function hydrateStores(payload: ReplicaPayload): void {
     })),
     payload.selectedAccountId,
   )
-  useCategoryStore().hydrate(payload.categories)
+  useCategoryStore().hydrate(payload.categories, payload.categoryGroups ?? [])
   usePurchaseStore().hydrate(payload.purchases)
   useSavingsGoalStore().hydrate(payload.savingsGoals ?? [])
   useIncomeRuleStore().hydrate(payload.incomeRules)
   useExpenseRuleStore().hydrate(payload.expenseRules)
+  useTransferRuleStore().hydrate(payload.transferRules ?? [])
   useOperationTemplateStore().hydrate(payload.operationTemplates ?? [])
   useTransactionStore().hydrate(
     payload.transactions,
     payload.occurrences,
     payload.expenseOccurrences,
+    payload.transferOccurrences ?? [],
   )
 }
 
@@ -79,13 +85,16 @@ export async function tryHydrateReplica(userId: string): Promise<boolean> {
     accounts: payload.accounts ?? [],
     members: payload.members ?? [],
     categories: payload.categories ?? [],
+    categoryGroups: payload.categoryGroups ?? [],
     purchases: payload.purchases ?? [],
     savingsGoals: payload.savingsGoals ?? [],
     incomeRules: payload.incomeRules ?? [],
     expenseRules: payload.expenseRules ?? [],
+    transferRules: payload.transferRules ?? [],
     transactions: payload.transactions ?? [],
     occurrences: payload.occurrences ?? [],
     expenseOccurrences: payload.expenseOccurrences ?? [],
+    transferOccurrences: payload.transferOccurrences ?? [],
     operationTemplates: payload.operationTemplates ?? [],
     selectedAccountId: payload.selectedAccountId ?? ALL_ACCOUNTS_ID,
     skippedDueKeys: payload.skippedDueKeys ?? [],

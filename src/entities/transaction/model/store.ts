@@ -6,12 +6,15 @@ import { rememberSkippedDue, isLocalOnlyId } from '@/shared/lib/offlineMeta'
 import {
   applyDueExpenseRules,
   applyDueIncomeRules,
+  applyDueTransferRules,
   fetchExpenseOccurrences,
   fetchOccurrences,
+  fetchTransferOccurrences,
   fetchTransactions,
   mapTransaction,
   type ExpenseOccurrenceRow,
   type OccurrenceRow,
+  type TransferOccurrenceRow,
 } from '../api/transactionApi'
 import type { Transaction } from './types'
 
@@ -19,6 +22,7 @@ export const useTransactionStore = defineStore('transaction', () => {
   const items = ref<Transaction[]>([])
   const occurrences = ref<OccurrenceRow[]>([])
   const expenseOccurrences = ref<ExpenseOccurrenceRow[]>([])
+  const transferOccurrences = ref<TransferOccurrenceRow[]>([])
 
   const posted = computed(() =>
     items.value
@@ -54,10 +58,12 @@ export const useTransactionStore = defineStore('transaction', () => {
     txs: Transaction[],
     incomeOcc: OccurrenceRow[],
     expenseOcc: ExpenseOccurrenceRow[],
+    transferOcc: TransferOccurrenceRow[] = [],
   ) {
     items.value = txs
     occurrences.value = incomeOcc
     expenseOccurrences.value = expenseOcc
+    transferOccurrences.value = transferOcc
   }
 
   function upsertIncomeOccurrence(row: OccurrenceRow) {
@@ -82,9 +88,23 @@ export const useTransactionStore = defineStore('transaction', () => {
     expenseOccurrences.value = next
   }
 
+  function upsertTransferOccurrence(row: TransferOccurrenceRow) {
+    const index = transferOccurrences.value.findIndex((item) => item.id === row.id)
+    if (index === -1) {
+      transferOccurrences.value = [...transferOccurrences.value, row]
+      return
+    }
+    const next = [...transferOccurrences.value]
+    next[index] = row
+    transferOccurrences.value = next
+  }
+
   function removeOccurrence(id: string) {
     occurrences.value = occurrences.value.filter((item) => item.id !== id && item.transaction_id !== id)
     expenseOccurrences.value = expenseOccurrences.value.filter(
+      (item) => item.id !== id && item.transaction_id !== id,
+    )
+    transferOccurrences.value = transferOccurrences.value.filter(
       (item) => item.id !== id && item.transaction_id !== id,
     )
   }
@@ -101,20 +121,29 @@ export const useTransactionStore = defineStore('transaction', () => {
       .map((item) => item.occurred_on)
   }
 
+  function transferOccurrenceDatesFor(ruleId: string) {
+    return transferOccurrences.value
+      .filter((item) => item.transfer_rule_id === ruleId)
+      .map((item) => item.occurred_on)
+  }
+
   function occurrenceByTransaction(transactionId: string) {
     return (
       occurrences.value.find((item) => item.transaction_id === transactionId) ??
-      expenseOccurrences.value.find((item) => item.transaction_id === transactionId)
+      expenseOccurrences.value.find((item) => item.transaction_id === transactionId) ??
+      transferOccurrences.value.find((item) => item.transaction_id === transactionId)
     )
   }
 
   async function reloadOccurrences() {
-    const [incomeOcc, expenseOcc] = await Promise.all([
+    const [incomeOcc, expenseOcc, transferOcc] = await Promise.all([
       fetchOccurrences(),
       fetchExpenseOccurrences(),
+      fetchTransferOccurrences(),
     ])
     occurrences.value = incomeOcc
     expenseOccurrences.value = expenseOcc
+    transferOccurrences.value = transferOcc
   }
 
   async function load() {
@@ -179,11 +208,12 @@ export const useTransactionStore = defineStore('transaction', () => {
   }
 
   async function applyDue(asOf: string) {
-    const [incomePosted, expensePosted] = await Promise.all([
+    const [incomePosted, expensePosted, transferPosted] = await Promise.all([
       applyDueIncomeRules(asOf),
       applyDueExpenseRules(asOf),
+      applyDueTransferRules(asOf),
     ])
-    const postedTx = [...incomePosted, ...expensePosted]
+    const postedTx = [...incomePosted, ...expensePosted, ...transferPosted]
     for (const tx of postedTx) {
       upsert(tx)
     }
@@ -198,7 +228,8 @@ export const useTransactionStore = defineStore('transaction', () => {
     assertWritable()
     const income = occurrences.value.find((item) => item.id === occurrenceId)
     const expense = expenseOccurrences.value.find((item) => item.id === occurrenceId)
-    const occ = income ?? expense
+    const transfer = transferOccurrences.value.find((item) => item.id === occurrenceId)
+    const occ = income ?? expense ?? transfer
     if (!occ) {
       return
     }
@@ -211,17 +242,23 @@ export const useTransactionStore = defineStore('transaction', () => {
       upsertIncomeOccurrence({ ...income, status: 'skipped' })
     } else if (expense) {
       upsertExpenseOccurrence({ ...expense, status: 'skipped' })
+    } else if (transfer) {
+      upsertTransferOccurrence({ ...transfer, status: 'skipped' })
     }
 
     const userId = tx?.createdBy
     const local = isLocalOnlyId(occurrenceId) || (occ.transaction_id ? isLocalOnlyId(occ.transaction_id) : false)
     if (local && userId) {
-      const kind = income ? 'income' : 'expense'
-      const ruleId = income ? income.income_rule_id : expense!.expense_rule_id
+      const kind = income ? 'income' : expense ? 'expense' : 'transfer'
+      const ruleId = income
+        ? income.income_rule_id
+        : expense
+          ? expense.expense_rule_id
+          : transfer!.transfer_rule_id
       rememberSkippedDue(dueKey(kind, ruleId, occ.occurred_on))
       await enqueueMutation(
         userId,
-        kind === 'income' ? 'skipDueIncome' : 'skipDueExpense',
+        kind === 'income' ? 'skipDueIncome' : kind === 'expense' ? 'skipDueExpense' : 'skipDueTransfer',
         { ruleId, occurredOn: occ.occurred_on },
         occurrenceId,
       )
@@ -230,7 +267,11 @@ export const useTransactionStore = defineStore('transaction', () => {
     if (userId) {
       await enqueueMutation(
         userId,
-        income ? 'skipIncomeOccurrence' : 'skipExpenseOccurrence',
+        income
+          ? 'skipIncomeOccurrence'
+          : expense
+            ? 'skipExpenseOccurrence'
+            : 'skipTransferOccurrence',
         { id: occurrenceId },
         occurrenceId,
       )
@@ -242,27 +283,38 @@ export const useTransactionStore = defineStore('transaction', () => {
     const value = roundMoney(amount)
     const income = occurrences.value.find((item) => item.id === occurrenceId)
     const expense = expenseOccurrences.value.find((item) => item.id === occurrenceId)
-    const occ = income ?? expense
+    const transfer = transferOccurrences.value.find((item) => item.id === occurrenceId)
+    const occ = income ?? expense ?? transfer
     const tx = occ?.transaction_id ? getById(occ.transaction_id) : undefined
     if (!occ || !tx) {
       return
     }
     const delta = value - tx.amount
     upsert({ ...tx, amount: value })
-    useAccountStore().applyAmountDelta(tx.accountId, tx.kind === 'income' ? delta : -delta)
+    if (tx.kind === 'transfer') {
+      postedBalanceDelta({ ...tx, amount: delta }, 1)
+    } else {
+      useAccountStore().applyAmountDelta(tx.accountId, tx.kind === 'income' ? delta : -delta)
+    }
     if (income) {
       upsertIncomeOccurrence({ ...income, status: 'adjusted' })
     } else if (expense) {
       upsertExpenseOccurrence({ ...expense, status: 'adjusted' })
+    } else if (transfer) {
+      upsertTransferOccurrence({ ...transfer, status: 'adjusted' })
     }
 
     const local = isLocalOnlyId(occurrenceId) || isLocalOnlyId(tx.id)
     if (local) {
-      const kind = income ? 'income' : 'expense'
-      const ruleId = income ? income.income_rule_id : expense!.expense_rule_id
+      const kind = income ? 'income' : expense ? 'expense' : 'transfer'
+      const ruleId = income
+        ? income.income_rule_id
+        : expense
+          ? expense.expense_rule_id
+          : transfer!.transfer_rule_id
       await enqueueMutation(
         tx.createdBy,
-        kind === 'income' ? 'adjustDueIncome' : 'adjustDueExpense',
+        kind === 'income' ? 'adjustDueIncome' : kind === 'expense' ? 'adjustDueExpense' : 'adjustDueTransfer',
         { ruleId, occurredOn: occ.occurred_on, amount: value },
         occurrenceId,
       )
@@ -270,7 +322,11 @@ export const useTransactionStore = defineStore('transaction', () => {
     }
     await enqueueMutation(
       tx.createdBy,
-      income ? 'adjustIncomeOccurrence' : 'adjustExpenseOccurrence',
+      income
+        ? 'adjustIncomeOccurrence'
+        : expense
+          ? 'adjustExpenseOccurrence'
+          : 'adjustTransferOccurrence',
       { id: occurrenceId, amount: value },
       occurrenceId,
     )
@@ -330,12 +386,14 @@ export const useTransactionStore = defineStore('transaction', () => {
     items.value = []
     occurrences.value = []
     expenseOccurrences.value = []
+    transferOccurrences.value = []
   }
 
   return {
     items,
     occurrences,
     expenseOccurrences,
+    transferOccurrences,
     posted,
     upsert,
     remove,
@@ -343,9 +401,11 @@ export const useTransactionStore = defineStore('transaction', () => {
     hydrate,
     upsertIncomeOccurrence,
     upsertExpenseOccurrence,
+    upsertTransferOccurrence,
     removeOccurrence,
     occurrenceDatesFor,
     expenseOccurrenceDatesFor,
+    transferOccurrenceDatesFor,
     occurrenceByTransaction,
     getById,
     load,

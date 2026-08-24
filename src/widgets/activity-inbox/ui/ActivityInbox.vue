@@ -123,6 +123,12 @@ function openActivity(item: ActivityItem) {
           >
             <AutoIncomeActions :transaction-id="item.transactionId" kind="expense" />
           </div>
+          <div
+            v-else-if="item.kind === 'transfer_auto_posted' && item.transactionId"
+            class="feed__extra"
+          >
+            <AutoIncomeActions :transaction-id="item.transactionId" kind="transfer" />
+          </div>
         </li>
       </ul>
       <p v-else class="feed__empty">Пока нет изменений</p>

@@ -37,6 +37,7 @@ const name = ref('')
 const amount = ref<string | number>(0)
 const excludeFromTotal = ref(false)
 const selected = ref<string[]>([])
+const bindOptions = computed(() => categories.bindOptions())
 const error = ref('')
 const pending = ref(false)
 const settingsOpen = ref(false)
@@ -64,10 +65,14 @@ watch(
 )
 
 watch(
-  [() => account.value?.id, () => categories.items],
+  [() => account.value?.id, () => categories.items, () => categories.groups],
   () => {
     if (!account.value) return
-    selected.value = categories.forAccount(account.value.id).map((item) => item.id)
+    const linked = [
+      ...categories.groupsForAccount(account.value.id).map((item) => item.id),
+      ...categories.forAccount(account.value.id).filter((item) => !item.groupId).map((item) => item.id),
+    ]
+    selected.value = linked
   },
   { immediate: true },
 )
@@ -341,7 +346,11 @@ async function removeAccount() {
             />
           </span>
         </div>
-        <AppField v-if="categories.items.length" label="Категории счёта" for-id="d-cats">
+        <AppField
+          v-if="bindOptions.groups.length || bindOptions.categories.length"
+          label="Категории счёта"
+          for-id="d-cats"
+        >
           <AppSelect
             id="d-cats"
             v-model="selected"
@@ -350,9 +359,16 @@ async function removeAccount() {
             clearable
             placeholder="Выберите категории"
           >
-            <option v-for="cat in categories.items" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
+            <optgroup v-if="bindOptions.groups.length" label="Группы">
+              <option v-for="group in bindOptions.groups" :key="group.id" :value="group.id">
+                {{ group.name }}
+              </option>
+            </optgroup>
+            <optgroup v-if="bindOptions.categories.length" label="Без группы">
+              <option v-for="cat in bindOptions.categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </optgroup>
           </AppSelect>
         </AppField>
         <p v-if="error" class="error" role="alert">{{ error }}</p>

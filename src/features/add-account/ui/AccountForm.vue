@@ -32,7 +32,11 @@ const mode = ref<'create' | 'join'>(props.initialMode)
 const name = ref('')
 const opening = ref('0')
 const code = ref('')
-const selected = ref<string[]>(categories.items.map((item) => item.id))
+const bindOptions = computed(() => categories.bindOptions())
+const selected = ref<string[]>([
+  ...categories.groups.map((item) => item.id),
+  ...categories.items.filter((item) => !item.groupId).map((item) => item.id),
+])
 const error = ref('')
 const pending = ref(false)
 const joinBlocked = computed(() => mode.value === 'join' && !isBrowserOnline())
@@ -64,7 +68,11 @@ async function onSubmit() {
       await accounts.addAccount({
         name: name.value,
         openingAmount: amount,
-        categoryIds: selected.value,
+        categoryIds: selected.value.filter((id) => {
+          const cat = categories.getById(id)
+          return Boolean(cat && !cat.groupId)
+        }),
+        groupIds: selected.value.filter((id) => categories.getGroupById(id)),
       })
       showToast('Счёт создан')
     }
@@ -95,7 +103,11 @@ async function onSubmit() {
       <AppField label="Стартовый баланс, ₽" for-id="acc-open" required>
         <AppInputNumber id="acc-open" v-model="opening" :min="0" placeholder="0" />
       </AppField>
-      <AppField v-if="categories.items.length" label="Категории" for-id="acc-cats">
+      <AppField
+        v-if="bindOptions.groups.length || bindOptions.categories.length"
+        label="Категории"
+        for-id="acc-cats"
+      >
         <AppSelect
           id="acc-cats"
           v-model="selected"
@@ -104,9 +116,16 @@ async function onSubmit() {
           clearable
           placeholder="Выберите категории"
         >
-          <option v-for="cat in categories.items" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
+          <optgroup v-if="bindOptions.groups.length" label="Группы">
+            <option v-for="group in bindOptions.groups" :key="group.id" :value="group.id">
+              {{ group.name }}
+            </option>
+          </optgroup>
+          <optgroup v-if="bindOptions.categories.length" label="Без группы">
+            <option v-for="cat in bindOptions.categories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </optgroup>
         </AppSelect>
       </AppField>
     </template>

@@ -15,15 +15,29 @@ export interface OutboxRecord {
   createdAt: number
 }
 
+export interface AnalyticsEventRecord {
+  id: string
+  userId: string
+  name: string
+  props: Record<string, string | number | boolean>
+  createdAt: number
+}
+
 class MoneyHomeDB extends Dexie {
   replicas!: Table<ReplicaRecord, string>
   outbox!: Table<OutboxRecord, number>
+  analyticsEvents!: Table<AnalyticsEventRecord, string>
 
   constructor() {
     super('money-home')
     this.version(1).stores({
       replicas: 'userId',
       outbox: '++seq, userId',
+    })
+    this.version(2).stores({
+      replicas: 'userId',
+      outbox: '++seq, userId',
+      analyticsEvents: 'id, userId',
     })
   }
 }
@@ -60,4 +74,16 @@ export async function removeOutbox(seq: number): Promise<void> {
 export async function outboxEntityIds(userId: string): Promise<string[]> {
   const items = await listOutbox(userId)
   return items.map((item) => item.entityId).filter((id): id is string => Boolean(id))
+}
+
+export async function addAnalyticsEvent(record: AnalyticsEventRecord): Promise<void> {
+  await db.analyticsEvents.put(cloneForIdb(record))
+}
+
+export async function listAnalyticsEvents(userId: string): Promise<AnalyticsEventRecord[]> {
+  return db.analyticsEvents.where('userId').equals(userId).sortBy('createdAt')
+}
+
+export async function removeAnalyticsEvents(ids: string[]): Promise<void> {
+  await db.analyticsEvents.bulkDelete(ids)
 }

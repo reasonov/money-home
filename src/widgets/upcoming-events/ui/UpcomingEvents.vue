@@ -16,8 +16,9 @@ import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useTransactionStore } from '@/entities/transaction'
+import { useTransferRuleStore, type TransferRule } from '@/entities/transfer-rule'
 
-type UpcomingKind = 'purchase' | 'income' | 'expense'
+type UpcomingKind = 'purchase' | 'income' | 'expense' | 'transfer'
 
 interface UpcomingEvent {
   id: string
@@ -27,6 +28,7 @@ interface UpcomingEvent {
   amount: number
   overdue: boolean
   purchaseId?: string
+  inflow?: boolean
 }
 
 const router = useRouter()
@@ -34,6 +36,7 @@ const accounts = useAccountStore()
 const purchases = usePurchaseStore()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const transactions = useTransactionStore()
 
 const events = computed(() => {
@@ -113,6 +116,31 @@ const events = computed(() => {
     }
   }
 
+  const transferList =
+    selected === ALL_ACCOUNTS_ID
+      ? transferRules.items.filter((rule) => rule.active)
+      : transferRules.forAccount(selected).filter((rule) => rule.active)
+  for (const rule of transferList) {
+    const dates = incomeOccurrences(
+      rule,
+      yesterday,
+      horizon,
+      transactions.transferOccurrenceDatesFor(rule.id),
+    )
+    for (const date of dates) {
+      const iso = formatLocalDate(date)
+      list.push({
+        id: `t-${rule.id}-${iso}`,
+        date: iso,
+        kind: 'transfer',
+        title: transferTitle(rule, selected),
+        amount: rule.amount,
+        overdue: false,
+        ...(selected === ALL_ACCOUNTS_ID ? {} : { inflow: rule.toAccountId === selected }),
+      })
+    }
+  }
+
   return list.sort((a, b) => {
     if (a.overdue !== b.overdue) {
       return a.overdue ? -1 : 1
@@ -129,6 +157,42 @@ function dateLabel(iso: string, overdue: boolean) {
     return 'Сегодня'
   }
   return formatShortDate(iso)
+}
+
+function transferTitle(rule: TransferRule, selected: string) {
+  if (rule.title?.trim()) {
+    return rule.title.trim()
+  }
+  const from = accounts.getById(rule.fromAccountId)?.name ?? 'Счёт'
+  const to = accounts.getById(rule.toAccountId)?.name ?? 'Счёт'
+  if (selected === ALL_ACCOUNTS_ID) {
+    return `${from} → ${to}`
+  }
+  if (selected === rule.fromAccountId) {
+    return `Перевод на «${to}»`
+  }
+  return `Перевод со счёта «${from}»`
+}
+
+function amountTone(item: UpcomingEvent) {
+  if (item.kind === 'income' || item.inflow) {
+    return 'in'
+  }
+  if (item.kind === 'transfer' && item.inflow == null) {
+    return 'xfer'
+  }
+  return 'out'
+}
+
+function amountPrefix(item: UpcomingEvent) {
+  const tone = amountTone(item)
+  if (tone === 'in') {
+    return '+'
+  }
+  if (tone === 'out') {
+    return '−'
+  }
+  return ''
 }
 
 function openEvent(item: UpcomingEvent) {
@@ -152,8 +216,8 @@ function openEvent(item: UpcomingEvent) {
               {{ dateLabel(item.date, item.overdue) }}
             </span>
           </span>
-          <span class="row__amount" :class="item.kind === 'income' ? 'is-in' : 'is-out'">
-            {{ item.kind === 'income' ? '+' : '−' }}{{ formatMoney(item.amount) }}
+          <span class="row__amount" :class="`is-${amountTone(item)}`">
+            {{ amountPrefix(item) }}{{ formatMoney(item.amount) }}
           </span>
         </button>
       </li>
@@ -241,5 +305,9 @@ function openEvent(item: UpcomingEvent) {
 
 .is-out {
   color: var(--color-warning);
+}
+
+.is-xfer {
+  color: var(--color-accent);
 }
 </style>

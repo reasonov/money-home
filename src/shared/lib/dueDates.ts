@@ -80,6 +80,6 @@ export function ruleDueDates(rule: DueRule, fromInclusive: Date, toInclusive: Da
   return dates.map((date) => formatLocalDate(date))
 }
 
-export function dueKey(kind: 'income' | 'expense', ruleId: string, occurredOn: string): string {
+export function dueKey(kind: 'income' | 'expense' | 'transfer', ruleId: string, occurredOn: string): string {
   return `${kind}:${ruleId}:${occurredOn}`
 }

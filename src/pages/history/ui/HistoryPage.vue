@@ -34,6 +34,7 @@ const customFrom = ref(queryParam('from') || todayLocal().slice(0, 8) + '01')
 const customTo = ref(queryParam('to') || todayLocal())
 const listKind = ref<'expense' | 'income' | undefined>(undefined)
 const listCategoryId = ref<string | undefined>(undefined)
+const listGroupId = ref<string | undefined>(undefined)
 
 function applyQuery() {
   period.value = periodFromQuery()
@@ -44,6 +45,7 @@ function applyQuery() {
   const kind = queryParam('kind')
   listKind.value = kind === 'expense' || kind === 'income' ? kind : undefined
   listCategoryId.value = queryParam('category') || undefined
+  listGroupId.value = queryParam('group') || undefined
 }
 
 applyQuery()
@@ -108,6 +110,7 @@ const periodItems = computed(() => {
           :items="periodItems"
           :initial-kind="listKind"
           :initial-category-id="listCategoryId"
+          :initial-group-id="listGroupId"
         />
       </div>
     </template>

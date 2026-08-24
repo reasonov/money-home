@@ -34,6 +34,7 @@ export interface AdviceLever {
   fact: string
   categoryName?: string
   categoryId?: string
+  groupId?: string
   purchaseId?: string
   purchaseTitle?: string
   ruleId?: string
@@ -155,6 +156,7 @@ export function buildAdviceLevers(input: BuildAdviceLeversInput): AdviceLever[] 
       fact: `«${row.name}» вырос на ${formatMoneyPlain(row.delta)} ₽ за 30 дней (${formatMoneyPlain(row.current)} против ${formatMoneyPlain(row.previous)}, операций ${row.currentCount} и ${row.previousCount}). Возврат к прошлому уровню: ${formatMoneyPlain(impact)} ₽/мес.`,
       categoryName: row.name,
       ...(row.categoryId ? { categoryId: row.categoryId } : {}),
+      ...(row.groupId ? { groupId: row.groupId } : {}),
     })
   }
 
@@ -175,6 +177,7 @@ export function buildAdviceLevers(input: BuildAdviceLeversInput): AdviceLever[] 
       fact: `«${row.name}»: ${formatMoneyPlain(row.current)} ₽ за 30 дней, ${row.currentCount} операций. Сокращение на ${formatMoneyPlain(impact)} ₽/мес закроет ${covers(impact, gap) ? 'всю дыру' : `часть дыры ${formatMoneyPlain(gap)} ₽/мес`}.`,
       categoryName: row.name,
       ...(row.categoryId ? { categoryId: row.categoryId } : {}),
+      ...(row.groupId ? { groupId: row.groupId } : {}),
     })
   }
 
@@ -333,6 +336,7 @@ export function fallbackTipsFromLevers(levers: AdviceLever[], limit = 3) {
     impact: lever.impact,
     ...(lever.categoryName ? { categoryName: lever.categoryName } : {}),
     ...(lever.categoryId ? { categoryId: lever.categoryId } : {}),
+    ...(lever.groupId ? { groupId: lever.groupId } : {}),
     ...(lever.purchaseId ? { purchaseId: lever.purchaseId } : {}),
     ...(lever.ruleId ? { ruleId: lever.ruleId } : {}),
     ...(lever.newTargetDate ? { newTargetDate: lever.newTargetDate } : {}),

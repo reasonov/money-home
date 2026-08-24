@@ -9,6 +9,14 @@ export function parsePreferences(raw: unknown): Preferences {
       typeof obj.amount_suggestions === 'boolean'
         ? obj.amount_suggestions
         : DEFAULT_PREFERENCES.amountSuggestions,
+    starterCatalogApplied:
+      typeof obj.starter_catalog_applied === 'boolean'
+        ? obj.starter_catalog_applied
+        : DEFAULT_PREFERENCES.starterCatalogApplied,
+    starterCatalogDismissed:
+      typeof obj.starter_catalog_dismissed === 'boolean'
+        ? obj.starter_catalog_dismissed
+        : DEFAULT_PREFERENCES.starterCatalogDismissed,
   }
 }
 
@@ -26,5 +34,7 @@ export function serializePreferences(
   return {
     ...extra,
     amount_suggestions: prefs.amountSuggestions,
+    starter_catalog_applied: prefs.starterCatalogApplied,
+    starter_catalog_dismissed: prefs.starterCatalogDismissed,
   }
 }

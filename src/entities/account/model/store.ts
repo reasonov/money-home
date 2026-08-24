@@ -115,7 +115,12 @@ export const useAccountStore = defineStore('account', () => {
     loaded.value = true
   }
 
-  async function addAccount(input: { name: string; openingAmount: number; categoryIds?: string[] }) {
+  async function addAccount(input: {
+    name: string
+    openingAmount: number
+    categoryIds?: string[]
+    groupIds?: string[]
+  }) {
     assertWritable()
     const userId = requireUserId()
     const session = useSessionStore()
@@ -138,8 +143,8 @@ export const useAccountStore = defineStore('account', () => {
         joinedAt: new Date().toISOString(),
       },
     ]
-    if (input.categoryIds?.length) {
-      useCategoryStore().bindAccounts(id, input.categoryIds)
+    if (input.categoryIds?.length || input.groupIds?.length) {
+      useCategoryStore().bindAccounts(id, [...(input.groupIds ?? []), ...(input.categoryIds ?? [])])
     }
     await enqueueMutation(
       userId,
@@ -149,6 +154,7 @@ export const useAccountStore = defineStore('account', () => {
         name: input.name,
         openingAmount: input.openingAmount,
         ...(input.categoryIds ? { categoryIds: input.categoryIds } : {}),
+        ...(input.groupIds ? { groupIds: input.groupIds } : {}),
       },
       id,
     )
@@ -204,11 +210,22 @@ export const useAccountStore = defineStore('account', () => {
     return getById(id)!
   }
 
-  async function bindCategories(accountId: string, categoryIds: string[]) {
+  async function bindCategories(accountId: string, selectedIds: string[]) {
     assertWritable()
     const userId = requireUserId()
-    useCategoryStore().bindAccounts(accountId, categoryIds)
-    await enqueueMutation(userId, 'bindAccountCategories', { accountId, categoryIds }, accountId)
+    const categories = useCategoryStore()
+    categories.bindAccounts(accountId, selectedIds)
+    const groupIds = selectedIds.filter((id) => categories.getGroupById(id))
+    const categoryIds = selectedIds.filter((id) => {
+      const cat = categories.getById(id)
+      return Boolean(cat && !cat.groupId)
+    })
+    await enqueueMutation(
+      userId,
+      'bindAccountCategories',
+      { accountId, categoryIds, groupIds },
+      accountId,
+    )
   }
 
   async function transfer(input: {

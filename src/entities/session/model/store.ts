@@ -1,7 +1,14 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session, User } from '@supabase/supabase-js'
-import { getErrorMessage, isBrowserOnline, NETWORK_ERROR_MESSAGE, supabase } from '@/shared'
+import {
+  flushAnalytics,
+  getErrorMessage,
+  isBrowserOnline,
+  NETWORK_ERROR_MESSAGE,
+  setAnalyticsUser,
+  supabase,
+} from '@/shared'
 import { allowAuthStorageClear, denyAuthStorageClear } from '@/shared/api/authStorage'
 import { setWriteBlocked } from '@/shared/lib/syncBus'
 import { persistSessionUser, readPersistedSessionUser } from './persist'
@@ -46,6 +53,26 @@ function isSessionUsable(session: Session | null): boolean {
   return expiresAt == null || expiresAt * 1000 > Date.now() + 2_000
 }
 
+const GET_SESSION_TIMEOUT_MS = 4_000
+
+function timeoutError(message: string, ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    window.setTimeout(() => reject(new Error(message)), ms)
+  })
+}
+
+async function readLocalSession(): Promise<Session | null> {
+  try {
+    const { data } = await Promise.race([
+      supabase.auth.getSession(),
+      timeoutError('Session read timed out', GET_SESSION_TIMEOUT_MS),
+    ])
+    return data.session
+  } catch {
+    return null
+  }
+}
+
 export const useSessionStore = defineStore('session', () => {
   const user = ref<SessionUser | null>(null)
   const ready = ref(false)
@@ -60,22 +87,26 @@ export const useSessionStore = defineStore('session', () => {
     if (session?.user) {
       user.value = toSessionUser(session.user)
       persistSessionUser(user.value)
+      setAnalyticsUser(user.value.id)
       setWriteBlocked(false)
       return
     }
     if (loggingOut) {
       user.value = null
       persistSessionUser(null)
+      setAnalyticsUser(null)
       return
     }
     if (!user.value) {
       user.value = readPersistedSessionUser()
     }
+    if (user.value) {
+      setAnalyticsUser(user.value.id)
+    }
   }
 
   async function ensureFreshSession(): Promise<boolean> {
-    const { data } = await supabase.auth.getSession()
-    const current = data.session
+    const current = await readLocalSession()
     if (isSessionFresh(current) && current) {
       keepUser(current)
       return true
@@ -84,14 +115,12 @@ export const useSessionStore = defineStore('session', () => {
       keepUser(current)
     }
     if (!isBrowserOnline()) {
-      return isSessionUsable(current)
+      return isSessionUsable(current) || user.value != null
     }
     try {
       const refreshed = await Promise.race([
         supabase.auth.refreshSession(),
-        new Promise<never>((_, reject) => {
-          window.setTimeout(() => reject(new Error('Session refresh timed out')), 15_000)
-        }),
+        timeoutError('Session refresh timed out', 15_000),
       ])
       if (refreshed.data.session) {
         keepUser(refreshed.data.session)
@@ -123,12 +152,12 @@ export const useSessionStore = defineStore('session', () => {
     }
 
     user.value = readPersistedSessionUser()
-
-    const { data, error } = await supabase.auth.getSession()
-    if (error) {
-      console.error(error)
+    if (user.value) {
+      setAnalyticsUser(user.value.id)
     }
-    keepUser(data.session)
+
+    const session = await readLocalSession()
+    keepUser(session)
 
     if (isBrowserOnline()) {
       void supabase.auth.startAutoRefresh()
@@ -192,6 +221,7 @@ export const useSessionStore = defineStore('session', () => {
 
   async function logout() {
     loggingOut = true
+    await flushAnalytics()
     allowAuthStorageClear()
     try {
       if (isBrowserOnline()) {
@@ -211,6 +241,7 @@ export const useSessionStore = defineStore('session', () => {
       denyAuthStorageClear()
       user.value = null
       persistSessionUser(null)
+      setAnalyticsUser(null)
       passwordRecovery.value = false
       setWriteBlocked(false)
       loggingOut = false

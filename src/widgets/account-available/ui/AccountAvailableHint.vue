@@ -9,6 +9,7 @@ import {
   formatShortDate,
   parseLocalDate,
   todayLocal,
+  transferProjectionForAccount,
   type AvailableUntilNextIncomeResult,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
@@ -16,6 +17,7 @@ import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useTransactionStore } from '@/entities/transaction'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 
 const props = defineProps<{
   accountId?: string
@@ -26,6 +28,7 @@ const props = defineProps<{
 const accounts = useAccountStore()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
@@ -42,6 +45,11 @@ function computeFor(accountId: string, balance: number): AvailableUntilNextIncom
     postedExpenseOccurrenceDates: expenseRules
       .forAccount(accountId)
       .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+    ...transferProjectionForAccount(
+      transferRules.items,
+      accountId,
+      (id) => transactions.transferOccurrenceDatesFor(id),
+    ),
   })
 }
 

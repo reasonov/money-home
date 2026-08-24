@@ -18,6 +18,7 @@ import {
   roundMoney,
   showToast,
   todayLocal,
+  track,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
@@ -105,6 +106,12 @@ const parseSuggestion = ref<ParsedOperationLine | null>(null)
 let parseTimer: ReturnType<typeof setTimeout> | null = null
 let parseSeq = 0
 
+watch(parseSuggestion, (value) => {
+  if (value) {
+    track('parse_line_shown', { kind: props.kind })
+  }
+})
+
 const PARSE_DEBOUNCE_MS = 600
 
 const availableCats = computed(() => categories.forAccount(accountId.value, props.kind))
@@ -113,7 +120,7 @@ const parseCategories = computed(() =>
   availableCats.value.map((item) => ({ id: item.id, name: item.name })),
 )
 
-function applyParse(parsed: ParsedOperationLine) {
+function applyParse(parsed: ParsedOperationLine, source: 'auto' | 'tap' = 'auto') {
   if (parsed.amount && parsed.amount > 0) {
     amount.value = parsed.amount
   }
@@ -127,11 +134,12 @@ function applyParse(parsed: ParsedOperationLine) {
     title.value = parsed.title
   }
   parseSuggestion.value = null
+  track('parse_line_applied', { kind: props.kind, source })
 }
 
 function applySuggestion() {
   if (parseSuggestion.value) {
-    applyParse(parseSuggestion.value)
+    applyParse(parseSuggestion.value, 'tap')
   }
 }
 

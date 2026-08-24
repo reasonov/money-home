@@ -424,6 +424,96 @@ describe('forecastBalanceSeries', () => {
   })
 })
 
+describe('transfer rules in projection', () => {
+  it('adds incoming transfer like income', () => {
+    const result = projectBalance({
+      currentBalance: 1000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      incomingTransferRules: [
+        {
+          amount: 2500,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      candidateAmount: 2300,
+    })
+
+    expect(result.incomeTotal).toBe(2500)
+    expect(result.projectedBalance).toBe(3500)
+    expect(result.canAfford).toBe(true)
+  })
+
+  it('subtracts outgoing transfer like expense', () => {
+    const result = projectBalance({
+      currentBalance: 4000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      outgoingTransferRules: [
+        {
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      candidateAmount: 2300,
+    })
+
+    expect(result.projectedBalance).toBe(1000)
+    expect(result.canAfford).toBe(false)
+    expect(result.shortfall).toBe(1300)
+  })
+
+  it('does not count posted transfer dates', () => {
+    const incoming = projectBalance({
+      currentBalance: 1000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      incomingTransferRules: [
+        {
+          amount: 2500,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      postedIncomingTransferDates: ['2026-08-10'],
+      candidateAmount: 2300,
+    })
+    const outgoing = projectBalance({
+      currentBalance: 4000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [],
+      outgoingTransferRules: [
+        {
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+      postedOutgoingTransferDates: ['2026-08-10'],
+      candidateAmount: 2300,
+    })
+
+    expect(incoming.incomeTotal).toBe(0)
+    expect(incoming.projectedBalance).toBe(1000)
+    expect(outgoing.projectedBalance).toBe(4000)
+    expect(outgoing.canAfford).toBe(true)
+  })
+})
+
 describe('suggestTransfer', () => {
   it('picks another account with enough surplus', () => {
     const suggestion = suggestTransfer(800, parseLocalDate('2026-08-04'), parseLocalDate('2026-08-25'), [

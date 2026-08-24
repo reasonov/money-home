@@ -5,9 +5,15 @@ import {
   transferBetweenAccounts,
   updateAccount,
 } from '@/entities/account'
-import { deleteCategory, upsertCategory } from '@/entities/category'
+import {
+  deleteCategory,
+  deleteCategoryGroup,
+  upsertCategory,
+  upsertCategoryGroup,
+} from '@/entities/category'
 import { deleteExpenseRule, insertExpenseRule, updateExpenseRule } from '@/entities/expense-rule'
 import { deleteIncomeRule, insertIncomeRule, updateIncomeRule } from '@/entities/income-rule'
+import { deleteTransferRule, insertTransferRule, updateTransferRule } from '@/entities/transfer-rule'
 import { deleteOperationTemplate, upsertOperationTemplate, type OperationTemplateInput } from '@/entities/operation-template'
 import {
   cancelPurchase,
@@ -23,17 +29,21 @@ import {
 import {
   adjustExpenseOccurrence,
   adjustIncomeOccurrence,
+  adjustTransferOccurrence,
   cancelPostedTransaction,
   findExpenseOccurrence,
   findIncomeOccurrence,
+  findTransferOccurrence,
   insertTransaction,
   skipExpenseOccurrence,
   skipIncomeOccurrence,
+  skipTransferOccurrence,
   updatePostedTransaction,
 } from '@/entities/transaction'
 import type { OutboxRecord } from '@/shared/lib/localDb'
 import type { IncomeRule } from '@/entities/income-rule'
 import type { ExpenseRule } from '@/entities/expense-rule'
+import type { TransferRule } from '@/entities/transfer-rule'
 import type { CategoryKind } from '@/entities/category'
 
 export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
@@ -93,6 +103,22 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
     case 'deleteExpenseRule':
       await deleteExpenseRule(String(payload.id), String(payload.userId))
       return
+    case 'insertTransferRule':
+      await insertTransferRule(
+        String(payload.userId),
+        payload.input as Omit<TransferRule, 'id'> & { id?: string },
+      )
+      return
+    case 'updateTransferRule':
+      await updateTransferRule(
+        String(payload.id),
+        String(payload.userId),
+        payload.patch as Partial<Omit<TransferRule, 'id'>>,
+      )
+      return
+    case 'deleteTransferRule':
+      await deleteTransferRule(String(payload.id), String(payload.userId))
+      return
     case 'upsertCategory':
       await upsertCategory(
         payload.input as {
@@ -102,11 +128,31 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
           color: string
           icon: string
           accountIds: string[]
+          groupId?: string | null
+          colorManual?: boolean
+          sortOrder?: number
+        },
+      )
+      return
+    case 'upsertCategoryGroup':
+      await upsertCategoryGroup(
+        payload.input as {
+          id?: string
+          kind: CategoryKind
+          name: string
+          color: string
+          icon: string
+          accountIds: string[]
+          sortOrder?: number
+          childColors?: { id: string; color: string }[]
         },
       )
       return
     case 'deleteCategory':
       await deleteCategory(String(payload.id))
+      return
+    case 'deleteCategoryGroup':
+      await deleteCategoryGroup(String(payload.id))
       return
     case 'createAccount':
       await createAccount(payload as Parameters<typeof createAccount>[0])
@@ -123,7 +169,11 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       await adjustAccountAmount(String(payload.id), Number(payload.delta))
       return
     case 'bindAccountCategories':
-      await setAccountCategories(String(payload.accountId), payload.categoryIds as string[])
+      await setAccountCategories(
+        String(payload.accountId),
+        payload.categoryIds as string[],
+        (payload.groupIds as string[] | undefined) ?? [],
+      )
       return
     case 'transfer':
       await transferBetweenAccounts(payload as Parameters<typeof transferBetweenAccounts>[0])
@@ -140,11 +190,17 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
     case 'skipExpenseOccurrence':
       await skipExpenseOccurrence(String(payload.id))
       return
+    case 'skipTransferOccurrence':
+      await skipTransferOccurrence(String(payload.id))
+      return
     case 'adjustIncomeOccurrence':
       await adjustIncomeOccurrence(String(payload.id), Number(payload.amount))
       return
     case 'adjustExpenseOccurrence':
       await adjustExpenseOccurrence(String(payload.id), Number(payload.amount))
+      return
+    case 'adjustTransferOccurrence':
+      await adjustTransferOccurrence(String(payload.id), Number(payload.amount))
       return
     case 'skipDueIncome': {
       const occ = await findIncomeOccurrence(String(payload.ruleId), String(payload.occurredOn))
@@ -160,6 +216,13 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       }
       return
     }
+    case 'skipDueTransfer': {
+      const occ = await findTransferOccurrence(String(payload.ruleId), String(payload.occurredOn))
+      if (occ) {
+        await skipTransferOccurrence(occ.id)
+      }
+      return
+    }
     case 'adjustDueIncome': {
       const occ = await findIncomeOccurrence(String(payload.ruleId), String(payload.occurredOn))
       if (occ) {
@@ -171,6 +234,13 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       const occ = await findExpenseOccurrence(String(payload.ruleId), String(payload.occurredOn))
       if (occ) {
         await adjustExpenseOccurrence(occ.id, Number(payload.amount))
+      }
+      return
+    }
+    case 'adjustDueTransfer': {
+      const occ = await findTransferOccurrence(String(payload.ruleId), String(payload.occurredOn))
+      if (occ) {
+        await adjustTransferOccurrence(occ.id, Number(payload.amount))
       }
       return
     }

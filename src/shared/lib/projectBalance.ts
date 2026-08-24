@@ -31,6 +31,10 @@ export interface ProjectBalanceInput {
   postedOccurrenceDates?: string[]
   expenseRules?: ProjectionIncomeRule[]
   postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
 }
 
 export interface PlannedBeforeTargetItem {
@@ -207,6 +211,48 @@ function formatTargetLabel(date: Date): string {
   }).format(date)
 }
 
+function withTransferRules<T extends {
+  incomeRules: ProjectionIncomeRule[]
+  expenseRules?: ProjectionIncomeRule[]
+  postedOccurrenceDates?: string[]
+  postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
+}>(input: T): T {
+  return {
+    ...input,
+    incomeRules: [...input.incomeRules, ...(input.incomingTransferRules ?? [])],
+    expenseRules: [...(input.expenseRules ?? []), ...(input.outgoingTransferRules ?? [])],
+    postedOccurrenceDates: [
+      ...(input.postedOccurrenceDates ?? []),
+      ...(input.postedIncomingTransferDates ?? []),
+    ],
+    postedExpenseOccurrenceDates: [
+      ...(input.postedExpenseOccurrenceDates ?? []),
+      ...(input.postedOutgoingTransferDates ?? []),
+    ],
+  }
+}
+
+export function transferProjectionForAccount(
+  rules: Array<
+    ProjectionIncomeRule & { id: string; fromAccountId: string; toAccountId: string }
+  >,
+  accountId: string,
+  postedDatesFor: (ruleId: string) => string[],
+) {
+  const incoming = rules.filter((rule) => rule.active && rule.toAccountId === accountId)
+  const outgoing = rules.filter((rule) => rule.active && rule.fromAccountId === accountId)
+  return {
+    incomingTransferRules: incoming,
+    outgoingTransferRules: outgoing,
+    postedIncomingTransferDates: incoming.flatMap((rule) => postedDatesFor(rule.id)),
+    postedOutgoingTransferDates: outgoing.flatMap((rule) => postedDatesFor(rule.id)),
+  }
+}
+
 function computeProjectionCore(
   input: ProjectBalanceInput,
   targetDate: Date,
@@ -228,7 +274,7 @@ function computeProjectionCore(
     postedOccurrenceDates,
     expenseRules = [],
     postedExpenseOccurrenceDates,
-  } = input
+  } = withTransferRules(input)
 
   const { incomeTotal, incomeOccurrencesCount } = sumIncomes(
     incomeRules,
@@ -307,6 +353,10 @@ export interface AvailableUntilNextIncomeInput {
   postedOccurrenceDates?: string[]
   expenseRules?: ProjectionIncomeRule[]
   postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
 }
 
 export interface AvailableUntilNextIncomeResult {
@@ -348,7 +398,7 @@ export function availableUntilNextIncome(
     postedOccurrenceDates,
     expenseRules = [],
     postedExpenseOccurrenceDates,
-  } = input
+  } = withTransferRules(input)
   const nextIncomeDate = findNextIncomeDate(incomeRules, asOfDate, postedOccurrenceDates)
   const spendUntil = nextIncomeDate ?? addDays(asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)
 
@@ -396,6 +446,10 @@ export interface TransferCandidateAccount {
   postedOccurrenceDates?: string[]
   expenseRules?: ProjectionIncomeRule[]
   postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
 }
 
 export interface TransferSuggestion {
@@ -429,6 +483,10 @@ export function suggestTransfer(
         postedOccurrenceDates: account.postedOccurrenceDates,
         expenseRules: account.expenseRules,
         postedExpenseOccurrenceDates: account.postedExpenseOccurrenceDates,
+        incomingTransferRules: account.incomingTransferRules,
+        outgoingTransferRules: account.outgoingTransferRules,
+        postedIncomingTransferDates: account.postedIncomingTransferDates,
+        postedOutgoingTransferDates: account.postedOutgoingTransferDates,
       },
       targetDate,
     )
@@ -466,6 +524,10 @@ export function forecastBalanceSeries(input: {
   expenseRules?: ProjectionIncomeRule[]
   postedOccurrenceDates?: string[]
   postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
 }): ForecastSlice[] {
   const slices: ForecastSlice[] = []
   const days = Math.max(0, Math.floor(input.horizonDays))
@@ -483,6 +545,10 @@ export function forecastBalanceSeries(input: {
         postedOccurrenceDates: input.postedOccurrenceDates,
         expenseRules: input.expenseRules,
         postedExpenseOccurrenceDates: input.postedExpenseOccurrenceDates,
+        incomingTransferRules: input.incomingTransferRules,
+        outgoingTransferRules: input.outgoingTransferRules,
+        postedIncomingTransferDates: input.postedIncomingTransferDates,
+        postedOutgoingTransferDates: input.postedOutgoingTransferDates,
       },
       targetDate,
     )

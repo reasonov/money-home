@@ -8,6 +8,7 @@ export type SavingsAdviceTip = {
   impact: number
   categoryName?: string
   categoryId?: string
+  groupId?: string
   purchaseId?: string
   ruleId?: string
   newTargetDate?: string

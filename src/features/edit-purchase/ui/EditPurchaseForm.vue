@@ -22,11 +22,14 @@ import {
   openFormDrawer,
   projectBalance,
   todayLocal,
+  track,
+  transferProjectionForAccount,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { CategorySelect, useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
@@ -45,6 +48,7 @@ const accounts = useAccountStore()
 const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
@@ -119,6 +123,11 @@ const projection = computed(() => {
     postedExpenseOccurrenceDates: expenseRules
       .forAccount(accountId.value)
       .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+    ...transferProjectionForAccount(
+      transferRules.items,
+      accountId.value,
+      (id) => transactions.transferOccurrenceDatesFor(id),
+    ),
   })
 })
 
@@ -138,6 +147,7 @@ function pluralizeRu(count: number, one: string, few: string, many: string): str
 
 function openDetails() {
   detailsOpen.value = true
+  track('purchase_projection_refused')
 }
 
 function applyAffordableDate() {

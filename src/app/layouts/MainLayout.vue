@@ -11,6 +11,7 @@ import { AppFormDrawers } from '@/widgets/app-drawers'
 import { ActivityInbox } from '@/widgets/activity-inbox'
 import { BottomNav } from '@/widgets/bottom-nav'
 import { SyncStatusBar, SyncStatusIcon } from '@/entities/sync'
+import { useProductAnalytics } from '../analytics'
 
 const route = useRoute()
 const accounts = useAccountStore()
@@ -26,6 +27,7 @@ const pageTitle = computed(() => {
 const showNav = computed(() => route.meta.showNav !== false)
 
 useProductTour()
+useProductAnalytics()
 
 watch(
   () => route.fullPath,

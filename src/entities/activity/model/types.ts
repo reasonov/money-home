@@ -6,9 +6,11 @@ export type ActivityKind =
   | 'account_updated'
   | 'income_rule_changed'
   | 'expense_rule_changed'
+  | 'transfer_rule_changed'
   | 'transaction_created'
   | 'income_auto_posted'
   | 'expense_auto_posted'
+  | 'transfer_auto_posted'
   | 'savings_goal_changed'
 
 export interface ActivityItem {

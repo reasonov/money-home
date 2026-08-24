@@ -17,16 +17,19 @@ export type {
   TransactionSource,
   TransactionStatus,
 } from './model/types'
-export type { ExpenseOccurrenceRow, OccurrenceRow } from './api/transactionApi'
+export type { ExpenseOccurrenceRow, OccurrenceRow, TransferOccurrenceRow } from './api/transactionApi'
 export {
   adjustExpenseOccurrence,
   adjustIncomeOccurrence,
+  adjustTransferOccurrence,
   cancelPostedTransaction,
   findExpenseOccurrence,
   findIncomeOccurrence,
+  findTransferOccurrence,
   insertTransaction,
   skipExpenseOccurrence,
   skipIncomeOccurrence,
+  skipTransferOccurrence,
   updatePostedTransaction,
 } from './api/transactionApi'
 export {
@@ -63,3 +66,4 @@ export {
   type TrendStep,
   type WeekdaySpendSlice,
 } from './lib/stats'
+export { rollupCategorySlices, type RollupCategory, type RollupGroup } from './lib/categoryRollup'

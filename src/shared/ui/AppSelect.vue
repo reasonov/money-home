@@ -10,6 +10,15 @@ type SelectOption = {
   color?: string
 }
 
+type SelectGroup = {
+  type: 'group'
+  key: string
+  label: string
+  children: SelectOption[]
+}
+
+type SelectNode = SelectOption | SelectGroup
+
 const props = withDefaults(
   defineProps<{
     id?: string
@@ -47,24 +56,41 @@ function dataAttr(nodeProps: Record<string, unknown> | null | undefined, key: st
   return raw == null || raw === '' ? undefined : String(raw)
 }
 
-function collectOptions(nodes: VNode[] | undefined): SelectOption[] {
+function optionFromNode(node: VNode): SelectOption {
+  const raw = node.props?.value
+  const label = textOf(node.children).trim()
+  return {
+    value: raw == null ? label : String(raw),
+    label,
+    disabled: node.props?.disabled === '' || node.props?.disabled === true,
+    icon: dataAttr(node.props, 'data-icon'),
+    color: dataAttr(node.props, 'data-color'),
+  }
+}
+
+function collectOptions(nodes: VNode[] | undefined): SelectNode[] {
   if (!nodes) return []
-  const result: SelectOption[] = []
+  const result: SelectNode[] = []
   for (const node of nodes) {
     if (node.type === Fragment) {
       result.push(...collectOptions(node.children as VNode[]))
       continue
     }
+    if (node.type === 'optgroup') {
+      const label = String(node.props?.label ?? '')
+      const children = collectOptions(
+        Array.isArray(node.children) ? (node.children as VNode[]) : undefined,
+      ).filter((item): item is SelectOption => !('type' in item && item.type === 'group'))
+      result.push({
+        type: 'group',
+        key: label || `group-${result.length}`,
+        label,
+        children,
+      })
+      continue
+    }
     if (node.type !== 'option') continue
-    const raw = node.props?.value
-    const label = textOf(node.children).trim()
-    result.push({
-      value: raw == null ? label : String(raw),
-      label,
-      disabled: node.props?.disabled === '' || node.props?.disabled === true,
-      icon: dataAttr(node.props, 'data-icon'),
-      color: dataAttr(node.props, 'data-color'),
-    })
+    result.push(optionFromNode(node))
   }
   return result
 }
@@ -104,6 +130,10 @@ function isSelected(optionValue: string) {
   }
   return String(model.value) === optionValue
 }
+
+function isGroup(item: SelectNode): item is SelectGroup {
+  return 'type' in item && item.type === 'group'
+}
 </script>
 
 <template>
@@ -118,15 +148,27 @@ function isSelected(optionValue: string) {
       aria-hidden="true"
       @change="onNativeChange"
     >
-      <option
-        v-for="item in options"
-        :key="item.value"
-        :value="item.value"
-        :disabled="item.disabled"
-        :selected="isSelected(item.value)"
-      >
-        {{ item.label }}
-      </option>
+      <template v-for="(item, index) in options" :key="isGroup(item) ? item.key : item.value">
+        <optgroup v-if="isGroup(item)" :label="item.label">
+          <option
+            v-for="child in item.children"
+            :key="child.value"
+            :value="child.value"
+            :disabled="child.disabled"
+            :selected="isSelected(child.value)"
+          >
+            {{ child.label }}
+          </option>
+        </optgroup>
+        <option
+          v-else
+          :value="item.value"
+          :disabled="item.disabled"
+          :selected="isSelected(item.value)"
+        >
+          {{ item.label }}
+        </option>
+      </template>
     </select>
     <NSelect
       v-model:value="value"

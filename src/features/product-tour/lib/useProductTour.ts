@@ -1,6 +1,6 @@
 import { nextTick, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { closeFormDrawer, closeSidebar, confirmAction, hideToast } from '@/shared'
+import { closeFormDrawer, closeSidebar, confirmAction, hideToast, track } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
@@ -124,9 +124,10 @@ export function useProductTour() {
     }
     celebrating = true
     destroyTourUi()
-    closeFormDrawer()
+    closeFormDrawer('silent')
     closeSidebar()
     tour.complete()
+    track('tour_completed')
     await confirmAction({
       title: 'Обучение пройдено',
       message: 'Гайд можно снова включить в настройках.',
@@ -203,7 +204,7 @@ export function useProductTour() {
 
     hideToast()
     closeSidebar()
-    closeFormDrawer()
+    closeFormDrawer('silent')
 
     const found = await waitForElement(step.selector)
     if (gen !== syncGen) {
@@ -229,9 +230,10 @@ export function useProductTour() {
       side: step.side,
       align: step.align,
       onSkip: () => {
-        closeFormDrawer()
+        closeFormDrawer('silent')
         closeSidebar()
         tour.skip()
+        track('tour_skipped')
       },
       onNext: () => {
         goNext()

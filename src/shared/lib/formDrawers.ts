@@ -10,6 +10,10 @@ export type RuleFormDraft = {
   monthDay?: number
 }
 
+export type FormDrawerCloseReason = 'dismiss' | 'submit' | 'silent'
+
+export const lastFormDrawerCloseReason = ref<FormDrawerCloseReason>('dismiss')
+
 export type FormDrawer =
   | { name: 'expense'; accountId?: string }
   | { name: 'income'; accountId?: string }
@@ -19,6 +23,7 @@ export type FormDrawer =
   | { name: 'purchase-edit'; purchaseId: string }
   | { name: 'income-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
   | { name: 'expense-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
+  | { name: 'transfer-rule'; ruleId?: string; fromAccountId?: string }
   | { name: 'transaction-edit'; transactionId: string }
   | { name: 'savings-goal'; accountId?: string; goalId?: string }
   | { name: 'savings-advice'; accountId: string; goalId: string }
@@ -29,7 +34,12 @@ export function openFormDrawer(drawer: FormDrawer) {
   formDrawer.value = drawer
 }
 
-export function closeFormDrawer() {
+export function closeFormDrawer(reason: FormDrawerCloseReason = 'dismiss') {
+  if (formDrawer.value === null) {
+    return
+  }
+  lastFormDrawerCloseReason.value =
+    reason === 'submit' || reason === 'silent' ? reason : 'dismiss'
   formDrawer.value = null
 }
 
@@ -37,7 +47,7 @@ export const formDrawerOpen = computed({
   get: () => formDrawer.value !== null,
   set: (open: boolean) => {
     if (!open) {
-      formDrawer.value = null
+      closeFormDrawer('dismiss')
     }
   },
 })

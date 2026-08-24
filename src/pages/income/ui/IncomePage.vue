@@ -2,6 +2,7 @@
 import { AppHelpTip } from '@/shared'
 import { IncomeRulesPanel } from '@/features/manage-income'
 import { ExpenseRulesPanel } from '@/features/manage-expense'
+import { TransferRulesPanel } from '@/features/manage-transfer'
 </script>
 
 <template>
@@ -23,6 +24,15 @@ import { ExpenseRulesPanel } from '@/features/manage-expense'
         />
       </h2>
       <ExpenseRulesPanel />
+    </section>
+    <section class="section">
+      <h2 class="section__title">
+        Регулярные переводы
+        <AppHelpTip
+          text="В назначенный день сумма перейдёт со счёта на счёт. Придёт уведомление — операцию можно отменить."
+        />
+      </h2>
+      <TransferRulesPanel />
     </section>
   </div>
 </template>

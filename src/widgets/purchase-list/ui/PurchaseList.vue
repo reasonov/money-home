@@ -18,7 +18,7 @@ import {
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useActivityStore, UnseenPurchaseDot } from '@/entities/activity'
 import { PendingDot } from '@/entities/sync'
-import { CategoryIcon, useCategoryStore } from '@/entities/category'
+import { CategoryIcon, splitCategorySections, useCategoryStore } from '@/entities/category'
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 
@@ -84,7 +84,13 @@ const groups = computed(() => {
       ? store.planned
       : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
   const filtered = source.filter((item) => {
-    if (categoryId.value !== 'all' && item.categoryId !== categoryId.value) {
+    if (categoryId.value.startsWith('group:')) {
+      const groupId = categoryId.value.slice(6)
+      const cat = item.categoryId ? categories.getById(item.categoryId) : undefined
+      if (cat?.groupId !== groupId) {
+        return false
+      }
+    } else if (categoryId.value !== 'all' && item.categoryId !== categoryId.value) {
       return false
     }
     if (needle) {
@@ -226,34 +232,30 @@ function accountName(accountId: string) {
   return accounts.getById(accountId)?.name ?? 'Счёт'
 }
 
-const categoryOptions = computed(() => {
-  const map = new Map<string, string>()
+const purchaseFilterSections = computed(() => {
+  const visible = categories.items.filter((cat) => {
+    if (cat.kind !== 'expense') return false
+    if (
+      accounts.selectedAccountId !== ALL_ACCOUNTS_ID &&
+      !cat.accountIds.includes(accounts.selectedAccountId)
+    ) {
+      return false
+    }
+    return true
+  })
+  const split = splitCategorySections(visible, categories.groups, 'expense')
+  const known = new Set(visible.map((item) => item.id))
+  const extras: { id: string; name: string }[] = []
   const source =
     accounts.selectedAccountId === ALL_ACCOUNTS_ID
       ? store.planned
       : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
   for (const item of source) {
-    if (item.categoryId && item.categoryName) {
-      map.set(item.categoryId, item.categoryName)
-    }
+    if (!item.categoryId || !item.categoryName || known.has(item.categoryId)) continue
+    if (extras.some((row) => row.id === item.categoryId)) continue
+    extras.push({ id: item.categoryId, name: item.categoryName })
   }
-  for (const cat of categories.items) {
-    if (cat.kind !== 'expense') {
-      continue
-    }
-    if (
-      accounts.selectedAccountId !== ALL_ACCOUNTS_ID &&
-      !cat.accountIds.includes(accounts.selectedAccountId)
-    ) {
-      continue
-    }
-    if (!map.has(cat.id)) {
-      map.set(cat.id, cat.name)
-    }
-  }
-  return [...map.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+  return { ...split, extras }
 })
 
 const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.value.trim()))
@@ -283,9 +285,27 @@ watch(
     <div class="filters">
       <AppSelect id="purchase-category" v-model="categoryId" size="medium" filterable aria-label="Категория">
         <option value="all">Все категории</option>
-        <option v-for="cat in categoryOptions" :key="cat.id" :value="cat.id">
-          {{ cat.name }}
-        </option>
+        <optgroup
+          v-for="section in purchaseFilterSections.grouped"
+          :key="section.group.id"
+          :label="section.group.name"
+        >
+          <option :value="`group:${section.group.id}`">Вся группа</option>
+          <option v-for="cat in section.categories" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </optgroup>
+        <optgroup
+          v-if="purchaseFilterSections.ungrouped.length || purchaseFilterSections.extras.length"
+          label="Без группы"
+        >
+          <option v-for="cat in purchaseFilterSections.ungrouped" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+          <option v-for="cat in purchaseFilterSections.extras" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </optgroup>
       </AppSelect>
       <AppInput id="purchase-query" v-model="query" size="medium" placeholder="Поиск" />
     </div>

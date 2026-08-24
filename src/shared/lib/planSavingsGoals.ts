@@ -42,6 +42,10 @@ export interface SavingsPlanInput {
   plannedPurchases: ProjectionPurchase[]
   postedOccurrenceDates?: string[]
   postedExpenseOccurrenceDates?: string[]
+  incomingTransferRules?: ProjectionIncomeRule[]
+  outgoingTransferRules?: ProjectionIncomeRule[]
+  postedIncomingTransferDates?: string[]
+  postedOutgoingTransferDates?: string[]
   transactions: SavingsPlanTransaction[]
 }
 
@@ -167,6 +171,10 @@ function projectionParts(input: SavingsPlanInput, targetDate: Date, includeRules
     candidateAmount: 0,
     postedOccurrenceDates: includeRules ? input.postedOccurrenceDates : [],
     postedExpenseOccurrenceDates: includeRules ? input.postedExpenseOccurrenceDates : [],
+    incomingTransferRules: includeRules ? input.incomingTransferRules : [],
+    outgoingTransferRules: includeRules ? input.outgoingTransferRules : [],
+    postedIncomingTransferDates: includeRules ? input.postedIncomingTransferDates : [],
+    postedOutgoingTransferDates: includeRules ? input.postedOutgoingTransferDates : [],
   })
   const plannedSpend = result.plannedBeforeTarget.reduce((sum, item) => sum + item.amount, 0)
   const expenseRuleTotal = roundMoney(

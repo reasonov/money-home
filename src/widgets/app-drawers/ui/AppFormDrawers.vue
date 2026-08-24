@@ -8,6 +8,7 @@ import { AddPurchaseForm } from '@/features/add-purchase'
 import { EditPurchaseForm } from '@/features/edit-purchase'
 import { IncomeRuleForm } from '@/features/manage-income'
 import { ExpenseRuleForm } from '@/features/manage-expense'
+import { TransferRuleForm } from '@/features/manage-transfer'
 import { EditOperationForm } from '@/features/edit-operation'
 import { SavingsGoalForm } from '@/features/edit-savings-goal'
 import { SavingsAdvicePanel } from '@/features/savings-advice'
@@ -38,6 +39,8 @@ const title = computed(() => {
       return current.ruleId ? 'Изменить регулярное пополнение' : 'Регулярное пополнение'
     case 'expense-rule':
       return current.ruleId ? 'Изменить регулярный расход' : 'Регулярный расход'
+    case 'transfer-rule':
+      return current.ruleId ? 'Изменить регулярный перевод' : 'Регулярный перевод'
     case 'transaction-edit':
       return 'Изменить операцию'
     case 'savings-goal':
@@ -51,15 +54,26 @@ const title = computed(() => {
 
 const ruleFormKey = computed(() => {
   const current = formDrawer.value
-  if (!current || (current.name !== 'income-rule' && current.name !== 'expense-rule')) {
+  if (
+    !current ||
+    (current.name !== 'income-rule' && current.name !== 'expense-rule' && current.name !== 'transfer-rule')
+  ) {
     return 'rule'
   }
-  return current.ruleId ?? JSON.stringify(current.draft) ?? 'new'
+  return current.ruleId ?? 'new'
 })
 
 async function onOperationSaved(tx: Transaction) {
-  closeFormDrawer()
+  closeFormDrawer('submit')
   await offerRepeatSuggestion(tx)
+}
+
+function onSaved() {
+  closeFormDrawer('submit')
+}
+
+function onDismissed() {
+  closeFormDrawer('dismiss')
 }
 </script>
 
@@ -80,23 +94,23 @@ async function onOperationSaved(tx: Transaction) {
     <TransferForm
       v-else-if="formDrawer?.name === 'transfer'"
       :from-account-id="formDrawer.fromAccountId"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
     />
     <AccountForm
       v-else-if="formDrawer?.name === 'account'"
       :initial-mode="formDrawer.mode"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
     />
     <AddPurchaseForm
       v-else-if="formDrawer?.name === 'purchase-new'"
       :planned-date="formDrawer.plannedDate"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
     />
     <EditPurchaseForm
       v-else-if="formDrawer?.name === 'purchase-edit'"
       :purchase-id="formDrawer.purchaseId"
-      @saved="closeFormDrawer"
-      @cancel="closeFormDrawer"
+      @saved="onSaved"
+      @cancel="onDismissed"
     />
     <IncomeRuleForm
       v-else-if="formDrawer?.name === 'income-rule'"
@@ -104,7 +118,7 @@ async function onOperationSaved(tx: Transaction) {
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       :draft="formDrawer.draft"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
     />
     <ExpenseRuleForm
       v-else-if="formDrawer?.name === 'expense-rule'"
@@ -112,22 +126,29 @@ async function onOperationSaved(tx: Transaction) {
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       :draft="formDrawer.draft"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
+    />
+    <TransferRuleForm
+      v-else-if="formDrawer?.name === 'transfer-rule'"
+      :key="ruleFormKey"
+      :rule-id="formDrawer.ruleId"
+      :from-account-id="formDrawer.fromAccountId"
+      @saved="onSaved"
     />
     <EditOperationForm
       v-else-if="formDrawer?.name === 'transaction-edit'"
       :key="formDrawer.transactionId"
       :transaction-id="formDrawer.transactionId"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
       @repeated="onOperationSaved"
-      @cancel="closeFormDrawer"
+      @cancel="onDismissed"
     />
     <SavingsGoalForm
       v-else-if="formDrawer?.name === 'savings-goal'"
       :key="formDrawer.goalId ?? formDrawer.accountId ?? 'new'"
       :account-id="formDrawer.accountId"
       :goal-id="formDrawer.goalId"
-      @saved="closeFormDrawer"
+      @saved="onSaved"
     />
     <SavingsAdvicePanel
       v-else-if="formDrawer?.name === 'savings-advice'"

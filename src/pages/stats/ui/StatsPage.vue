@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import {
   AppButton,
   AppDrawer,
@@ -12,11 +13,15 @@ import {
   formatMoney,
   parseLocalDate,
   todayLocal,
+  track,
+  transferProjectionForAccount,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
+import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import {
   averageDailyExpense,
   expensesByWeekday,
@@ -26,15 +31,16 @@ import {
   heatmapWeeks,
   periodDayCount,
   previousStatsDateRange,
+  rollupCategorySlices,
   statsDateRange,
   statsSummary,
   topTransactions,
   totalsByAccount,
-  totalsByCategory,
   totalsByMember,
   trendSeries,
   useTransactionStore,
   type ChartPeriod,
+  type CategorySpendSlice,
 } from '@/entities/transaction'
 import {
   AccountSpendChart,
@@ -59,8 +65,11 @@ type StatsChartId = 'category' | 'weekday' | 'heatmap' | 'trend' | 'top' | 'acco
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const transactions = useTransactionStore()
+const categories = useCategoryStore()
+const router = useRouter()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const purchases = usePurchaseStore()
 
 const period = ref<ChartPeriod>('month')
@@ -70,6 +79,13 @@ const forecastHorizon = ref<'30' | '90'>('30')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 const insightOpen = ref(false)
+const drillGroupId = ref<string | null>(null)
+
+watch(insightOpen, (open) => {
+  if (open) {
+    track('stats_advice_opened')
+  }
+})
 
 const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'expense', label: 'Расходы' },
@@ -84,12 +100,17 @@ const periodLabel = computed(() =>
 )
 
 watch(selectedAccountId, (id) => {
+  drillGroupId.value = null
   if (id !== ALL_ACCOUNTS_ID && chart.value === 'accounts') {
     chart.value = 'category'
   }
   if (id !== ALL_ACCOUNTS_ID && !accounts.isShared(id) && chart.value === 'members') {
     chart.value = 'category'
   }
+})
+
+watch([kind, period, chart], () => {
+  drillGroupId.value = null
 })
 
 const customRange = computed(() => ({
@@ -134,7 +155,18 @@ const dayCount = computed(() => periodDayCount(range.value, undefined, filtered.
 const dailyExpense = computed(() => averageDailyExpense(summary.value.expenseTotal, dayCount.value))
 const share = computed(() => expenseShare(summary.value.expenseTotal, summary.value.incomeTotal))
 
-const categorySlices = computed(() => totalsByCategory(filtered.value, kind.value))
+const categorySlices = computed(() =>
+  rollupCategorySlices(
+    filtered.value,
+    kind.value,
+    categories.items,
+    categories.groups,
+    drillGroupId.value,
+  ),
+)
+const drillGroup = computed(() =>
+  drillGroupId.value ? categories.getGroupById(drillGroupId.value) : null,
+)
 const weekdaySlices = computed(() => expensesByWeekday(filtered.value))
 const heatmap = computed(() => heatmapWeeks(filtered.value, range.value))
 const trendSlices = computed(() => trendSeries(filtered.value, range.value))
@@ -181,6 +213,11 @@ function forecastSeries(horizonDays: number) {
       postedExpenseOccurrenceDates: expenseRules
         .forAccount(account.id)
         .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+      ...transferProjectionForAccount(
+        transferRules.items,
+        account.id,
+        (id) => transactions.transferOccurrenceDatesFor(id),
+      ),
     })
     for (const slice of series) {
       const existing = byDate.get(slice.date)
@@ -202,6 +239,18 @@ const insightScope = computed(() =>
   selectedAccountId.value === ALL_ACCOUNTS_ID ? 'по выбранным счетам' : 'на этом счёте',
 )
 
+function annotateInsightItem(item: (typeof filtered.value)[number]) {
+  const cat = item.categoryId ? categories.getById(item.categoryId) : undefined
+  const group = cat?.groupId ? categories.getGroupById(cat.groupId) : undefined
+  return {
+    kind: item.kind,
+    amount: item.amount,
+    ...(item.categoryId ? { categoryId: item.categoryId } : {}),
+    ...(item.categoryName ? { categoryName: item.categoryName } : {}),
+    ...(group ? { groupId: group.id, groupName: group.name } : {}),
+  }
+}
+
 const insightSummary = computed((): StatsInsightSummary => {
   const hasPrevious = Boolean(previousRange.value?.from && previousRange.value.to)
   const levers = buildInsightLevers({
@@ -209,7 +258,10 @@ const insightSummary = computed((): StatsInsightSummary => {
     hasPrevious,
     scopeLabel: insightScope.value,
     currentExpense: summary.value.expenseTotal,
-    categories: buildInsightCategories(filtered.value, previousFiltered.value),
+    categories: buildInsightCategories(
+      filtered.value.map(annotateInsightItem),
+      previousFiltered.value.map(annotateInsightItem),
+    ),
     topExpenses: topTransactions(filtered.value, 'expense', 3).map((item) => ({
       id: item.id,
       amount: item.amount,
@@ -250,6 +302,23 @@ const centerLabel = computed(() => (kind.value === 'expense' ? 'Потрачен
 const kindEmpty = computed(() =>
   kind.value === 'expense' ? 'Нет расходов за период' : 'Нет доходов за период',
 )
+
+function openCategorySlice(slice: CategorySpendSlice) {
+  if (slice.groupId && !drillGroupId.value) {
+    drillGroupId.value = slice.groupId
+    return
+  }
+  void router.push({
+    name: 'history',
+    query: {
+      category: slice.categoryId ?? 'none',
+      kind: kind.value,
+      period: period.value,
+      ...(period.value === 'custom' ? { from: customFrom.value, to: customTo.value } : {}),
+    },
+  })
+}
+
 const showSummary = computed(
   () => filtered.value.length > 0 || insightSummary.value.levers.length > 0,
 )
@@ -326,12 +395,22 @@ function onInsightChart(id: InsightChartId) {
           aria-label="Тип операций"
         />
 
+        <button
+          v-if="chart === 'category' && drillGroup"
+          type="button"
+          class="stats__back"
+          @click="drillGroupId = null"
+        >
+          Назад · {{ drillGroup.name }}
+        </button>
+
         <CategorySpendChart
           v-if="chart === 'category' && categorySlices.length"
           embedded
           :slices="categorySlices"
           :title="chartTitle"
           :center-label="centerLabel"
+          @legend-click="openCategorySlice"
         />
         <AppEmpty v-else-if="chart === 'category'" :description="kindEmpty" />
 
@@ -478,6 +557,18 @@ function onInsightChart(id: InsightChartId) {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+}
+
+.stats__back {
+  align-self: start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
 }
 
 .insight-drawer {

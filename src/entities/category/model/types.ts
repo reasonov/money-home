@@ -7,6 +7,19 @@ export interface Category {
   color: string
   icon: string
   accountIds: string[]
+  groupId?: string
+  colorManual: boolean
+  sortOrder: number
+}
+
+export interface CategoryGroup {
+  id: string
+  kind: CategoryKind
+  name: string
+  color: string
+  icon: string
+  accountIds: string[]
+  sortOrder: number
 }
 
 export const CATEGORY_COLORS = [

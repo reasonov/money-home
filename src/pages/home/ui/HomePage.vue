@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ChevronRight, Plus } from '@lucide/vue'
 import { RouterLink, useRouter } from 'vue-router'
@@ -14,10 +14,11 @@ import {
   todayLocal,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
+import { useCategoryStore } from '@/entities/category'
 import {
   filterStatsTransactions,
   formatPeriodLabel,
-  totalsByCategory,
+  rollupCategorySlices,
   useTransactionStore,
   type CategorySpendSlice,
   type ChartPeriod,
@@ -31,12 +32,14 @@ import { UpcomingEvents } from '@/widgets/upcoming-events'
 const accounts = useAccountStore()
 const { selectedAccountId } = storeToRefs(accounts)
 const transactions = useTransactionStore()
+const categories = useCategoryStore()
 const router = useRouter()
 
 const period = ref<ChartPeriod>('month')
 const kind = ref<'expense' | 'income'>('expense')
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
+const drillGroupId = ref<string | null>(null)
 
 const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'expense', label: 'Расходы' },
@@ -59,7 +62,18 @@ const filtered = computed(() =>
   }),
 )
 
-const slices = computed(() => totalsByCategory(filtered.value, kind.value))
+const slices = computed(() =>
+  rollupCategorySlices(
+    filtered.value,
+    kind.value,
+    categories.items,
+    categories.groups,
+    drillGroupId.value,
+  ),
+)
+const drillGroup = computed(() =>
+  drillGroupId.value ? categories.getGroupById(drillGroupId.value) : null,
+)
 const centerLabel = computed(() => (kind.value === 'expense' ? 'Потрачено' : 'Получено'))
 const emptyText = computed(() =>
   kind.value === 'expense' ? 'Нет расходов за период' : 'Нет доходов за период',
@@ -70,7 +84,15 @@ const totalLabel = computed(() =>
     : (accounts.selectedAccount?.name ?? 'Счёт'),
 )
 
+watch([kind, period, selectedAccountId], () => {
+  drillGroupId.value = null
+})
+
 function openCategoryHistory(slice: CategorySpendSlice) {
+  if (slice.groupId && !drillGroupId.value) {
+    drillGroupId.value = slice.groupId
+    return
+  }
   void router.push({
     name: 'history',
     query: {
@@ -145,6 +167,15 @@ function openCategoryHistory(slice: CategorySpendSlice) {
           />
         </div>
 
+        <button
+          v-if="drillGroup"
+          type="button"
+          class="home__back"
+          @click="drillGroupId = null"
+        >
+          Назад · {{ drillGroup.name }}
+        </button>
+
         <CategorySpendChart
           v-if="slices.length"
           embedded
@@ -210,6 +241,18 @@ function openCategoryHistory(slice: CategorySpendSlice) {
   grid-template-columns: minmax(0, 1fr) 9.75rem;
   align-items: center;
   gap: var(--space-2);
+}
+
+.home__back {
+  align-self: start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
 }
 
 .empty-actions {

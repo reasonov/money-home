@@ -26,8 +26,10 @@ export interface StatsSummary {
 
 export interface CategorySpendSlice {
   categoryId: string | null
+  groupId?: string
   name: string
   color?: string
+  icon?: string
   amount: number
 }
 

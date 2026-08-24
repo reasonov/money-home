@@ -5,6 +5,7 @@ import { useAccountStore } from '@/entities/account'
 import { CategorySelect, useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 import { useTransactionStore } from '@/entities/transaction'
@@ -29,6 +30,8 @@ import {
   projectBalance,
   suggestTransfer,
   todayLocal,
+  track,
+  transferProjectionForAccount,
 } from '@/shared'
 
 const props = defineProps<{
@@ -44,6 +47,7 @@ const accounts = useAccountStore()
 const categories = useCategoryStore()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
@@ -95,6 +99,11 @@ const projection = computed(() => {
     postedExpenseOccurrenceDates: expenseRules
       .forAccount(accountId.value)
       .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+    ...transferProjectionForAccount(
+      transferRules.items,
+      accountId.value,
+      (id) => transactions.transferOccurrenceDatesFor(id),
+    ),
   })
 })
 
@@ -122,6 +131,11 @@ const transferSuggestion = computed(() => {
         postedExpenseOccurrenceDates: expenseRules
           .forAccount(item.id)
           .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
+        ...transferProjectionForAccount(
+          transferRules.items,
+          item.id,
+          (id) => transactions.transferOccurrenceDatesFor(id),
+        ),
       })),
   )
 })
@@ -142,6 +156,7 @@ function pluralizeRu(count: number, one: string, few: string, many: string): str
 
 function openDetails() {
   detailsOpen.value = true
+  track('purchase_projection_refused')
 }
 
 function applyAffordableDate() {
@@ -182,6 +197,7 @@ async function applyTransfer() {
       amount: suggestion.amount,
       occurredOn: todayLocal(),
     })
+    track('transfer_suggestion_clicked', { outcome: 'done' })
     detailsOpen.value = false
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось перевести')

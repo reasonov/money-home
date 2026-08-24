@@ -42,7 +42,7 @@ function openHistory(tip: InsightTip) {
   void router.push({
     name: 'history',
     query: {
-      category: tip.categoryId ?? 'none',
+      ...(tip.groupId ? { group: tip.groupId } : { category: tip.categoryId ?? 'none' }),
       kind: 'expense',
       period: props.summary.period,
       ...(props.summary.period === 'custom' && props.summary.from && props.summary.to

@@ -39,6 +39,13 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
   return preference
 }
 
+export function readDocumentTheme(): ResolvedTheme {
+  if (typeof document === 'undefined') {
+    return 'light'
+  }
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+}
+
 export function applyTheme(preference: ThemePreference) {
   const resolved = resolveTheme(preference)
   document.documentElement.setAttribute('data-theme', resolved)

@@ -1,10 +1,18 @@
-import { parseLocalDate, planSavingsGoals, todayLocal, type SavingsPlanInput } from '@/shared'
+import {
+  parseLocalDate,
+  planSavingsGoals,
+  todayLocal,
+  transferProjectionForAccount,
+  type SavingsPlanInput,
+} from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSavingsGoalStore } from '@/entities/savings-goal'
+import { useCategoryStore } from '@/entities/category'
 import { useTransactionStore } from '@/entities/transaction'
+import { useTransferRuleStore } from '@/entities/transfer-rule'
 import { adviceMonthsLeft, buildAdviceLevers } from './buildAdviceLevers'
 import { summarizeSpendingForAdvice, type SavingsAdviceSummary } from './summarizeSpending'
 
@@ -20,8 +28,10 @@ export function buildAdviceSummary(accountId: string, goalId: string): SavingsAd
   const accounts = useAccountStore()
   const incomeRules = useIncomeRuleStore()
   const expenseRules = useExpenseRuleStore()
+  const transferRules = useTransferRuleStore()
   const purchases = usePurchaseStore()
   const transactions = useTransactionStore()
+  const categoryStore = useCategoryStore()
   const asOfDate = parseLocalDate(todayLocal())
   const expenseRuleRows = expenseRules.forAccount(accountId).filter((rule) => rule.active)
   const planInput: SavingsPlanInput = {
@@ -46,9 +56,21 @@ export function buildAdviceSummary(accountId: string, goalId: string): SavingsAd
     postedExpenseOccurrenceDates: expenseRuleRows.flatMap((rule) =>
       transactions.expenseOccurrenceDatesFor(rule.id),
     ),
-    transactions: transactions.items.filter(
-      (item) => item.accountId === accountId || item.counterpartyAccountId === accountId,
+    ...transferProjectionForAccount(
+      transferRules.items,
+      accountId,
+      (id) => transactions.transferOccurrenceDatesFor(id),
     ),
+    transactions: transactions.items
+      .filter((item) => item.accountId === accountId || item.counterpartyAccountId === accountId)
+      .map((item) => {
+        const cat = item.categoryId ? categoryStore.getById(item.categoryId) : undefined
+        const group = cat?.groupId ? categoryStore.getGroupById(cat.groupId) : undefined
+        return {
+          ...item,
+          ...(group ? { groupId: group.id, groupName: group.name } : {}),
+        }
+      }),
   }
 
   const plan = planSavingsGoals(planInput)

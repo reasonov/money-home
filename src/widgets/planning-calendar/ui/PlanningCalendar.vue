@@ -19,8 +19,9 @@ import { useExpenseRuleStore } from '@/entities/expense-rule'
 import { useIncomeRuleStore } from '@/entities/income-rule'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useTransactionStore } from '@/entities/transaction'
+import { useTransferRuleStore, type TransferRule } from '@/entities/transfer-rule'
 
-type DayKind = 'purchase' | 'income' | 'expense'
+type DayKind = 'purchase' | 'income' | 'expense' | 'transfer'
 
 interface DayEvent {
   id: string
@@ -28,6 +29,7 @@ interface DayEvent {
   title: string
   amount: number
   purchaseId?: string
+  inflow?: boolean
 }
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
@@ -37,6 +39,7 @@ const accounts = useAccountStore()
 const purchases = usePurchaseStore()
 const incomeRules = useIncomeRuleStore()
 const expenseRules = useExpenseRuleStore()
+const transferRules = useTransferRuleStore()
 const transactions = useTransactionStore()
 
 const today = todayLocal()
@@ -138,6 +141,30 @@ const eventsByDate = computed(() => {
     }
   }
 
+  const transferList =
+    selectedId === ALL_ACCOUNTS_ID
+      ? transferRules.items.filter((rule) => rule.active)
+      : transferRules.forAccount(selectedId).filter((rule) => rule.active)
+  for (const rule of transferList) {
+    for (const date of incomeOccurrences(
+      rule,
+      asOf,
+      target,
+      transactions.transferOccurrenceDatesFor(rule.id),
+    )) {
+      const iso = formatLocalDate(date)
+      const list = map.get(iso) ?? []
+      list.push({
+        id: `t-${rule.id}-${iso}`,
+        kind: 'transfer',
+        title: transferTitle(rule, selectedId),
+        amount: rule.amount,
+        ...(selectedId === ALL_ACCOUNTS_ID ? {} : { inflow: rule.toAccountId === selectedId }),
+      })
+      map.set(iso, list)
+    }
+  }
+
   return map
 })
 
@@ -145,6 +172,42 @@ const selectedEvents = computed(() => eventsByDate.value.get(selected.value) ?? 
 
 function cellKinds(iso: string) {
   return [...new Set((eventsByDate.value.get(iso) ?? []).map((item) => item.kind))]
+}
+
+function transferTitle(rule: TransferRule, selectedId: string) {
+  if (rule.title?.trim()) {
+    return rule.title.trim()
+  }
+  const from = accounts.getById(rule.fromAccountId)?.name ?? 'Счёт'
+  const to = accounts.getById(rule.toAccountId)?.name ?? 'Счёт'
+  if (selectedId === ALL_ACCOUNTS_ID) {
+    return `${from} → ${to}`
+  }
+  if (selectedId === rule.fromAccountId) {
+    return `Перевод на «${to}»`
+  }
+  return `Перевод со счёта «${from}»`
+}
+
+function amountTone(item: DayEvent) {
+  if (item.kind === 'income' || item.inflow) {
+    return 'in'
+  }
+  if (item.kind === 'transfer' && item.inflow == null) {
+    return 'xfer'
+  }
+  return 'out'
+}
+
+function amountPrefix(item: DayEvent) {
+  const tone = amountTone(item)
+  if (tone === 'in') {
+    return '+'
+  }
+  if (tone === 'out') {
+    return '−'
+  }
+  return ''
 }
 
 function openEvent(item: DayEvent) {
@@ -209,8 +272,8 @@ function addPurchase() {
         <li v-for="item in selectedEvents" :key="item.id">
           <button class="day__row" type="button" @click="openEvent(item)">
             <span>{{ item.title }}</span>
-            <span :class="item.kind === 'income' ? 'is-in' : 'is-out'">
-              {{ item.kind === 'income' ? '+' : '−' }}{{ formatMoney(item.amount) }}
+            <span :class="`is-${amountTone(item)}`">
+              {{ amountPrefix(item) }}{{ formatMoney(item.amount) }}
             </span>
           </button>
         </li>
@@ -327,6 +390,10 @@ function addPurchase() {
   background: var(--color-warning);
 }
 
+.is-transfer {
+  background: var(--color-accent);
+}
+
 .day {
   display: flex;
   flex-direction: column;
@@ -378,5 +445,9 @@ function addPurchase() {
 
 .is-out {
   color: var(--color-warning);
+}
+
+.is-xfer {
+  color: var(--color-accent);
 }
 </style>

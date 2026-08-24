@@ -2,7 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { AppDrawer, AppInput } from '@/shared'
 import type { Category } from '../model/types'
+import { useCategoryStore } from '../model/store'
+import { filterCategorySections, splitCategorySections } from '../lib/groupSections'
 import CategoryIcon from './CategoryIcon.vue'
+import GroupColorMark from './GroupColorMark.vue'
 
 const props = defineProps<{
   id?: string
@@ -15,6 +18,7 @@ const props = defineProps<{
 const model = defineModel<string>({ required: true })
 const open = ref(false)
 const query = ref('')
+const store = useCategoryStore()
 
 const emptyText = computed(() => props.emptyLabel ?? 'Без категории')
 
@@ -26,17 +30,21 @@ const triggerLabel = computed(() => {
   return 'Выберите категорию'
 })
 
-const normalizedQuery = computed(() => query.value.trim().toLocaleLowerCase('ru-RU'))
+const kind = computed(() => props.categories[0]?.kind ?? 'expense')
 
-const filtered = computed(() => {
-  const q = normalizedQuery.value
-  if (!q) return props.categories
-  return props.categories.filter((item) => item.name.toLocaleLowerCase('ru-RU').includes(q))
+const sections = computed(() => {
+  const split = splitCategorySections(props.categories, store.groups, kind.value)
+  return filterCategorySections(split, query.value)
 })
 
-const showEmptyOption = computed(() => Boolean(props.allowEmpty) && !normalizedQuery.value)
+const showEmptyOption = computed(() => Boolean(props.allowEmpty) && !query.value.trim())
 
-const noResults = computed(() => !showEmptyOption.value && filtered.value.length === 0)
+const noResults = computed(
+  () =>
+    !showEmptyOption.value &&
+    sections.value.grouped.every((section) => section.categories.length === 0) &&
+    sections.value.ungrouped.length === 0,
+)
 
 function pick(id: string) {
   model.value = id
@@ -78,7 +86,7 @@ watch(open, (value) => {
       <div class="cat-select__drawer">
         <AppInput :id="id ? `${id}-query` : undefined" v-model="query" placeholder="Поиск" />
         <p v-if="noResults" class="cat-select__empty">Ничего не найдено</p>
-        <div v-else class="cat-select__list" role="listbox">
+        <div v-else class="cat-select__sections">
           <button
             v-if="showEmptyOption"
             type="button"
@@ -89,18 +97,49 @@ watch(open, (value) => {
           >
             <span class="cat-select__name">{{ emptyText }}</span>
           </button>
-          <button
-            v-for="cat in filtered"
-            :key="cat.id"
-            type="button"
-            class="cat-select__item"
-            :class="{ 'is-on': model === cat.id }"
-            role="option"
-            @click="pick(cat.id)"
+          <section
+            v-for="section in sections.grouped.filter((item) => item.categories.length)"
+            :key="section.group.id"
+            class="cat-select__section"
           >
-            <CategoryIcon :icon="cat.icon" :color="cat.color" :size="36" />
-            <span class="cat-select__name">{{ cat.name }}</span>
-          </button>
+            <h3 class="cat-select__heading">
+              <GroupColorMark :color="section.group.color" />
+              {{ section.group.name }}
+            </h3>
+            <div class="cat-select__list" role="listbox">
+              <button
+                v-for="cat in section.categories"
+                :key="cat.id"
+                type="button"
+                class="cat-select__item"
+                :class="{ 'is-on': model === cat.id }"
+                role="option"
+                @click="pick(cat.id)"
+              >
+                <CategoryIcon :icon="cat.icon" :color="cat.color" :size="36" />
+                <span class="cat-select__name">{{ cat.name }}</span>
+              </button>
+            </div>
+          </section>
+          <section v-if="sections.ungrouped.length" class="cat-select__section">
+            <h3 v-if="sections.grouped.some((item) => item.categories.length)" class="cat-select__heading">
+              Без группы
+            </h3>
+            <div class="cat-select__list" role="listbox">
+              <button
+                v-for="cat in sections.ungrouped"
+                :key="cat.id"
+                type="button"
+                class="cat-select__item"
+                :class="{ 'is-on': model === cat.id }"
+                role="option"
+                @click="pick(cat.id)"
+              >
+                <CategoryIcon :icon="cat.icon" :color="cat.color" :size="36" />
+                <span class="cat-select__name">{{ cat.name }}</span>
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </AppDrawer>
@@ -159,6 +198,22 @@ watch(open, (value) => {
   flex-direction: column;
   gap: var(--space-3);
   padding-bottom: var(--space-4);
+}
+
+.cat-select__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.cat-select__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
 }
 
 .cat-select__list {
