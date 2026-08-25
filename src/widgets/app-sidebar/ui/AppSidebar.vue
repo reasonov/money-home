@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   ArrowUpDown,
   ChevronRight,
@@ -15,12 +15,14 @@ import {
   APP_VERSION,
   AppDragGhost,
   AppTag,
+  applyAccountOrderFromPinned,
   closeSidebar,
   formatMoney,
   NAV_ITEM_BY_ID,
   openFormDrawer,
   resolveSidebarAccounts,
   sidebarOpen,
+  sortAccountsByOrder,
   usePointerReorder,
   isNavItemId,
   type NavItemId,
@@ -40,16 +42,44 @@ const open = computed({
   },
 })
 
-const previewAccounts = computed(() =>
-  resolveSidebarAccounts(accounts.items, prefs.accountOrder, prefs.sidebarAccountIds),
-)
-
-const reorderMode = ref(false)
+const accountReorderMode = ref(false)
+const sectionReorderMode = ref(false)
+const accountDraft = ref<string[] | null>(null)
 const sectionDraft = ref<SidebarSectionId[] | null>(null)
+const accountsEl = ref<HTMLElement | null>(null)
 const sectionsEl = ref<HTMLElement | null>(null)
+
+const previewAccounts = computed(() => {
+  if (accountDraft.value) {
+    const byId = new Map(accounts.items.map((account) => [account.id, account]))
+    return accountDraft.value.flatMap((id) => {
+      const account = byId.get(id)
+      return account ? [account] : []
+    })
+  }
+  return resolveSidebarAccounts(accounts.items, prefs.accountOrder, prefs.sidebarAccountIds)
+})
+const canReorderAccounts = computed(() => previewAccounts.value.length > 1)
 
 const displayedSections = computed(() => sectionDraft.value ?? prefs.sidebarSections)
 const sectionItems = computed(() => displayedSections.value.map((id) => NAV_ITEM_BY_ID[id]))
+
+const {
+  draggingId: accountDraggingId,
+  dragging: accountDragging,
+  ghost: accountGhost,
+  onPointerDown: onAccountPointerDown,
+} = usePointerReorder({
+  container: accountsEl,
+  getIds: () => previewAccounts.value.map((account) => account.id),
+  enabled: () => accountReorderMode.value,
+  onReorder(ids) {
+    accountDraft.value = ids
+  },
+  onDragEnd() {
+    commitAccountOrder()
+  },
+})
 
 const {
   draggingId: sectionDraggingId,
@@ -57,24 +87,43 @@ const {
   ghost: sectionGhost,
   onPointerDown: onSectionPointerDown,
 } = usePointerReorder({
-    container: sectionsEl,
-    getIds: () => displayedSections.value,
-    enabled: () => reorderMode.value,
-    onReorder(ids) {
-      sectionDraft.value = ids as SidebarSectionId[]
-    },
-    onDragEnd() {
-      if (!sectionDraft.value) {
-        return
-      }
-      prefs.setSidebarSections(sectionDraft.value)
-      sectionDraft.value = null
-    },
-  })
+  container: sectionsEl,
+  getIds: () => displayedSections.value,
+  enabled: () => sectionReorderMode.value,
+  onReorder(ids) {
+    sectionDraft.value = ids as SidebarSectionId[]
+  },
+  onDragEnd() {
+    commitSectionOrder()
+  },
+})
+
+const dragGhost = computed(() => accountGhost.value ?? sectionGhost.value)
+const draggedAccount = computed(() => previewAccounts.value.find((account) => account.id === accountDraggingId.value))
 const draggedSection = computed(() => {
   const id = sectionDraggingId.value
   return id && isNavItemId(id) ? NAV_ITEM_BY_ID[id] : null
 })
+
+function orderedAccountIds() {
+  return sortAccountsByOrder(accounts.items, prefs.accountOrder).map((account) => account.id)
+}
+
+function commitAccountOrder() {
+  if (!accountDraft.value) {
+    return
+  }
+  prefs.setAccountOrder(applyAccountOrderFromPinned(orderedAccountIds(), accountDraft.value))
+  accountDraft.value = null
+}
+
+function commitSectionOrder() {
+  if (!sectionDraft.value) {
+    return
+  }
+  prefs.setSidebarSections(sectionDraft.value)
+  sectionDraft.value = null
+}
 
 function go(path: string) {
   closeSidebar()
@@ -87,7 +136,7 @@ function openTransfer() {
 }
 
 function activateSection(id: NavItemId) {
-  if (reorderMode.value) {
+  if (sectionReorderMode.value) {
     return
   }
   const item = NAV_ITEM_BY_ID[id]
@@ -106,17 +155,44 @@ function openAccountCreate() {
 }
 
 function openAccount(id: string) {
+  if (accountReorderMode.value) {
+    return
+  }
   closeSidebar()
   void router.push({ name: 'account-detail', params: { id } })
 }
 
-function toggleReorder() {
-  if (reorderMode.value && sectionDraft.value) {
-    prefs.setSidebarSections(sectionDraft.value)
-    sectionDraft.value = null
+function toggleAccountReorder() {
+  if (accountReorderMode.value) {
+    commitAccountOrder()
+    accountReorderMode.value = false
+    return
   }
-  reorderMode.value = !reorderMode.value
+  commitSectionOrder()
+  sectionReorderMode.value = false
+  accountReorderMode.value = true
 }
+
+function toggleSectionReorder() {
+  if (sectionReorderMode.value) {
+    commitSectionOrder()
+    sectionReorderMode.value = false
+    return
+  }
+  commitAccountOrder()
+  accountReorderMode.value = false
+  sectionReorderMode.value = true
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    return
+  }
+  commitAccountOrder()
+  commitSectionOrder()
+  accountReorderMode.value = false
+  sectionReorderMode.value = false
+})
 </script>
 
 <template>
@@ -144,30 +220,54 @@ function toggleReorder() {
       </template>
       <nav class="sidebar" aria-label="Разделы">
         <section class="sidebar__block">
-          <h2 class="sidebar__heading">Счета</h2>
+          <div class="sidebar__heading-row">
+            <h2 class="sidebar__heading">Счета</h2>
+            <button
+              v-if="canReorderAccounts"
+              type="button"
+              class="sidebar__reorder"
+              :aria-pressed="accountReorderMode"
+              :aria-label="accountReorderMode ? 'Завершить изменение порядка' : 'Изменить порядок счетов'"
+              @click="toggleAccountReorder"
+            >
+              <ArrowUpDown :size="18" :stroke-width="1.8" />
+            </button>
+          </div>
           <p v-if="!accounts.items.length" class="sidebar__empty">Пока нет счетов</p>
-          <button
-            v-for="account in previewAccounts"
-            :key="account.id"
-            class="sidebar__account"
-            type="button"
-            :aria-label="`Открыть счёт «${account.name}»`"
-            @click="openAccount(account.id)"
+          <div
+            ref="accountsEl"
+            class="sidebar__accounts"
+            :class="{ 'has-items': previewAccounts.length }"
           >
-            <span class="sidebar__icon" aria-hidden="true">
-              <Wallet :size="18" :stroke-width="1.8" />
-            </span>
-            <span class="sidebar__account-body">
-              <span class="sidebar__account-name">
-                <span class="sidebar__account-title">{{ account.name }}</span>
-                <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
+            <button
+              v-for="account in previewAccounts"
+              :key="account.id"
+              class="sidebar__account"
+              :class="{ 'is-lifted': accountDragging && accountDraggingId === account.id }"
+              type="button"
+              :data-reorder-id="account.id"
+              :aria-label="`Открыть счёт «${account.name}»`"
+              @click="openAccount(account.id)"
+              @pointerdown="accountReorderMode ? onAccountPointerDown(account.id, $event) : undefined"
+            >
+              <span v-if="accountReorderMode" class="sidebar__grip" aria-hidden="true">
+                <GripVertical :size="16" :stroke-width="2" />
               </span>
-              <span class="sidebar__account-amount">{{ formatMoney(account.amount) }}</span>
-            </span>
-            <span class="sidebar__chevron" aria-hidden="true">
-              <ChevronRight :size="18" :stroke-width="1.8" />
-            </span>
-          </button>
+              <span class="sidebar__icon" aria-hidden="true">
+                <Wallet :size="18" :stroke-width="1.8" />
+              </span>
+              <span class="sidebar__account-body">
+                <span class="sidebar__account-name">
+                  <span class="sidebar__account-title">{{ account.name }}</span>
+                  <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
+                </span>
+                <span class="sidebar__account-amount">{{ formatMoney(account.amount) }}</span>
+              </span>
+              <span v-if="!accountReorderMode" class="sidebar__chevron" aria-hidden="true">
+                <ChevronRight :size="18" :stroke-width="1.8" />
+              </span>
+            </button>
+          </div>
           <RouterLink class="sidebar__link" to="/accounts" @click="closeSidebar">
             <span class="sidebar__icon" aria-hidden="true">
               <List :size="18" :stroke-width="1.8" />
@@ -188,9 +288,9 @@ function toggleReorder() {
             <button
               type="button"
               class="sidebar__reorder"
-              :aria-pressed="reorderMode"
-              :aria-label="reorderMode ? 'Завершить изменение порядка' : 'Изменить порядок разделов'"
-              @click="toggleReorder"
+              :aria-pressed="sectionReorderMode"
+              :aria-label="sectionReorderMode ? 'Завершить изменение порядка' : 'Изменить порядок разделов'"
+              @click="toggleSectionReorder"
             >
               <ArrowUpDown :size="18" :stroke-width="1.8" />
             </button>
@@ -204,9 +304,9 @@ function toggleReorder() {
               type="button"
               :data-reorder-id="item.id"
               @click="activateSection(item.id)"
-              @pointerdown="reorderMode ? onSectionPointerDown(item.id, $event) : undefined"
+              @pointerdown="sectionReorderMode ? onSectionPointerDown(item.id, $event) : undefined"
             >
-              <span v-if="reorderMode" class="sidebar__grip" aria-hidden="true">
+              <span v-if="sectionReorderMode" class="sidebar__grip" aria-hidden="true">
                 <GripVertical :size="16" :stroke-width="2" />
               </span>
               <span class="sidebar__icon" aria-hidden="true">
@@ -228,8 +328,14 @@ function toggleReorder() {
       </nav>
     </NDrawerContent>
   </NDrawer>
-  <AppDragGhost :ghost="sectionGhost">
-    <template v-if="draggedSection">
+  <AppDragGhost :ghost="dragGhost">
+    <template v-if="draggedAccount">
+      <span class="drag-ghost__icon" aria-hidden="true">
+        <Wallet :size="18" :stroke-width="1.8" />
+      </span>
+      <span class="drag-ghost__label">{{ draggedAccount.name }}</span>
+    </template>
+    <template v-else-if="draggedSection">
       <span class="drag-ghost__icon" aria-hidden="true">
         <component :is="draggedSection.icon" :size="18" :stroke-width="1.8" />
       </span>
@@ -334,13 +440,14 @@ function toggleReorder() {
   cursor: pointer;
 }
 
+.sidebar__account.is-lifted,
 .sidebar__link.is-lifted {
   opacity: 0.28;
 }
 
 .sidebar__account + .sidebar__account,
 .sidebar__link + .sidebar__link,
-.sidebar__account + .sidebar__link {
+.sidebar__accounts.has-items + .sidebar__link {
   border-top: 1px solid var(--color-border);
 }
 

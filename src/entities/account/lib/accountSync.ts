@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { addDays, formatLocalDate, formatMoney, parseLocalDate, requestPersist, roundMoney, supabase, todayLocal } from '@/shared'
+import { listOutbox } from '@/shared/lib/localDb'
 import { useActivityStore } from '@/entities/activity'
 import { useCategoryStore } from '@/entities/category'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
@@ -10,7 +11,11 @@ import { usePreferencesStore } from '@/entities/preferences'
 import { usePurchaseStore } from '@/entities/purchase'
 import { useSavingsGoalStore } from '@/entities/savings-goal'
 import { useSessionStore } from '@/entities/session'
-import { useTransactionStore } from '@/entities/transaction'
+import {
+  pendingInsertAmountDelta,
+  transactionFromOutboxPayload,
+  useTransactionStore,
+} from '@/entities/transaction'
 import { ensureProfile } from '../api/accountApi'
 import { useAccountStore } from '../model/store'
 import { ensureStarterCategories } from './ensureStarterCategories'
@@ -19,6 +24,28 @@ let channel: RealtimeChannel | null = null
 
 function formatAmount(value: unknown) {
   return formatMoney(roundMoney(Number(value)))
+}
+
+async function restorePendingInserts() {
+  const userId = useSessionStore().user?.id
+  if (!userId) {
+    return
+  }
+  const accounts = useAccountStore()
+  const transactions = useTransactionStore()
+  const known = new Set(transactions.items.map((item) => item.id))
+  for (const item of await listOutbox(userId)) {
+    if (item.type !== 'insertTransaction') {
+      continue
+    }
+    const tx = transactionFromOutboxPayload(item.payload, item.entityId)
+    if (!tx || known.has(tx.id)) {
+      continue
+    }
+    transactions.upsert(tx)
+    accounts.applyAmountDelta(tx.accountId, pendingInsertAmountDelta(tx))
+    known.add(tx.id)
+  }
 }
 
 export async function loadAccountData() {
@@ -43,6 +70,7 @@ export async function loadAccountData() {
     templates.load(),
     transactions.load(),
   ])
+  await restorePendingInserts()
   requestPersist()
   await ensureStarterCategories()
 }
@@ -123,7 +151,7 @@ export function startAccountRealtime() {
         category_icon: string | null
         title: string
         amount: number
-        planned_date: string
+        planned_date: string | null
         notes: string | null
         status: string
         created_by: string

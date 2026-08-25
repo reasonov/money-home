@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { ChevronRight, GripVertical, Plus, Wallet } from '@lucide/vue'
+import { computed } from 'vue'
+import { ChevronRight, Plus } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import {
   AppButton,
-  AppCheckbox,
-  AppDragGhost,
   AppEmpty,
+  AppSwitch,
   AppTag,
   formatMoney,
   MAX_SIDEBAR_ACCOUNTS,
@@ -14,7 +13,6 @@ import {
   resolvePinnedAccountIds,
   showToast,
   sortAccountsByOrder,
-  usePointerReorder,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { usePreferencesStore } from '@/entities/preferences'
@@ -24,31 +22,9 @@ const router = useRouter()
 const accounts = useAccountStore()
 const prefs = usePreferencesStore()
 
-const orderDraft = ref<string[] | null>(null)
-const listEl = ref<HTMLElement | null>(null)
-
-const orderedAccounts = computed(() =>
-  sortAccountsByOrder(accounts.items, orderDraft.value ?? prefs.accountOrder),
-)
+const orderedAccounts = computed(() => sortAccountsByOrder(accounts.items, prefs.accountOrder))
 const orderedIds = computed(() => orderedAccounts.value.map((account) => account.id))
 const pinnedIds = computed(() => new Set(resolvePinnedAccountIds(orderedIds.value, prefs.sidebarAccountIds)))
-
-const { draggingId, dragging, ghost, onPointerDown } = usePointerReorder({
-  container: listEl,
-  getIds: () => orderedIds.value,
-  onReorder(ids) {
-    orderDraft.value = ids
-  },
-  onDragEnd() {
-    if (!orderDraft.value) {
-      return
-    }
-    prefs.setAccountOrder(orderDraft.value)
-    orderDraft.value = null
-  },
-})
-
-const draggedAccount = computed(() => orderedAccounts.value.find((account) => account.id === draggingId.value))
 
 function openAccount(id: string) {
   void router.push({ name: 'account-detail', params: { id } })
@@ -86,58 +62,42 @@ function setPinned(accountId: string, pinned: boolean) {
   </AppEmpty>
 
   <div v-else class="page">
-    <section class="card">
-      <p class="hint">В боковом меню — до трёх счетов. Перетащите, чтобы задать порядок</p>
-      <div ref="listEl">
-        <div
-          v-for="account in orderedAccounts"
-          :key="account.id"
-          class="row"
-          :class="{ 'is-lifted': dragging && draggingId === account.id }"
-          :data-reorder-id="account.id"
+    <p class="hint">До трёх счетов можно показать в боковом меню. Их порядок меняется там же.</p>
+
+    <div class="list">
+      <article v-for="account in orderedAccounts" :key="account.id" class="card">
+        <button
+          class="card__main"
+          type="button"
+          :aria-label="`Открыть счёт «${account.name}»`"
+          @click="openAccount(account.id)"
         >
-          <button
-            type="button"
-            class="row__grip"
-            aria-label="Изменить порядок"
-            @pointerdown="onPointerDown(account.id, $event)"
-            @click.prevent
-          >
-            <GripVertical :size="16" :stroke-width="2" />
-          </button>
-          <button
-            class="row__main"
-            type="button"
-            :aria-label="`Открыть счёт «${account.name}»`"
-            @click="openAccount(account.id)"
-          >
-            <span class="row__icon" aria-hidden="true">
-              <Wallet :size="18" :stroke-width="1.8" />
-            </span>
-            <span class="row__body">
-              <span class="row__name">
-                <span class="row__title">{{ account.name }}</span>
+          <span class="card__head">
+            <span class="card__identity">
+              <span class="card__name">{{ account.name }}</span>
+              <span v-if="accounts.isShared(account.id) || account.excludeFromTotal" class="card__tags">
                 <AppTag v-if="accounts.isShared(account.id)" type="primary">Общий счёт</AppTag>
                 <AppTag v-if="account.excludeFromTotal" type="default">Не в итоге</AppTag>
               </span>
-              <span class="row__amount">{{ formatMoney(account.amount) }}</span>
-              <AccountAvailableHint compact :account-id="account.id" :balance="account.amount" />
             </span>
-            <span class="row__chevron" aria-hidden="true">
+            <span class="card__chevron" aria-hidden="true">
               <ChevronRight :size="18" :stroke-width="1.8" />
             </span>
-          </button>
-          <AppCheckbox
-            class="row__pin"
+          </span>
+          <span class="card__amount">{{ formatMoney(account.amount) }}</span>
+          <AccountAvailableHint compact :account-id="account.id" :balance="account.amount" />
+        </button>
+        <label class="card__pin">
+          <span>В меню</span>
+          <AppSwitch
+            size="small"
             :checked="isPinned(account.id)"
             :aria-label="`Показывать «${account.name}» в меню`"
             @update:checked="(checked) => setPinned(account.id, checked)"
-          >
-            В меню
-          </AppCheckbox>
-        </div>
-      </div>
-    </section>
+          />
+        </label>
+      </article>
+    </div>
 
     <AppButton variant="secondary" block @click="openFormDrawer({ name: 'account' })">
       <template #icon>
@@ -146,15 +106,6 @@ function setPinned(accountId: string, pinned: boolean) {
       Добавить счёт
     </AppButton>
   </div>
-
-  <AppDragGhost :ghost="ghost">
-    <template v-if="draggedAccount">
-      <span class="drag-ghost__icon" aria-hidden="true">
-        <Wallet :size="18" :stroke-width="1.8" />
-      </span>
-      <span class="drag-ghost__label">{{ draggedAccount.name }}</span>
-    </template>
-  </AppDragGhost>
 </template>
 
 <style scoped>
@@ -165,6 +116,19 @@ function setPinned(accountId: string, pinned: boolean) {
   gap: var(--space-4);
 }
 
+.hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .card {
   padding: var(--space-4);
   background: var(--color-surface);
@@ -172,119 +136,80 @@ function setPinned(accountId: string, pinned: boolean) {
   box-shadow: var(--shadow-soft);
 }
 
-.hint {
-  margin: 0 0 var(--space-3);
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.35;
-}
-
-.row {
+.card__main {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.row:first-of-type {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.row.is-lifted {
-  opacity: 0.28;
-}
-
-.row__grip {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin: -4px 0 0 -8px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: grab;
-  touch-action: none;
-}
-
-.row__main {
-  display: flex;
-  flex: 1;
-  align-items: flex-start;
-  gap: var(--space-3);
   min-width: 0;
-  min-height: 56px;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-weight: 700;
   text-align: left;
   cursor: pointer;
 }
 
-.row__icon {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  margin-top: 2px;
-  color: var(--color-accent);
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
-.row__body {
+.card__identity {
   display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.row__name {
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
 }
 
-.row__title {
-  flex: 1;
+.card__name {
   min-width: 0;
   overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.row__name :deep(.n-tag) {
-  flex-shrink: 0;
+.card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.row__amount {
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.row__chevron {
+.card__chevron {
   display: grid;
   flex-shrink: 0;
   place-items: center;
   width: 24px;
   height: 24px;
-  margin-top: 2px;
+  margin-right: -4px;
   color: var(--color-text-muted);
 }
 
-.row__pin {
-  flex-shrink: 0;
-  margin-top: 8px;
+.card__amount {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.card__pin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
 }
 </style>

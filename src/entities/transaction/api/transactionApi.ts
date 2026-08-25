@@ -1,4 +1,4 @@
-import { getErrorMessage, isUniqueViolation, roundMoney, supabase } from '@/shared'
+import { getErrorMessage, isMissingCategoryFk, isUniqueViolation, roundMoney, supabase } from '@/shared'
 import type {
   Transaction,
   TransactionKind,
@@ -105,6 +105,10 @@ export async function insertTransaction(input: {
     if (existing.data) {
       return mapTransaction(existing.data)
     }
+  }
+
+  if (isMissingCategoryFk(error) && input.categoryId) {
+    return insertTransaction({ ...input, categoryId: undefined })
   }
 
   if (error) {

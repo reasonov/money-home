@@ -56,6 +56,7 @@ const frequency = ref<IncomeFrequency>(existing?.frequency ?? 'monthly')
 const weekday = ref(String(existing?.weekday ?? 5))
 const monthDay = ref(String(existing?.monthDay ?? 10))
 const anchorDate = ref(existing?.anchorDate ?? todayLocal())
+const startsOn = ref(existing?.startsOn ?? todayLocal())
 const error = ref('')
 const pending = ref(false)
 
@@ -94,11 +95,17 @@ function buildPayload(): Omit<TransferRule, 'id'> | null {
     return null
   }
 
+  if (!startsOn.value) {
+    error.value = 'Укажите дату начала'
+    return null
+  }
+
   const payload: Omit<TransferRule, 'id'> = {
     fromAccountId: fromId.value,
     toAccountId: toId.value,
     amount: value,
     frequency: frequency.value,
+    startsOn: startsOn.value,
     active: existing?.active ?? true,
     ...(title.value.trim() ? { title: title.value.trim() } : {}),
   }
@@ -226,6 +233,14 @@ async function onSubmit() {
       required
     >
       <AppInput id="transfer-rule-anchor" v-model="anchorDate" type="date" required />
+    </AppField>
+    <AppField
+      label="С даты"
+      for-id="transfer-rule-starts-on"
+      hint="Платежи раньше этой даты не проводятся и не показываются в плане"
+      required
+    >
+      <AppInput id="transfer-rule-starts-on" v-model="startsOn" type="date" required />
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>
     <AppButton type="submit" block :disabled="pending">{{ submitLabel }}</AppButton>

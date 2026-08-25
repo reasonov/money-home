@@ -77,7 +77,9 @@ export function ruleDueDates(rule: DueRule, fromInclusive: Date, toInclusive: Da
     dates = collectBiweeklyDates(rule.anchorDate, fromInclusive, toInclusive)
   }
 
-  return dates.map((date) => formatLocalDate(date))
+  return dates
+    .map((date) => formatLocalDate(date))
+    .filter((iso) => !rule.startsOn || iso >= rule.startsOn)
 }
 
 export function dueKey(kind: 'income' | 'expense' | 'transfer', ruleId: string, occurredOn: string): string {

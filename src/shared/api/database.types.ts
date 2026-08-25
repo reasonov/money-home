@@ -474,7 +474,7 @@ export type Database = {
           created_by: string
           id: string
           notes: string | null
-          planned_date: string
+          planned_date: string | null
           status: string
           title: string
           updated_at: string
@@ -491,7 +491,7 @@ export type Database = {
           created_by: string
           id?: string
           notes?: string | null
-          planned_date: string
+          planned_date?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -508,7 +508,7 @@ export type Database = {
           created_by?: string
           id?: string
           notes?: string | null
-          planned_date?: string
+          planned_date?: string | null
           status?: string
           title?: string
           updated_at?: string

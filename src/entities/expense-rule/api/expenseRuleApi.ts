@@ -97,6 +97,7 @@ export async function updateExpenseRule(
     anchor_date?: string | null
     title?: string | null
     category_id?: string | null
+    starts_on?: string
   } = { updated_by: userId }
   if (patch.accountId != null) payload.account_id = patch.accountId
   if (patch.amount != null) payload.amount = roundMoney(patch.amount)
@@ -107,6 +108,7 @@ export async function updateExpenseRule(
   if ('anchorDate' in patch) payload.anchor_date = patch.anchorDate ?? null
   if ('title' in patch) payload.title = patch.title?.trim() || null
   if ('categoryId' in patch) payload.category_id = patch.categoryId ?? null
+  if (patch.startsOn) payload.starts_on = patch.startsOn
 
   if (patch.frequency === 'monthly') {
     payload.weekday = null

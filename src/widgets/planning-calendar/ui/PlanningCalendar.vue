@@ -1,46 +1,24 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
-import { useRouter } from 'vue-router'
 import {
   addDays,
   AppButton,
   formatLocalDate,
   formatMoney,
   formatShortDate,
-  incomeOccurrences,
   isPastDate,
   openFormDrawer,
   parseLocalDate,
   todayLocal,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
-import { useExpenseRuleStore } from '@/entities/expense-rule'
-import { useIncomeRuleStore } from '@/entities/income-rule'
-import { usePurchaseStore } from '@/entities/purchase'
-import { useTransactionStore } from '@/entities/transaction'
-import { useTransferRuleStore, type TransferRule } from '@/entities/transfer-rule'
-
-type DayKind = 'purchase' | 'income' | 'expense' | 'transfer'
-
-interface DayEvent {
-  id: string
-  kind: DayKind
-  title: string
-  amount: number
-  purchaseId?: string
-  inflow?: boolean
-}
+import { usePurchaseStore, type Purchase } from '@/entities/purchase'
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-const router = useRouter()
 const accounts = useAccountStore()
 const purchases = usePurchaseStore()
-const incomeRules = useIncomeRuleStore()
-const expenseRules = useExpenseRuleStore()
-const transferRules = useTransferRuleStore()
-const transactions = useTransactionStore()
 
 const today = todayLocal()
 const cursor = ref(new Date(parseLocalDate(today).getFullYear(), parseLocalDate(today).getMonth(), 1))
@@ -74,152 +52,37 @@ const cells = computed(() => {
 })
 
 const eventsByDate = computed(() => {
-  const map = new Map<string, DayEvent[]>()
-  const selectedId = accounts.selectedAccountId
+  const map = new Map<string, Purchase[]>()
   const startIso = cells.value[0]?.iso
   const endIso = cells.value[cells.value.length - 1]?.iso
   if (!startIso || !endIso) {
     return map
   }
-  const asOf = addDays(parseLocalDate(startIso), -1)
-  const target = parseLocalDate(endIso)
 
-  const purchaseSource =
-    selectedId === ALL_ACCOUNTS_ID
+  const source =
+    accounts.selectedAccountId === ALL_ACCOUNTS_ID
       ? purchases.planned
-      : purchases.planned.filter((item) => item.accountId === selectedId)
-  for (const item of purchaseSource) {
+      : purchases.planned.filter((item) => item.accountId === accounts.selectedAccountId)
+
+  for (const item of source) {
+    if (!item.plannedDate || item.plannedDate < startIso || item.plannedDate > endIso) {
+      continue
+    }
     const list = map.get(item.plannedDate) ?? []
-    list.push({
-      id: `p-${item.id}`,
-      kind: 'purchase',
-      title: item.title,
-      amount: item.amount,
-      purchaseId: item.id,
-    })
+    list.push(item)
     map.set(item.plannedDate, list)
   }
-
-  const incomeList =
-    selectedId === ALL_ACCOUNTS_ID
-      ? incomeRules.items.filter((rule) => rule.active)
-      : incomeRules.forAccount(selectedId).filter((rule) => rule.active)
-  for (const rule of incomeList) {
-    for (const date of incomeOccurrences(rule, asOf, target, transactions.occurrenceDatesFor(rule.id))) {
-      const iso = formatLocalDate(date)
-      const list = map.get(iso) ?? []
-      list.push({
-        id: `i-${rule.id}-${iso}`,
-        kind: 'income',
-        title: rule.title?.trim() || 'Пополнение',
-        amount: rule.amount,
-      })
-      map.set(iso, list)
-    }
-  }
-
-  const expenseList =
-    selectedId === ALL_ACCOUNTS_ID
-      ? expenseRules.items.filter((rule) => rule.active)
-      : expenseRules.forAccount(selectedId).filter((rule) => rule.active)
-  for (const rule of expenseList) {
-    for (const date of incomeOccurrences(
-      rule,
-      asOf,
-      target,
-      transactions.expenseOccurrenceDatesFor(rule.id),
-    )) {
-      const iso = formatLocalDate(date)
-      const list = map.get(iso) ?? []
-      list.push({
-        id: `e-${rule.id}-${iso}`,
-        kind: 'expense',
-        title: rule.title?.trim() || 'Регулярный расход',
-        amount: rule.amount,
-      })
-      map.set(iso, list)
-    }
-  }
-
-  const transferList =
-    selectedId === ALL_ACCOUNTS_ID
-      ? transferRules.items.filter((rule) => rule.active)
-      : transferRules.forAccount(selectedId).filter((rule) => rule.active)
-  for (const rule of transferList) {
-    for (const date of incomeOccurrences(
-      rule,
-      asOf,
-      target,
-      transactions.transferOccurrenceDatesFor(rule.id),
-    )) {
-      const iso = formatLocalDate(date)
-      const list = map.get(iso) ?? []
-      list.push({
-        id: `t-${rule.id}-${iso}`,
-        kind: 'transfer',
-        title: transferTitle(rule, selectedId),
-        amount: rule.amount,
-        ...(selectedId === ALL_ACCOUNTS_ID ? {} : { inflow: rule.toAccountId === selectedId }),
-      })
-      map.set(iso, list)
-    }
-  }
-
   return map
 })
 
 const selectedEvents = computed(() => eventsByDate.value.get(selected.value) ?? [])
 
-function cellKinds(iso: string) {
-  return [...new Set((eventsByDate.value.get(iso) ?? []).map((item) => item.kind))]
-}
-
-function transferTitle(rule: TransferRule, selectedId: string) {
-  if (rule.title?.trim()) {
-    return rule.title.trim()
-  }
-  const from = accounts.getById(rule.fromAccountId)?.name ?? 'Счёт'
-  const to = accounts.getById(rule.toAccountId)?.name ?? 'Счёт'
-  if (selectedId === ALL_ACCOUNTS_ID) {
-    return `${from} → ${to}`
-  }
-  if (selectedId === rule.fromAccountId) {
-    return `Перевод на «${to}»`
-  }
-  return `Перевод со счёта «${from}»`
-}
-
-function amountTone(item: DayEvent) {
-  if (item.kind === 'income' || item.inflow) {
-    return 'in'
-  }
-  if (item.kind === 'transfer' && item.inflow == null) {
-    return 'xfer'
-  }
-  return 'out'
-}
-
-function amountPrefix(item: DayEvent) {
-  const tone = amountTone(item)
-  if (tone === 'in') {
-    return '+'
-  }
-  if (tone === 'out') {
-    return '−'
-  }
-  return ''
-}
-
-function openEvent(item: DayEvent) {
-  if (item.purchaseId) {
-    openFormDrawer({ name: 'purchase-edit', purchaseId: item.purchaseId })
-    return
-  }
-  void router.push({ name: 'income' })
-}
-
 function addPurchase() {
   openFormDrawer({ name: 'purchase-new', plannedDate: selected.value })
+}
+
+function edit(id: string) {
+  openFormDrawer({ name: 'purchase-edit', purchaseId: id })
 }
 </script>
 
@@ -247,21 +110,15 @@ function addPurchase() {
           'is-muted': !cell.inMonth,
           'is-today': cell.iso === today,
           'is-selected': cell.iso === selected,
-          'is-overdue': (eventsByDate.get(cell.iso) ?? []).some(
-            (item) => item.kind === 'purchase' && isPastDate(cell.iso, today),
-          ),
+          'is-overdue':
+            Boolean((eventsByDate.get(cell.iso) ?? []).length) && isPastDate(cell.iso, today),
         }"
         :aria-label="cell.iso"
         @click="selected = cell.iso"
       >
         <span class="cell__day">{{ cell.day }}</span>
         <span class="cell__dots">
-          <span
-            v-for="kind in cellKinds(cell.iso)"
-            :key="kind"
-            class="dot"
-            :class="`is-${kind}`"
-          />
+          <span v-if="(eventsByDate.get(cell.iso) ?? []).length" class="dot" />
         </span>
       </button>
     </div>
@@ -270,15 +127,13 @@ function addPurchase() {
       <h3 class="day__title">{{ formatShortDate(selected) }}</h3>
       <ul v-if="selectedEvents.length" class="day__list">
         <li v-for="item in selectedEvents" :key="item.id">
-          <button class="day__row" type="button" @click="openEvent(item)">
+          <button class="day__row" type="button" @click="edit(item.id)">
             <span>{{ item.title }}</span>
-            <span :class="`is-${amountTone(item)}`">
-              {{ amountPrefix(item) }}{{ formatMoney(item.amount) }}
-            </span>
+            <span>{{ formatMoney(item.amount) }}</span>
           </button>
         </li>
       </ul>
-      <p v-else class="day__empty">В этот день ничего не запланировано</p>
+      <p v-else class="day__empty">В этот день нет покупок</p>
       <AppButton variant="secondary" block @click="addPurchase">Новая покупка</AppButton>
     </section>
   </div>
@@ -376,21 +231,6 @@ function addPurchase() {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-}
-
-.is-purchase {
-  background: var(--color-accent);
-}
-
-.is-income {
-  background: var(--color-success);
-}
-
-.is-expense {
-  background: var(--color-warning);
-}
-
-.is-transfer {
   background: var(--color-accent);
 }
 
@@ -437,17 +277,5 @@ function addPurchase() {
 .day__empty {
   margin: 0;
   color: var(--color-text-muted);
-}
-
-.is-in {
-  color: var(--color-success);
-}
-
-.is-out {
-  color: var(--color-warning);
-}
-
-.is-xfer {
-  color: var(--color-accent);
 }
 </style>

@@ -58,6 +58,7 @@ const frequency = ref<IncomeFrequency>(existing?.frequency ?? draft?.frequency ?
 const weekday = ref(String(existing?.weekday ?? draft?.weekday ?? 5))
 const monthDay = ref(String(existing?.monthDay ?? draft?.monthDay ?? 1))
 const anchorDate = ref(existing?.anchorDate ?? todayLocal())
+const startsOn = ref(existing?.startsOn ?? todayLocal())
 const error = ref('')
 const pending = ref(false)
 
@@ -80,10 +81,16 @@ function buildPayload(): Omit<ExpenseRule, 'id'> | null {
     return null
   }
 
+  if (!startsOn.value) {
+    error.value = 'Укажите дату начала'
+    return null
+  }
+
   const payload: Omit<ExpenseRule, 'id'> = {
     accountId: accountId.value,
     amount: value,
     frequency: frequency.value,
+    startsOn: startsOn.value,
     active: existing?.active ?? true,
     ...(title.value.trim() ? { title: title.value.trim() } : {}),
     ...(categoryId.value ? { categoryId: categoryId.value } : {}),
@@ -205,6 +212,14 @@ async function onSubmit() {
       required
     >
       <AppInput id="expense-rule-anchor" v-model="anchorDate" type="date" required />
+    </AppField>
+    <AppField
+      label="С даты"
+      for-id="expense-rule-starts-on"
+      hint="Платежи раньше этой даты не проводятся и не показываются в плане"
+      required
+    >
+      <AppInput id="expense-rule-starts-on" v-model="startsOn" type="date" required />
     </AppField>
     <p v-if="error" class="form__error" role="alert">{{ error }}</p>
     <AppButton type="submit" block :disabled="pending">{{ submitLabel }}</AppButton>

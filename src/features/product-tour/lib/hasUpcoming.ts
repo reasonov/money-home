@@ -31,6 +31,9 @@ export function hasUpcomingEvents(input: {
       : input.planned.filter((item) => item.accountId === selected)
 
   for (const item of purchases) {
+    if (!item.plannedDate) {
+      continue
+    }
     if (isPastDate(item.plannedDate, today)) {
       return true
     }

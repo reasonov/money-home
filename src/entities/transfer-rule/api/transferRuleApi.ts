@@ -97,6 +97,7 @@ export async function updateTransferRule(
     month_day?: number | null
     anchor_date?: string | null
     title?: string | null
+    starts_on?: string
   } = { updated_by: userId }
   if (patch.fromAccountId != null) payload.from_account_id = patch.fromAccountId
   if (patch.toAccountId != null) payload.to_account_id = patch.toAccountId
@@ -107,6 +108,7 @@ export async function updateTransferRule(
   if ('monthDay' in patch) payload.month_day = patch.monthDay ?? null
   if ('anchorDate' in patch) payload.anchor_date = patch.anchorDate ?? null
   if ('title' in patch) payload.title = patch.title?.trim() || null
+  if (patch.startsOn) payload.starts_on = patch.startsOn
 
   if (patch.frequency === 'monthly') {
     payload.weekday = null

@@ -10,6 +10,19 @@ export function isUniqueViolation(error: { code?: string } | null | undefined): 
   return error?.code === '23505'
 }
 
+export function isMissingCategoryFk(
+  error: { code?: string; message?: string; details?: string } | null | undefined,
+): boolean {
+  if (!error) {
+    return false
+  }
+  const text = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+  if (error.code === '23503') {
+    return text.includes('category') || text.includes('categories')
+  }
+  return text.includes('category_id_fkey')
+}
+
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
   if (error instanceof Error && error.message === OFFLINE_NO_DATA_MESSAGE) {
     return OFFLINE_NO_DATA_MESSAGE

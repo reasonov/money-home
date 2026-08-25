@@ -71,7 +71,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Главная', icon: House, to: '/' },
   { id: 'stats', label: 'Статистика', icon: PieChart, to: '/stats' },
-  { id: 'calendar', label: 'Планирование', icon: CalendarCheck, to: '/calendar' },
+  { id: 'calendar', label: 'Планы покупок', icon: CalendarCheck, to: '/calendar' },
   { id: 'history', label: 'История', icon: History, to: '/history' },
   { id: 'categories', label: 'Категории', icon: FolderTree, to: '/categories' },
   { id: 'templates', label: 'Избранное', icon: Bookmark, to: '/templates' },
@@ -247,4 +247,23 @@ export function resolvePinnedAccountIds(orderedIds: readonly string[], pinned: s
   }
   const known = new Set(orderedIds)
   return pinned.filter((id) => known.has(id)).slice(0, MAX_SIDEBAR_ACCOUNTS)
+}
+
+export function applyAccountOrderFromPinned(orderedIds: readonly string[], pinnedOrder: readonly string[]): string[] {
+  const pinSet = new Set(pinnedOrder)
+  let index = 0
+  const next = orderedIds.map((id) => {
+    if (!pinSet.has(id)) {
+      return id
+    }
+    const replacement = pinnedOrder[index]
+    index += 1
+    return replacement ?? id
+  })
+  for (const id of pinnedOrder) {
+    if (!orderedIds.includes(id)) {
+      next.push(id)
+    }
+  }
+  return next
 }

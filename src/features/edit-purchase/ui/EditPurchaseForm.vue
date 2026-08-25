@@ -56,7 +56,7 @@ const purchaseId = computed(() => props.purchaseId)
 
 const title = ref('')
 const amount = ref('')
-const plannedDate = ref(todayLocal())
+const plannedDate = ref('')
 const notes = ref('')
 const accountId = ref('')
 const categoryId = ref('')
@@ -74,7 +74,7 @@ onMounted(() => {
 
   title.value = purchase.title
   amount.value = String(purchase.amount)
-  plannedDate.value = purchase.plannedDate
+  plannedDate.value = purchase.plannedDate ?? ''
   notes.value = purchase.notes ?? ''
   accountId.value = purchase.accountId
   categoryId.value = purchase.categoryId ?? ''
@@ -92,18 +92,24 @@ watch(
   },
 )
 
+function resolvedDate() {
+  const value = plannedDate.value.trim()
+  return value || undefined
+}
+
 const projection = computed(() => {
   if (!ready.value) {
     return null
   }
 
   const candidateAmount = Number(amount.value)
-  if (!Number.isFinite(candidateAmount) || candidateAmount <= 0 || !plannedDate.value) {
+  const date = resolvedDate()
+  if (!Number.isFinite(candidateAmount) || candidateAmount <= 0 || !date) {
     return null
   }
 
   const asOf = parseLocalDate(todayLocal())
-  const target = parseLocalDate(plannedDate.value)
+  const target = parseLocalDate(date)
   if (compareDates(target, asOf) < 0) {
     return null
   }
@@ -183,23 +189,26 @@ async function onSubmit() {
     return
   }
 
-  const asOf = parseLocalDate(todayLocal())
-  const target = parseLocalDate(plannedDate.value)
-  if (compareDates(target, asOf) < 0) {
-    error.value = 'Дата не может быть раньше сегодня'
-    return
-  }
+  const date = resolvedDate()
+  if (date) {
+    const asOf = parseLocalDate(todayLocal())
+    const target = parseLocalDate(date)
+    if (compareDates(target, asOf) < 0) {
+      error.value = 'Дата не может быть раньше сегодня'
+      return
+    }
 
-  const result = projection.value
-  if (!result) {
-    error.value = 'Укажите корректные сумму и дату покупки'
-    return
-  }
+    const result = projection.value
+    if (!result) {
+      error.value = 'Укажите корректные сумму и дату покупки'
+      return
+    }
 
-  if (!result.canAfford) {
-    error.value = 'К выбранной дате на покупку не хватит денег. Посмотрите варианты ниже.'
-    openDetails()
-    return
+    if (!result.canAfford) {
+      error.value = 'К выбранной дате на покупку не хватит денег. Посмотрите варианты ниже.'
+      openDetails()
+      return
+    }
   }
 
   const userId = session.user?.id
@@ -223,7 +232,7 @@ async function onSubmit() {
       categoryIcon: category.icon,
       title: title.value,
       amount: candidateAmount,
-      plannedDate: plannedDate.value,
+      ...(date ? { plannedDate: date } : {}),
       notes: notes.value,
     })
 
@@ -274,8 +283,12 @@ async function onSubmit() {
         <AppButton variant="secondary" block @click="navigate">Добавить категорию</AppButton>
       </RouterLink>
     </AppEmpty>
-    <AppField label="Дата покупки" for-id="edit-purchase-date" required>
-      <AppInput id="edit-purchase-date" v-model="plannedDate" type="date" required />
+    <AppField
+      label="Дата покупки"
+      for-id="edit-purchase-date"
+      hint="Необязательно. Без даты попадёт в список на будущее"
+    >
+      <AppInput id="edit-purchase-date" v-model="plannedDate" type="date" clearable />
     </AppField>
     <AppField
       label="Комментарий"

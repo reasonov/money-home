@@ -1,4 +1,4 @@
-import { getErrorMessage, roundMoney, supabase } from '@/shared'
+import { getErrorMessage, isMissingCategoryFk, roundMoney, supabase } from '@/shared'
 import type { Purchase, PurchaseStatus } from '../model/types'
 
 type PurchaseRow = {
@@ -10,7 +10,7 @@ type PurchaseRow = {
   category_icon: string | null
   title: string
   amount: number
-  planned_date: string
+  planned_date: string | null
   notes: string | null
   status: string
   created_by: string
@@ -26,9 +26,9 @@ export function mapPurchase(row: PurchaseRow): Purchase {
     accountId: row.account_id,
     title: row.title,
     amount: roundMoney(Number(row.amount)),
-    plannedDate: row.planned_date,
     status: row.status as PurchaseStatus,
     createdBy: row.created_by,
+    ...(row.planned_date ? { plannedDate: row.planned_date } : {}),
     ...(row.category_id ? { categoryId: row.category_id } : {}),
     ...(row.category_name ? { categoryName: row.category_name } : {}),
     ...(row.category_color ? { categoryColor: row.category_color } : {}),
@@ -41,7 +41,7 @@ export async function fetchPurchases(): Promise<Purchase[]> {
   const { data, error } = await supabase
     .from('purchases')
     .select(SELECT)
-    .order('planned_date', { ascending: true })
+    .order('planned_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось загрузить покупки'))
@@ -58,7 +58,7 @@ export async function insertPurchase(input: {
   categoryIcon: string
   title: string
   amount: number
-  plannedDate: string
+  plannedDate?: string
   notes?: string
   createdBy: string
 }): Promise<Purchase> {
@@ -67,13 +67,13 @@ export async function insertPurchase(input: {
     .insert({
       ...(input.id ? { id: input.id } : {}),
       account_id: input.accountId,
-      category_id: input.categoryId,
+      category_id: input.categoryId || null,
       category_name: input.categoryName,
       category_color: input.categoryColor,
       category_icon: input.categoryIcon,
       title: input.title.trim(),
       amount: roundMoney(input.amount),
-      planned_date: input.plannedDate,
+      planned_date: input.plannedDate || null,
       notes: input.notes?.trim() || null,
       status: 'planned',
       created_by: input.createdBy,
@@ -87,6 +87,10 @@ export async function insertPurchase(input: {
     if (existing.data) {
       return mapPurchase(existing.data)
     }
+  }
+
+  if (isMissingCategoryFk(error) && input.categoryId) {
+    return insertPurchase({ ...input, categoryId: '' })
   }
 
   if (error) {
@@ -106,7 +110,7 @@ export async function updatePurchaseRow(
     categoryIcon: string
     title: string
     amount: number
-    plannedDate: string
+    plannedDate?: string
     notes?: string
   },
 ): Promise<Purchase> {
@@ -120,7 +124,7 @@ export async function updatePurchaseRow(
       category_icon: input.categoryIcon,
       title: input.title.trim(),
       amount: roundMoney(input.amount),
-      planned_date: input.plannedDate,
+      planned_date: input.plannedDate || null,
       notes: input.notes?.trim() || null,
       updated_by: userId,
     })

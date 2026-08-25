@@ -47,6 +47,13 @@ export function isConflictSyncError(message: string): boolean {
     lower.includes('occurrence not found') ||
     lower.includes('not an account member') ||
     lower.includes('нет доступа') ||
-    lower.includes('операция не найдена')
+    lower.includes('операция не найдена') ||
+    lower.includes('category not found') ||
+    lower.includes('категория недоступна') ||
+    lower.includes('category removed')
   )
+}
+
+export function shouldDropOutboxItem(message: string): boolean {
+  return isConflictSyncError(message)
 }

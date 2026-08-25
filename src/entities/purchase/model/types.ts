@@ -9,7 +9,7 @@ export interface Purchase {
   categoryIcon?: string
   title: string
   amount: number
-  plannedDate: string
+  plannedDate?: string
   notes?: string
   status: PurchaseStatus
   createdBy: string

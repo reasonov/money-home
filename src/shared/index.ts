@@ -3,6 +3,7 @@ export {
   getErrorMessage,
   NETWORK_ERROR_MESSAGE,
   OFFLINE_NO_DATA_MESSAGE,
+  isMissingCategoryFk,
   isUniqueViolation,
   type Database,
   type Json,
@@ -23,6 +24,7 @@ export {
   parseAccountOrder,
   parseSidebarAccountIds,
   sortAccountsByOrder,
+  applyAccountOrderFromPinned,
   resolveSidebarAccounts,
   resolvePinnedAccountIds,
   isNavItemId,
@@ -103,6 +105,7 @@ export {
   isConflictSyncError,
   isRetryableSyncError,
   purchaseConflictMessage,
+  shouldDropOutboxItem,
 } from './lib/conflicts'
 export { showToast, hideToast, useToastState } from './lib/toast'
 export { confirmAction, useConfirmState, settleConfirm } from './lib/confirm'

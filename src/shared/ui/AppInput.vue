@@ -13,11 +13,13 @@ const props = withDefaults(
     inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
     autocomplete?: string
     required?: boolean
+    clearable?: boolean
     disabled?: boolean
     size?: 'medium' | 'large'
   }>(),
   {
     size: 'large',
+    clearable: false,
   },
 )
 
@@ -68,6 +70,7 @@ const dateValue = computed({
     value-format="yyyy-MM-dd"
     :size="size"
     :disabled="disabled"
+    :clearable="clearable"
     :input-readonly="false"
   />
   <NInput

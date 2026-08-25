@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useAccountStore } from '@/entities/account'
-import { assertWritable, createUuid, enqueueMutation, roundMoney } from '@/shared'
+import { assertWritable, createUuid, enqueueMutation, roundMoney, todayLocal } from '@/shared'
 import {
   fetchPurchases,
   mapPurchase,
@@ -16,7 +16,18 @@ export const usePurchaseStore = defineStore('purchase', () => {
   const done = computed(() =>
     [...items.value]
       .filter((item) => item.status === 'done')
-      .sort((a, b) => b.plannedDate.localeCompare(a.plannedDate)),
+      .sort((a, b) => {
+        if (!a.plannedDate && !b.plannedDate) {
+          return 0
+        }
+        if (!a.plannedDate) {
+          return 1
+        }
+        if (!b.plannedDate) {
+          return -1
+        }
+        return b.plannedDate.localeCompare(a.plannedDate)
+      }),
   )
 
   const totalSpent = computed(() => done.value.reduce((sum, item) => sum + item.amount, 0))
@@ -60,7 +71,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
     categoryIcon: string
     title: string
     amount: number
-    plannedDate: string
+    plannedDate?: string
     notes?: string
     createdBy: string
   }) {
@@ -75,9 +86,9 @@ export const usePurchaseStore = defineStore('purchase', () => {
       categoryIcon: input.categoryIcon,
       title: input.title,
       amount: roundMoney(input.amount),
-      plannedDate: input.plannedDate,
       status: 'planned',
       createdBy: input.createdBy,
+      ...(input.plannedDate ? { plannedDate: input.plannedDate } : {}),
       ...(input.notes ? { notes: input.notes } : {}),
     }
     upsert(purchase)
@@ -96,7 +107,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
       categoryIcon: string
       title: string
       amount: number
-      plannedDate: string
+      plannedDate?: string
       notes?: string
     },
   ) {
@@ -109,6 +120,9 @@ export const usePurchaseStore = defineStore('purchase', () => {
       ...current,
       ...input,
       amount: roundMoney(input.amount),
+    }
+    if (!input.plannedDate) {
+      delete purchase.plannedDate
     }
     upsert(purchase)
     await enqueueMutation(userId, 'updatePurchase', { id, userId, input }, id)
@@ -149,7 +163,7 @@ export const usePurchaseStore = defineStore('purchase', () => {
       status: 'posted',
       source: 'purchase',
       amount: purchase.amount,
-      occurredOn: purchase.plannedDate,
+      occurredOn: purchase.plannedDate ?? todayLocal(),
       createdBy: purchase.createdBy,
       createdAt: new Date().toISOString(),
       title: purchase.title,

@@ -10,13 +10,18 @@ const groups = computed(() => {
   const map = new Map<string, Purchase[]>()
 
   for (const item of store.done) {
-    const list = map.get(item.plannedDate) ?? []
+    const key = item.plannedDate ?? ''
+    const list = map.get(key) ?? []
     list.push(item)
-    map.set(item.plannedDate, list)
+    map.set(key, list)
   }
 
   return [...map.entries()]
-    .sort((a, b) => b[0].localeCompare(a[0]))
+    .sort((a, b) => {
+      if (!a[0]) return 1
+      if (!b[0]) return -1
+      return b[0].localeCompare(a[0])
+    })
     .map(([date, items]) => ({ date, items }))
 })
 </script>
@@ -33,7 +38,7 @@ const groups = computed(() => {
 
     <div v-if="groups.length" class="history__groups">
       <section v-for="group in groups" :key="group.date" class="group">
-        <h3 class="group__date">{{ formatDisplayDate(group.date) }}</h3>
+        <h3 class="group__date">{{ group.date ? formatDisplayDate(group.date) : 'Без даты' }}</h3>
         <ul class="group__items">
           <li v-for="item in group.items" :key="item.id" class="item">
             <div class="item__main">
@@ -50,7 +55,7 @@ const groups = computed(() => {
       <p class="history__empty-text">Пока нет завершённых покупок</p>
       <div class="history__empty-actions">
         <RouterLink to="/calendar" custom v-slot="{ navigate }">
-          <AppButton variant="secondary" block @click="navigate">К планированию</AppButton>
+          <AppButton variant="secondary" block @click="navigate">К планам покупок</AppButton>
         </RouterLink>
         <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
       </div>

@@ -5,6 +5,7 @@ import {
   DEFAULT_SIDEBAR_SECTIONS,
   normalizeBottomNav,
   normalizeSidebarSections,
+  applyAccountOrderFromPinned,
   resolvePinnedAccountIds,
   resolveSidebarAccounts,
   sortAccountsByOrder,
@@ -64,5 +65,9 @@ describe('appNav helpers', () => {
 
   it('drops missing pinned ids', () => {
     expect(resolvePinnedAccountIds(['a', 'b'], ['gone', 'b', 'a'])).toEqual(['b', 'a'])
+  })
+
+  it('reorders pinned accounts in place among the full list', () => {
+    expect(applyAccountOrderFromPinned(['a', 'b', 'c', 'd'], ['c', 'a'])).toEqual(['c', 'b', 'a', 'd'])
   })
 })

@@ -83,6 +83,12 @@ const result = computed(() => {
 const text = computed(() => {
   const next = result.value.nextIncomeDate
   const amount = formatMoney(result.value.available)
+  if (props.compact) {
+    if (next) {
+      return `Доступно ${amount} · до ${formatShortDate(formatLocalDate(next))}`
+    }
+    return `Доступно ${amount}`
+  }
   if (next) {
     return `Доступно до ${formatShortDate(formatLocalDate(next))}: ${amount}`
   }

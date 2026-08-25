@@ -53,6 +53,9 @@ const events = computed(() => {
       : purchases.planned.filter((item) => item.accountId === selected)
 
   for (const item of purchaseSource) {
+    if (!item.plannedDate) {
+      continue
+    }
     const overdue = isPastDate(item.plannedDate, today)
     if (!overdue && (item.plannedDate < today || item.plannedDate > formatLocalDate(horizon))) {
       continue

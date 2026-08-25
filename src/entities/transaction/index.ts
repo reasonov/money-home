@@ -1,6 +1,7 @@
 export { useTransactionStore } from './model/store'
 export { matchOperationsByAmount } from './lib/amountMatches'
 export { lastOperationAccountId } from './lib/lastAccount'
+export { transactionFromOutboxPayload, pendingInsertAmountDelta } from './lib/fromOutbox'
 export { ruleDraftFromOperation } from './lib/ruleDraft'
 export {
   detectRepeatSuggestion,

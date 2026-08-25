@@ -117,7 +117,7 @@ const router = createRouter({
           path: 'calendar',
           name: 'calendar',
           component: () => import('@/pages/calendar/ui/CalendarPage.vue'),
-          meta: { title: 'Планирование', tab: true, accountSelect: true },
+          meta: { title: 'Планы покупок', tab: true, accountSelect: true },
         },
         {
           path: 'income',

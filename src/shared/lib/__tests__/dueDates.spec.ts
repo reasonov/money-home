@@ -30,6 +30,21 @@ describe('ruleDueDates', () => {
       ),
     ).toEqual([])
   })
+
+  it('skips dates before startsOn', () => {
+    expect(
+      ruleDueDates(
+        {
+          frequency: 'monthly',
+          monthDay: 15,
+          active: true,
+          startsOn: '2026-11-15',
+        },
+        parseLocalDate('2026-10-01'),
+        parseLocalDate('2026-12-31'),
+      ),
+    ).toEqual(['2026-11-15', '2026-12-15'])
+  })
 })
 
 describe('dueKey', () => {

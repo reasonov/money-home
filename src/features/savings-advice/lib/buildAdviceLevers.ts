@@ -185,7 +185,7 @@ export function buildAdviceLevers(input: BuildAdviceLeversInput): AdviceLever[] 
     const target = parseLocalDate(input.targetDate)
     const purchases = [...input.planInput.plannedPurchases]
       .filter((item) => {
-        if (item.status !== 'planned' || !item.id) {
+        if (item.status !== 'planned' || !item.id || !item.plannedDate) {
           return false
         }
         const date = parseLocalDate(item.plannedDate)
@@ -214,7 +214,7 @@ export function buildAdviceLevers(input: BuildAdviceLeversInput): AdviceLever[] 
         kind: 'defer_purchase',
         impact,
         coversGap: extraAfter <= ADVICE_SLACK_RUB,
-        fact: `Покупка «${title}» на ${formatMoneyPlain(purchase.amount)} ₽ к ${formatNumericDate(purchase.plannedDate)}. Если отложить её после даты цели, взнос станет ${formatMoneyPlain(extraAfter)} ₽/мес вместо ${formatMoneyPlain(gap)} ₽/мес.`,
+        fact: `Покупка «${title}» на ${formatMoneyPlain(purchase.amount)} ₽ к ${formatNumericDate(purchase.plannedDate ?? '')}. Если отложить её после даты цели, взнос станет ${formatMoneyPlain(extraAfter)} ₽/мес вместо ${formatMoneyPlain(gap)} ₽/мес.`,
         purchaseId: purchase.id,
         purchaseTitle: title,
         extraAfter,

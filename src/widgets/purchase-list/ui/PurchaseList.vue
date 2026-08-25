@@ -22,6 +22,8 @@ import { CategoryIcon, splitCategorySections, useCategoryStore } from '@/entitie
 import { usePurchaseStore, PurchaseNotes, type Purchase } from '@/entities/purchase'
 import { useSessionStore } from '@/entities/session'
 
+const BACKLOG_KEY = 'backlog'
+
 const props = defineProps<{
   focusId?: string
 }>()
@@ -75,15 +77,14 @@ function onViewportChange() {
   updateMenuPosition(menuOpenId.value)
 }
 
-const groups = computed(() => {
-  const today = todayLocal()
-  const map = new Map<string, Purchase[]>()
+const visiblePlanned = computed(() => {
   const needle = query.value.trim().toLowerCase()
   const source =
     accounts.selectedAccountId === ALL_ACCOUNTS_ID
       ? store.planned
       : store.planned.filter((item) => item.accountId === accounts.selectedAccountId)
-  const filtered = source.filter((item) => {
+
+  return source.filter((item) => {
     if (categoryId.value.startsWith('group:')) {
       const groupId = categoryId.value.slice(6)
       const cat = item.categoryId ? categories.getById(item.categoryId) : undefined
@@ -94,33 +95,71 @@ const groups = computed(() => {
       return false
     }
     if (needle) {
-      const haystack = `${item.title} ${item.notes ?? ''} ${item.categoryName ?? ''}`.toLowerCase()
+      const cat = item.categoryId ? categories.getById(item.categoryId) : undefined
+      const haystack =
+        `${item.title} ${item.notes ?? ''} ${item.categoryName ?? ''} ${cat?.name ?? ''}`.toLowerCase()
       if (!haystack.includes(needle)) {
         return false
       }
     }
     return true
   })
-  const sorted = [...filtered].sort((a, b) => {
+})
+
+const groups = computed(() => {
+  const today = todayLocal()
+  const map = new Map<string, Purchase[]>()
+  const backlog: Purchase[] = []
+
+  const sorted = [...visiblePlanned.value].sort((a, b) => {
+    if (!a.plannedDate && !b.plannedDate) {
+      return a.title.localeCompare(b.title, 'ru')
+    }
+    if (!a.plannedDate) {
+      return 1
+    }
+    if (!b.plannedDate) {
+      return -1
+    }
     const aPast = isPastDate(a.plannedDate, today)
     const bPast = isPastDate(b.plannedDate, today)
     if (aPast !== bPast) {
       return aPast ? -1 : 1
     }
-    return a.plannedDate.localeCompare(b.plannedDate)
+    const byDate = a.plannedDate.localeCompare(b.plannedDate)
+    if (byDate !== 0) {
+      return byDate
+    }
+    return a.title.localeCompare(b.title, 'ru')
   })
 
   for (const item of sorted) {
+    if (!item.plannedDate) {
+      backlog.push(item)
+      continue
+    }
     const list = map.get(item.plannedDate) ?? []
     list.push(item)
     map.set(item.plannedDate, list)
   }
 
-  return [...map.entries()].map(([date, items]) => ({
-    date,
-    items,
+  const dated = [...map.entries()].map(([date, items]) => ({
+    key: date,
+    title: formatRelativeDisplayDate(date),
     overdue: isPastDate(date, today),
+    items,
   }))
+
+  if (backlog.length) {
+    dated.push({
+      key: BACKLOG_KEY,
+      title: 'На будущее',
+      overdue: false,
+      items: backlog,
+    })
+  }
+
+  return dated
 })
 
 onMounted(() => {
@@ -260,6 +299,13 @@ const purchaseFilterSections = computed(() => {
 
 const hasFilters = computed(() => categoryId.value !== 'all' || Boolean(query.value.trim()))
 
+const emptyText = computed(() => {
+  if (hasFilters.value) {
+    return 'Ничего не найдено'
+  }
+  return 'Пока нет запланированных покупок'
+})
+
 async function revealFocused(id: string) {
   query.value = ''
   categoryId.value = 'all'
@@ -311,9 +357,12 @@ watch(
     </div>
 
     <div v-if="groups.length" class="list__groups" @click="closeOverlays">
-      <section v-for="group in groups" :key="group.date" class="group">
-        <h3 class="group__date" :class="{ 'is-overdue': group.overdue }">
-          {{ formatRelativeDisplayDate(group.date) }}
+      <section v-for="group in groups" :key="group.key" class="group">
+        <h3
+          class="group__date"
+          :class="{ 'is-overdue': group.overdue, 'is-backlog': group.key === BACKLOG_KEY }"
+        >
+          {{ group.title }}
         </h3>
         <ul class="group__items">
           <li v-for="item in group.items" :key="item.id">
@@ -326,7 +375,10 @@ watch(
               <div
                 :ref="(el) => setItemEl(item.id, el)"
                 class="item"
-                :class="{ 'is-overdue': group.overdue, 'is-focus': highlightedId === item.id }"
+                :class="{
+                  'is-overdue': group.overdue,
+                  'is-focus': highlightedId === item.id,
+                }"
                 @click="edit(item.id, $event)"
               >
                 <div class="item__main">
@@ -377,16 +429,9 @@ watch(
     </div>
 
     <div v-else class="list__empty">
-      <p class="list__empty-text">
-        {{ hasFilters ? 'Ничего не найдено' : 'Пока нет запланированных покупок' }}
-      </p>
+      <p class="list__empty-text">{{ emptyText }}</p>
       <div v-if="!hasFilters" class="list__empty-actions">
-        <AppButton block @click="openFormDrawer({ name: 'purchase-new' })"
-          >Новая покупка</AppButton
-        >
-        <AppButton variant="secondary" block @click="openFormDrawer({ name: 'income-rule' })">
-          Настроить пополнение
-        </AppButton>
+        <AppButton block @click="openFormDrawer({ name: 'purchase-new' })">Новая покупка</AppButton>
       </div>
     </div>
 
@@ -436,6 +481,10 @@ watch(
   text-transform: none;
 }
 
+.group__date.is-backlog {
+  text-transform: none;
+}
+
 .group__items {
   display: flex;
   flex-direction: column;
@@ -468,6 +517,7 @@ watch(
 }
 
 .item__title {
+  display: block;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -492,13 +542,6 @@ watch(
   color: var(--color-text-muted);
 }
 
-.item__account {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .item__meta-row :deep(.n-tag) {
   flex-shrink: 0;
 }
@@ -509,6 +552,7 @@ watch(
 }
 
 .item__amount {
+  flex-shrink: 0;
   font-weight: 800;
 }
 

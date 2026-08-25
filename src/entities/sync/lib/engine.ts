@@ -11,9 +11,9 @@ import { useTransactionStore } from '@/entities/transaction'
 import {
   flushAnalytics,
   getErrorMessage,
-  isRetryableSyncError,
   NETWORK_ERROR_MESSAGE,
   OFFLINE_NO_DATA_MESSAGE,
+  shouldDropOutboxItem,
   refreshOnlineStatus,
   track,
   registerPendingHandler,
@@ -112,7 +112,7 @@ export async function runSync(): Promise<void> {
         }
       } catch (error) {
         const message = getErrorMessage(error)
-        if (!(await refreshOnlineStatus()) || isRetryableSyncError(message)) {
+        if (!(await refreshOnlineStatus()) || !shouldDropOutboxItem(message)) {
           throw error
         }
         showToast(message)

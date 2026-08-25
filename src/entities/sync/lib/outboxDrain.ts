@@ -10,6 +10,8 @@ import {
   deleteCategoryGroup,
   upsertCategory,
   upsertCategoryGroup,
+  useCategoryStore,
+  type CategoryKind,
 } from '@/entities/category'
 import { deleteExpenseRule, insertExpenseRule, updateExpenseRule } from '@/entities/expense-rule'
 import { deleteIncomeRule, insertIncomeRule, updateIncomeRule } from '@/entities/income-rule'
@@ -44,13 +46,21 @@ import type { OutboxRecord } from '@/shared/lib/localDb'
 import type { IncomeRule } from '@/entities/income-rule'
 import type { ExpenseRule } from '@/entities/expense-rule'
 import type { TransferRule } from '@/entities/transfer-rule'
-import type { CategoryKind } from '@/entities/category'
+
+function withoutMissingCategory<T extends { categoryId?: string }>(input: T): T {
+  if (!input.categoryId || useCategoryStore().getById(input.categoryId)) {
+    return input
+  }
+  return { ...input, categoryId: undefined }
+}
 
 export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
   const payload = item.payload
   switch (item.type) {
     case 'insertTransaction':
-      await insertTransaction(payload as Parameters<typeof insertTransaction>[0])
+      await insertTransaction(
+        withoutMissingCategory(payload as Parameters<typeof insertTransaction>[0]),
+      )
       return
     case 'insertPurchase':
       await insertPurchase(payload as Parameters<typeof insertPurchase>[0])

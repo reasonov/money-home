@@ -64,6 +64,28 @@ describe('projectBalance', () => {
     ])
   })
 
+  it('ignores planned purchases without a date', () => {
+    const result = projectBalance({
+      currentBalance: 4000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      targetDate: parseLocalDate('2026-08-25'),
+      incomeRules: [],
+      plannedPurchases: [
+        {
+          id: 'backlog',
+          title: 'Штора',
+          amount: 2300,
+          status: 'planned',
+        },
+      ],
+      candidateAmount: 2000,
+    })
+
+    expect(result.projectedBalance).toBe(4000)
+    expect(result.canAfford).toBe(true)
+    expect(result.plannedBeforeTarget).toEqual([])
+  })
+
   it('finds nextAffordableDate after upcoming income', () => {
     const result = projectBalance({
       currentBalance: 500,
@@ -297,6 +319,35 @@ describe('availableUntilNextIncome', () => {
     expect(result.available).toBe(5000)
   })
 
+  it('does not reserve undated planned purchases until next income', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 10000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      incomeRules: [
+        {
+          amount: 20000,
+          frequency: 'monthly',
+          monthDay: 20,
+          active: true,
+        },
+      ],
+      plannedPurchases: [
+        {
+          amount: 4000,
+          status: 'planned',
+        },
+        {
+          amount: 1000,
+          plannedDate: '2026-08-10',
+          status: 'planned',
+        },
+      ],
+    })
+
+    expect(result.plannedSpend).toBe(1000)
+    expect(result.available).toBe(9000)
+  })
+
   it('subtracts upcoming expense rules before next income', () => {
     const result = availableUntilNextIncome({
       currentBalance: 10000,
@@ -324,6 +375,93 @@ describe('availableUntilNextIncome', () => {
     expect(result.plannedSpend).toBe(3000)
     expect(result.available).toBe(7000)
   })
+
+  it('without next income does not reserve a year of outgoing transfers', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 8000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      incomeRules: [],
+      plannedPurchases: [
+        {
+          amount: 1000,
+          plannedDate: '2026-08-15',
+          status: 'planned',
+        },
+      ],
+      outgoingTransferRules: [
+        {
+          amount: 500,
+          frequency: 'weekly',
+          weekday: 1,
+          active: true,
+        },
+      ],
+    })
+
+    expect(result.nextIncomeDate).toBeNull()
+    expect(result.plannedSpend).toBe(1000)
+    expect(result.available).toBe(7000)
+  })
+
+  it('subtracts outgoing transfers before next income', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 10000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      incomeRules: [
+        {
+          amount: 20000,
+          frequency: 'monthly',
+          monthDay: 20,
+          active: true,
+        },
+      ],
+      plannedPurchases: [],
+      outgoingTransferRules: [
+        {
+          amount: 1500,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+    })
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
+    expect(result.plannedSpend).toBe(1500)
+    expect(result.available).toBe(8500)
+  })
+
+  it('treats incoming transfer as next income', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 10000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      incomeRules: [],
+      plannedPurchases: [
+        {
+          amount: 2000,
+          plannedDate: '2026-08-10',
+          status: 'planned',
+        },
+        {
+          amount: 4000,
+          plannedDate: '2026-08-25',
+          status: 'planned',
+        },
+      ],
+      incomingTransferRules: [
+        {
+          amount: 5000,
+          frequency: 'monthly',
+          monthDay: 20,
+          active: true,
+        },
+      ],
+    })
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
+    expect(result.plannedSpend).toBe(2000)
+    expect(result.available).toBe(8000)
+  })
 })
 
 describe('postedOccurrenceDates', () => {
@@ -348,6 +486,29 @@ describe('postedOccurrenceDates', () => {
     expect(result.incomeTotal).toBe(0)
     expect(result.projectedBalance).toBe(1500)
     expect(result.canAfford).toBe(false)
+  })
+
+  it('does not count rule dates before startsOn', () => {
+    const result = projectBalance({
+      currentBalance: 0,
+      asOfDate: parseLocalDate('2026-10-01'),
+      targetDate: parseLocalDate('2026-12-20'),
+      incomeRules: [
+        {
+          amount: 20000,
+          frequency: 'monthly',
+          monthDay: 15,
+          startsOn: '2026-11-15',
+          active: true,
+        },
+      ],
+      plannedPurchases: [],
+      candidateAmount: 1,
+    })
+
+    expect(result.incomeTotal).toBe(40000)
+    expect(result.incomeOccurrencesCount).toBe(2)
+    expect(result.projectedBalance).toBe(40000)
   })
 })
 

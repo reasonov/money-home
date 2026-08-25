@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { isMissingCategoryFk } from '../../api/errors'
 import {
   accountBalanceAfterDelta,
   isConflictSyncError,
   isRetryableSyncError,
   purchaseConflictMessage,
+  shouldDropOutboxItem,
 } from '../conflicts'
 
 describe('purchaseConflictMessage', () => {
@@ -40,5 +42,30 @@ describe('sync error classification', () => {
     expect(isRetryableSyncError('Не удалось подключиться к серверу. Попробуйте снова')).toBe(true)
     expect(isConflictSyncError('Purchase is not planned')).toBe(true)
     expect(isConflictSyncError('Покупка уже проведена')).toBe(true)
+  })
+
+  it('keeps unknown save errors in the outbox instead of dropping them', () => {
+    expect(shouldDropOutboxItem('Не удалось сохранить операцию')).toBe(false)
+    expect(shouldDropOutboxItem('Что-то пошло не так')).toBe(false)
+    expect(shouldDropOutboxItem('Войдите в аккаунт')).toBe(false)
+    expect(
+      shouldDropOutboxItem('Нет соединения с интернетом. Проверьте сеть и попробуйте снова'),
+    ).toBe(false)
+    expect(shouldDropOutboxItem('Категория недоступна')).toBe(true)
+    expect(shouldDropOutboxItem('Операция не найдена')).toBe(true)
+  })
+})
+
+describe('isMissingCategoryFk', () => {
+  it('detects postgres category foreign keys', () => {
+    expect(
+      isMissingCategoryFk({
+        code: '23503',
+        message: 'insert or update on table "transactions" violates foreign key constraint',
+        details: 'Key (category_id)=(abc) is not present in table "categories".',
+      }),
+    ).toBe(true)
+    expect(isMissingCategoryFk({ code: '23505', message: 'duplicate key' })).toBe(false)
+    expect(isMissingCategoryFk(null)).toBe(false)
   })
 })

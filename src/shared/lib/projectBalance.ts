@@ -9,6 +9,7 @@ export interface ProjectionIncomeRule {
   weekday?: number
   monthDay?: number
   anchorDate?: string
+  startsOn?: string
   active: boolean
 }
 
@@ -16,7 +17,7 @@ export interface ProjectionPurchase {
   id?: string
   title?: string
   amount: number
-  plannedDate: string
+  plannedDate?: string
   status: 'planned' | 'done' | 'cancelled'
 }
 
@@ -123,19 +124,25 @@ export function incomeOccurrences(
   }
 
   const posted = new Set(postedOccurrenceDates)
-  const filterPosted = (dates: Date[]) =>
-    dates.filter((date) => !posted.has(formatLocalDate(date)))
+  const keep = (dates: Date[]) =>
+    dates.filter((date) => {
+      const iso = formatLocalDate(date)
+      if (rule.startsOn && iso < rule.startsOn) {
+        return false
+      }
+      return !posted.has(iso)
+    })
 
   if (rule.frequency === 'monthly' && rule.monthDay != null) {
-    return filterPosted(collectMonthlyDates(rule.monthDay, asOfDate, targetDate))
+    return keep(collectMonthlyDates(rule.monthDay, asOfDate, targetDate))
   }
 
   if (rule.frequency === 'weekly' && rule.weekday != null) {
-    return filterPosted(collectWeeklyDates(rule.weekday, asOfDate, targetDate))
+    return keep(collectWeeklyDates(rule.weekday, asOfDate, targetDate))
   }
 
   if (rule.frequency === 'biweekly' && rule.anchorDate) {
-    return filterPosted(collectBiweeklyDates(rule.anchorDate, asOfDate, targetDate))
+    return keep(collectBiweeklyDates(rule.anchorDate, asOfDate, targetDate))
   }
 
   return []
@@ -187,6 +194,9 @@ function collectPlannedBeforeTarget(
       continue
     }
     if (excludePurchaseId && purchase.id === excludePurchaseId) {
+      continue
+    }
+    if (!purchase.plannedDate) {
       continue
     }
     const plannedDate = parseLocalDate(purchase.plannedDate)
@@ -407,6 +417,9 @@ export function availableUntilNextIncome(
     if (purchase.status !== 'planned') {
       continue
     }
+    if (!purchase.plannedDate) {
+      continue
+    }
     const plannedDate = parseLocalDate(purchase.plannedDate)
     if (nextIncomeDate) {
       if (compareDates(plannedDate, nextIncomeDate) < 0) {
@@ -420,11 +433,13 @@ export function availableUntilNextIncome(
   }
 
   let expenseSpend = 0
-  for (const rule of expenseRules) {
-    const dates = incomeOccurrences(rule, asOfDate, spendUntil, postedExpenseOccurrenceDates)
-    for (const date of dates) {
-      if (!nextIncomeDate || compareDates(date, nextIncomeDate) < 0) {
-        expenseSpend += rule.amount
+  if (nextIncomeDate) {
+    for (const rule of expenseRules) {
+      const dates = incomeOccurrences(rule, asOfDate, nextIncomeDate, postedExpenseOccurrenceDates)
+      for (const date of dates) {
+        if (compareDates(date, nextIncomeDate) < 0) {
+          expenseSpend += rule.amount
+        }
       }
     }
   }
