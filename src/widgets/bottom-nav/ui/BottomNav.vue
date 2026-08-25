@@ -1,44 +1,34 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ArrowLeftRight, CalendarCheck, House, PieChart, Plus } from '@lucide/vue'
+import { Plus } from '@lucide/vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { openFormDrawer } from '@/shared'
+import { NAV_ITEM_BY_ID, openFormDrawer, type NavItem } from '@/shared'
 import { useAccountStore } from '@/entities/account'
+import { usePreferencesStore } from '@/entities/preferences'
 
 const HOLD_MS = 400
 
 const route = useRoute()
 const accounts = useAccountStore()
+const prefs = usePreferencesStore()
 
-const leftLinks = [
-  {
-    to: '/',
-    label: 'Главная',
-    icon: House,
-  },
-  {
-    to: '/stats',
-    label: 'Статистика',
-    icon: PieChart,
-  },
-] as const
-
-const rightLink = {
-  to: '/calendar',
-  label: 'Планирование',
-  icon: CalendarCheck,
-} as const
+const items = computed(() => prefs.bottomNav.map((id) => NAV_ITEM_BY_ID[id]))
+const leftLinks = computed(() => items.value.slice(0, 2))
+const rightLinks = computed(() => items.value.slice(2, 4))
 
 const held = ref(false)
 let holdTimer: ReturnType<typeof setTimeout> | null = null
 
 const hasAccounts = computed(() => accounts.items.length > 0)
 
-function isActive(path: string) {
-  if (path === '/') {
+function isActive(item: NavItem) {
+  if (!item.to) {
+    return false
+  }
+  if (item.to === '/') {
     return route.path === '/'
   }
-  return route.path.startsWith(path)
+  return route.path.startsWith(item.to)
 }
 
 function clearHoldTimer() {
@@ -64,8 +54,10 @@ function openIncome() {
   openFormDrawer({ name: 'income' })
 }
 
-function openTransfer() {
-  openFormDrawer({ name: 'transfer' })
+function activate(item: NavItem) {
+  if (item.action === 'transfer') {
+    openFormDrawer({ name: 'transfer' })
+  }
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -117,13 +109,24 @@ onBeforeUnmount(() => {
 <template>
   <nav class="nav" data-tour="nav-expense" aria-label="Основная навигация">
     <div class="nav__cluster">
-      <span v-for="link in leftLinks" :key="link.to" class="nav__hit">
-        <RouterLink class="nav__link" :class="{ 'is-active': isActive(link.to) }" :to="link.to">
+      <span v-for="item in leftLinks" :key="item.id" class="nav__hit">
+        <RouterLink
+          v-if="item.to"
+          class="nav__link"
+          :class="{ 'is-active': isActive(item) }"
+          :to="item.to"
+        >
           <span class="nav__icon" aria-hidden="true">
-            <component :is="link.icon" :size="22" :stroke-width="1.7" />
+            <component :is="item.icon" :size="22" :stroke-width="1.7" />
           </span>
-          <span class="nav__label">{{ link.label }}</span>
+          <span class="nav__label">{{ item.label }}</span>
         </RouterLink>
+        <button v-else type="button" class="nav__link" @click="activate(item)">
+          <span class="nav__icon" aria-hidden="true">
+            <component :is="item.icon" :size="22" :stroke-width="1.7" />
+          </span>
+          <span class="nav__label">{{ item.label }}</span>
+        </button>
       </span>
     </div>
 
@@ -146,24 +149,23 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="nav__cluster">
-      <span class="nav__hit">
+      <span v-for="item in rightLinks" :key="item.id" class="nav__hit">
         <RouterLink
+          v-if="item.to"
           class="nav__link"
-          :class="{ 'is-active': isActive(rightLink.to) }"
-          :to="rightLink.to"
+          :class="{ 'is-active': isActive(item) }"
+          :to="item.to"
         >
           <span class="nav__icon" aria-hidden="true">
-            <component :is="rightLink.icon" :size="22" :stroke-width="1.7" />
+            <component :is="item.icon" :size="22" :stroke-width="1.7" />
           </span>
-          <span class="nav__label">{{ rightLink.label }}</span>
+          <span class="nav__label">{{ item.label }}</span>
         </RouterLink>
-      </span>
-      <span class="nav__hit">
-        <button type="button" class="nav__link" @click="openTransfer">
+        <button v-else type="button" class="nav__link" @click="activate(item)">
           <span class="nav__icon" aria-hidden="true">
-            <ArrowLeftRight :size="22" :stroke-width="1.7" />
+            <component :is="item.icon" :size="22" :stroke-width="1.7" />
           </span>
-          <span class="nav__label">Перевод</span>
+          <span class="nav__label">{{ item.label }}</span>
         </button>
       </span>
     </div>

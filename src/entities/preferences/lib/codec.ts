@@ -1,6 +1,12 @@
 import type { Json } from '@/shared'
 import type { Preferences } from '../model/types'
 import { DEFAULT_PREFERENCES } from './persist'
+import {
+  normalizeBottomNav,
+  normalizeSidebarSections,
+  parseAccountOrder,
+  parseSidebarAccountIds,
+} from '@/shared'
 
 export function parsePreferences(raw: unknown): Preferences {
   const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
@@ -17,6 +23,10 @@ export function parsePreferences(raw: unknown): Preferences {
       typeof obj.starter_catalog_dismissed === 'boolean'
         ? obj.starter_catalog_dismissed
         : DEFAULT_PREFERENCES.starterCatalogDismissed,
+    bottomNav: normalizeBottomNav(obj.bottom_nav),
+    sidebarSections: normalizeSidebarSections(obj.sidebar_sections),
+    sidebarAccountIds: parseSidebarAccountIds(obj),
+    accountOrder: parseAccountOrder(obj.account_order),
   }
 }
 
@@ -31,10 +41,19 @@ export function serializePreferences(
   prefs: Preferences,
   extra: Record<string, Json | undefined> = {},
 ): Json {
-  return {
+  const payload: Record<string, Json | undefined> = {
     ...extra,
     amount_suggestions: prefs.amountSuggestions,
     starter_catalog_applied: prefs.starterCatalogApplied,
     starter_catalog_dismissed: prefs.starterCatalogDismissed,
+    bottom_nav: prefs.bottomNav,
+    sidebar_sections: prefs.sidebarSections,
+    account_order: prefs.accountOrder,
   }
+  if (prefs.sidebarAccountIds === null) {
+    delete payload.sidebar_account_ids
+  } else {
+    payload.sidebar_account_ids = prefs.sidebarAccountIds
+  }
+  return payload
 }

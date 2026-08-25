@@ -4,6 +4,7 @@ import { EllipsisVertical, GripVertical } from '@lucide/vue'
 import { NDropdown, type DropdownOption } from 'naive-ui'
 import {
   AppButton,
+  AppDragGhost,
   AppDrawer,
   AppEmpty,
   AppSegmented,
@@ -62,6 +63,7 @@ const ghost = ref<{
   x: number
   y: number
   width: number
+  height: number
 } | null>(null)
 
 let dragPointerId: number | null = null
@@ -297,6 +299,7 @@ function beginDrag(category: Category, event: PointerEvent) {
   const row = (event.target as HTMLElement | null)?.closest('.row') as HTMLElement | null
   const rect = row?.getBoundingClientRect()
   const width = Math.min(rect?.width || 240, window.innerWidth - 32)
+  const height = rect?.height || 56
   ghostGrab = {
     x: rect ? Math.min(Math.max(16, event.clientX - rect.left), width - 16) : 40,
     y: rect ? Math.min(Math.max(8, event.clientY - rect.top), 48) : 28,
@@ -307,6 +310,7 @@ function beginDrag(category: Category, event: PointerEvent) {
     color: category.color,
     icon: category.icon,
     width,
+    height,
     x: event.clientX - ghostGrab.x,
     y: event.clientY - ghostGrab.y,
   }
@@ -314,7 +318,7 @@ function beginDrag(category: Category, event: PointerEvent) {
   dropTarget.value = dropKeyFromPoint(event.clientX, event.clientY)
   dragStarted = true
   skipClick = true
-  document.body.classList.add('is-category-dragging')
+  document.body.classList.add('is-dragging')
   stopScrollLoop()
   scrollRaf = requestAnimationFrame(edgeScroll)
 }
@@ -342,7 +346,7 @@ async function finishDrag() {
   dropTarget.value = null
   ghost.value = null
   stopScrollLoop()
-  document.body.classList.remove('is-category-dragging')
+  document.body.classList.remove('is-dragging')
   if (!categoryId || !target) return
 
   const category = categories.getById(categoryId)
@@ -420,7 +424,7 @@ onUnmounted(() => {
   clearHold()
   stopScrollLoop()
   ghost.value = null
-  document.body.classList.remove('is-category-dragging')
+  document.body.classList.remove('is-dragging')
   window.removeEventListener('pointermove', onDragMove)
   window.removeEventListener('pointerup', onDragEnd)
   window.removeEventListener('pointercancel', onDragEnd)
@@ -601,20 +605,12 @@ onUnmounted(() => {
     />
   </div>
 
-  <Teleport to="body">
-    <div
-      v-if="ghost"
-      class="drag-ghost"
-      aria-hidden="true"
-      :style="{
-        width: `${ghost.width}px`,
-        transform: `translate3d(${ghost.x}px, ${ghost.y}px, 0)`,
-      }"
-    >
+  <AppDragGhost :ghost="ghost">
+    <template v-if="ghost">
       <CategoryIcon :icon="ghost.icon" :color="ghost.color" :size="32" />
-      <span class="drag-ghost__name">{{ ghost.name }}</span>
-    </div>
-  </Teleport>
+      <span class="drag-ghost__label">{{ ghost.name }}</span>
+    </template>
+  </AppDragGhost>
 </template>
 
 <style scoped>
@@ -795,37 +791,5 @@ onUnmounted(() => {
 .row__grip:hover {
   background: var(--color-bg);
   color: var(--color-text);
-}
-</style>
-
-<style>
-body.is-category-dragging {
-  cursor: grabbing;
-  user-select: none;
-  touch-action: none;
-}
-
-.drag-ghost {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: 56px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: 0 12px 28px var(--color-shadow);
-  pointer-events: none;
-  will-change: transform;
-}
-
-.drag-ghost__name {
-  overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>

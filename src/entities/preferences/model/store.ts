@@ -1,15 +1,28 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { Json } from '@/shared'
+import {
+  MAX_SIDEBAR_ACCOUNTS,
+  normalizeBottomNav,
+  normalizeSidebarSections,
+  type Json,
+  type NavItemId,
+  type SidebarSectionId,
+} from '@/shared'
 import { fetchOwnPreferences, updateOwnPreferences } from '../api/preferencesApi'
 import { parsePreferences } from '../lib/codec'
-import { DEFAULT_PREFERENCES, loadPreferences, savePreferences } from '../lib/persist'
+import { clonePreferences, DEFAULT_PREFERENCES, loadPreferences, savePreferences } from '../lib/persist'
 import type { Preferences } from './types'
 
 export const usePreferencesStore = defineStore('preferences', () => {
   const amountSuggestions = ref(DEFAULT_PREFERENCES.amountSuggestions)
   const starterCatalogApplied = ref(DEFAULT_PREFERENCES.starterCatalogApplied)
   const starterCatalogDismissed = ref(DEFAULT_PREFERENCES.starterCatalogDismissed)
+  const bottomNav = ref<[NavItemId, NavItemId, NavItemId, NavItemId]>([
+    ...DEFAULT_PREFERENCES.bottomNav,
+  ] as [NavItemId, NavItemId, NavItemId, NavItemId])
+  const sidebarSections = ref<SidebarSectionId[]>([...DEFAULT_PREFERENCES.sidebarSections])
+  const sidebarAccountIds = ref<string[] | null>(null)
+  const accountOrder = ref<string[]>([])
   const userId = ref<string | null>(null)
   let extra: Record<string, Json | undefined> = {}
   let dirty = false
@@ -20,6 +33,10 @@ export const usePreferencesStore = defineStore('preferences', () => {
       amountSuggestions: amountSuggestions.value,
       starterCatalogApplied: starterCatalogApplied.value,
       starterCatalogDismissed: starterCatalogDismissed.value,
+      bottomNav: normalizeBottomNav(bottomNav.value),
+      sidebarSections: normalizeSidebarSections(sidebarSections.value),
+      sidebarAccountIds: sidebarAccountIds.value ? [...sidebarAccountIds.value] : null,
+      accountOrder: [...accountOrder.value],
     }
   }
 
@@ -27,8 +44,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
     amountSuggestions.value = prefs.amountSuggestions
     starterCatalogApplied.value = prefs.starterCatalogApplied
     starterCatalogDismissed.value = prefs.starterCatalogDismissed
+    bottomNav.value = normalizeBottomNav(prefs.bottomNav)
+    sidebarSections.value = normalizeSidebarSections(prefs.sidebarSections)
+    sidebarAccountIds.value = prefs.sidebarAccountIds ? [...prefs.sidebarAccountIds] : null
+    accountOrder.value = [...prefs.accountOrder]
     if (persist && userId.value) {
-      savePreferences(userId.value, prefs)
+      savePreferences(userId.value, snapshot())
     }
   }
 
@@ -85,6 +106,28 @@ export const usePreferencesStore = defineStore('preferences', () => {
     void persistRemote()
   }
 
+  function setBottomNav(next: [NavItemId, NavItemId, NavItemId, NavItemId]) {
+    bottomNav.value = normalizeBottomNav(next)
+    void persistRemote()
+  }
+
+  function setSidebarSections(next: SidebarSectionId[]) {
+    sidebarSections.value = normalizeSidebarSections(next)
+    void persistRemote()
+  }
+
+  function setSidebarAccountIds(next: string[] | null) {
+    sidebarAccountIds.value = next
+      ? [...new Set(next.filter(Boolean))].slice(0, MAX_SIDEBAR_ACCOUNTS)
+      : null
+    void persistRemote()
+  }
+
+  function setAccountOrder(next: string[]) {
+    accountOrder.value = [...next]
+    void persistRemote()
+  }
+
   async function flush() {
     await writes
     if (!dirty || !userId.value) {
@@ -125,18 +168,26 @@ export const usePreferencesStore = defineStore('preferences', () => {
     extra = {}
     dirty = false
     writes = Promise.resolve()
-    apply({ ...DEFAULT_PREFERENCES }, false)
+    apply(clonePreferences(DEFAULT_PREFERENCES), false)
   }
 
   return {
     amountSuggestions,
     starterCatalogApplied,
     starterCatalogDismissed,
+    bottomNav,
+    sidebarSections,
+    sidebarAccountIds,
+    accountOrder,
     hydrateLocal,
     applyRemote,
     setAmountSuggestions,
     setStarterCatalogApplied,
     setStarterCatalogDismissed,
+    setBottomNav,
+    setSidebarSections,
+    setSidebarAccountIds,
+    setAccountOrder,
     syncWithServer,
     reset,
   }

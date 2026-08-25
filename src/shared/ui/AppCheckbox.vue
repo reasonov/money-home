@@ -14,7 +14,12 @@ const emit = defineEmits<{
 const model = defineModel<boolean>()
 
 const value = computed({
-  get: () => model.value ?? props.checked ?? false,
+  get: () => {
+    if (props.checked !== undefined) {
+      return props.checked
+    }
+    return model.value ?? false
+  },
   set: (next: boolean) => {
     model.value = next
     emit('update:checked', next)

@@ -8,6 +8,32 @@ export {
   type Json,
 } from './api'
 export { APP_VERSION } from './config/version'
+export {
+  NAV_ITEMS,
+  NAV_ITEM_BY_ID,
+  NAV_ITEM_IDS,
+  SIDEBAR_SECTION_IDS,
+  DEFAULT_BOTTOM_NAV,
+  DEFAULT_SIDEBAR_SECTIONS,
+  MAX_SIDEBAR_ACCOUNTS,
+  BOTTOM_NAV_SLOT_COUNT,
+  assignBottomNavSlot,
+  normalizeBottomNav,
+  normalizeSidebarSections,
+  parseAccountOrder,
+  parseSidebarAccountIds,
+  sortAccountsByOrder,
+  resolveSidebarAccounts,
+  resolvePinnedAccountIds,
+  isNavItemId,
+  isSidebarSectionId,
+  type NavItemId,
+  type SidebarSectionId,
+  type NavItem,
+} from './config/appNav'
+export { usePointerDrag } from './lib/usePointerDrag'
+export { usePointerReorder, moveItem } from './lib/usePointerReorder'
+export type { DragGhost } from './lib/pointerDrag'
 export { formatMoney, formatMoneyPlain } from './lib/formatMoney'
 export { roundMoney, floorMoney } from './lib/parseAmount'
 export {
@@ -122,4 +148,5 @@ export {
   AppSegmented,
   AppPeriodSelect,
   SwipeReveal,
+  AppDragGhost,
 } from './ui'

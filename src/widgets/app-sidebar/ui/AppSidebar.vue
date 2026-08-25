@@ -1,28 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
-  ArrowLeftRight,
-  Bookmark,
-  CalendarCheck,
-  CalendarClock,
+  ArrowUpDown,
   ChevronRight,
-  FolderTree,
-  History,
-  House,
+  GripVertical,
   List,
-  PieChart,
-  PiggyBank,
   Plus,
   Settings,
   Wallet,
 } from '@lucide/vue'
 import { NDrawer, NDrawerContent } from 'naive-ui'
 import { RouterLink, useRouter } from 'vue-router'
-import { APP_VERSION, AppTag, closeSidebar, formatMoney, openFormDrawer, sidebarOpen } from '@/shared'
+import {
+  APP_VERSION,
+  AppDragGhost,
+  AppTag,
+  closeSidebar,
+  formatMoney,
+  NAV_ITEM_BY_ID,
+  openFormDrawer,
+  resolveSidebarAccounts,
+  sidebarOpen,
+  usePointerReorder,
+  isNavItemId,
+  type NavItemId,
+  type SidebarSectionId,
+} from '@/shared'
 import { useAccountStore } from '@/entities/account'
+import { usePreferencesStore } from '@/entities/preferences'
 
 const router = useRouter()
 const accounts = useAccountStore()
+const prefs = usePreferencesStore()
 
 const open = computed({
   get: () => sidebarOpen.value,
@@ -31,18 +40,41 @@ const open = computed({
   },
 })
 
-const previewAccounts = computed(() => accounts.items.slice(0, 3))
+const previewAccounts = computed(() =>
+  resolveSidebarAccounts(accounts.items, prefs.accountOrder, prefs.sidebarAccountIds),
+)
 
-const links = [
-  { to: '/', label: 'Главная', icon: House },
-  { to: '/stats', label: 'Статистика', icon: PieChart },
-  { to: '/calendar', label: 'Планирование', icon: CalendarCheck },
-  { to: '/history', label: 'История', icon: History },
-  { to: '/categories', label: 'Категории', icon: FolderTree },
-  { to: '/templates', label: 'Избранное', icon: Bookmark },
-  { to: '/income', label: 'Регулярные операции', icon: CalendarClock },
-  { to: '/savings', label: 'Копилки', icon: PiggyBank },
-]
+const reorderMode = ref(false)
+const sectionDraft = ref<SidebarSectionId[] | null>(null)
+const sectionsEl = ref<HTMLElement | null>(null)
+
+const displayedSections = computed(() => sectionDraft.value ?? prefs.sidebarSections)
+const sectionItems = computed(() => displayedSections.value.map((id) => NAV_ITEM_BY_ID[id]))
+
+const {
+  draggingId: sectionDraggingId,
+  dragging: sectionDragging,
+  ghost: sectionGhost,
+  onPointerDown: onSectionPointerDown,
+} = usePointerReorder({
+    container: sectionsEl,
+    getIds: () => displayedSections.value,
+    enabled: () => reorderMode.value,
+    onReorder(ids) {
+      sectionDraft.value = ids as SidebarSectionId[]
+    },
+    onDragEnd() {
+      if (!sectionDraft.value) {
+        return
+      }
+      prefs.setSidebarSections(sectionDraft.value)
+      sectionDraft.value = null
+    },
+  })
+const draggedSection = computed(() => {
+  const id = sectionDraggingId.value
+  return id && isNavItemId(id) ? NAV_ITEM_BY_ID[id] : null
+})
 
 function go(path: string) {
   closeSidebar()
@@ -54,6 +86,20 @@ function openTransfer() {
   openFormDrawer({ name: 'transfer' })
 }
 
+function activateSection(id: NavItemId) {
+  if (reorderMode.value) {
+    return
+  }
+  const item = NAV_ITEM_BY_ID[id]
+  if (item.action === 'transfer') {
+    openTransfer()
+    return
+  }
+  if (item.to) {
+    go(item.to)
+  }
+}
+
 function openAccountCreate() {
   closeSidebar()
   openFormDrawer({ name: 'account' })
@@ -62,6 +108,14 @@ function openAccountCreate() {
 function openAccount(id: string) {
   closeSidebar()
   void router.push({ name: 'account-detail', params: { id } })
+}
+
+function toggleReorder() {
+  if (reorderMode.value && sectionDraft.value) {
+    prefs.setSidebarSections(sectionDraft.value)
+    sectionDraft.value = null
+  }
+  reorderMode.value = !reorderMode.value
 }
 </script>
 
@@ -129,25 +183,38 @@ function openAccount(id: string) {
         </section>
 
         <section class="sidebar__block">
-          <h2 class="sidebar__heading">Разделы</h2>
-          <button
-            v-for="link in links"
-            :key="link.to"
-            class="sidebar__link"
-            type="button"
-            @click="go(link.to)"
-          >
-            <span class="sidebar__icon" aria-hidden="true">
-              <component :is="link.icon" :size="18" :stroke-width="1.8" />
-            </span>
-            {{ link.label }}
-          </button>
-          <button class="sidebar__link" type="button" @click="openTransfer">
-            <span class="sidebar__icon" aria-hidden="true">
-              <ArrowLeftRight :size="18" :stroke-width="1.8" />
-            </span>
-            Перевод между счетами
-          </button>
+          <div class="sidebar__heading-row">
+            <h2 class="sidebar__heading">Разделы</h2>
+            <button
+              type="button"
+              class="sidebar__reorder"
+              :aria-pressed="reorderMode"
+              :aria-label="reorderMode ? 'Завершить изменение порядка' : 'Изменить порядок разделов'"
+              @click="toggleReorder"
+            >
+              <ArrowUpDown :size="18" :stroke-width="1.8" />
+            </button>
+          </div>
+          <div ref="sectionsEl">
+            <button
+              v-for="item in sectionItems"
+              :key="item.id"
+              class="sidebar__link"
+              :class="{ 'is-lifted': sectionDragging && sectionDraggingId === item.id }"
+              type="button"
+              :data-reorder-id="item.id"
+              @click="activateSection(item.id)"
+              @pointerdown="reorderMode ? onSectionPointerDown(item.id, $event) : undefined"
+            >
+              <span v-if="reorderMode" class="sidebar__grip" aria-hidden="true">
+                <GripVertical :size="16" :stroke-width="2" />
+              </span>
+              <span class="sidebar__icon" aria-hidden="true">
+                <component :is="item.icon" :size="18" :stroke-width="1.8" />
+              </span>
+              {{ item.sidebarLabel ?? item.label }}
+            </button>
+          </div>
         </section>
 
         <section class="sidebar__block">
@@ -161,6 +228,14 @@ function openAccount(id: string) {
       </nav>
     </NDrawerContent>
   </NDrawer>
+  <AppDragGhost :ghost="sectionGhost">
+    <template v-if="draggedSection">
+      <span class="drag-ghost__icon" aria-hidden="true">
+        <component :is="draggedSection.icon" :size="18" :stroke-width="1.8" />
+      </span>
+      <span class="drag-ghost__label">{{ draggedSection.sidebarLabel ?? draggedSection.label }}</span>
+    </template>
+  </AppDragGhost>
 </template>
 
 <style scoped>
@@ -194,6 +269,18 @@ function openAccount(id: string) {
   gap: var(--space-5);
 }
 
+.sidebar__heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.sidebar__heading-row .sidebar__heading {
+  margin-bottom: 0;
+}
+
 .sidebar__heading {
   margin-bottom: var(--space-2);
   font-size: 0.75rem;
@@ -201,6 +288,26 @@ function openAccount(id: string) {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+.sidebar__reorder {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -8px -10px 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.sidebar__reorder[aria-pressed='true'] {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 .sidebar__empty {
@@ -225,6 +332,10 @@ function openAccount(id: string) {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+}
+
+.sidebar__link.is-lifted {
+  opacity: 0.28;
 }
 
 .sidebar__account + .sidebar__account,
@@ -283,6 +394,18 @@ function openAccount(id: string) {
   width: 24px;
   height: 24px;
   color: var(--color-accent);
+}
+
+.sidebar__grip {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -4px;
+  color: var(--color-text-muted);
+  touch-action: none;
+  cursor: grab;
 }
 
 .sidebar__link:hover {

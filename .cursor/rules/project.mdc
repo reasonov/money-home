@@ -12,3 +12,4 @@ alwaysApply: true
 - Client env only: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Never ship `service_role`.
 - Product source of truth: `docs/SPEC.md`. Read **only the section the task needs**. Do not load the whole file for a local bugfix.
 - Tests: update Vitest only for pure helpers (balance projection, due dates, sync conflicts, amount parse). No component/UI tests unless asked. After those changes: `npm run test:unit`.
+- Do not launch Chrome DevTools MCP, browser automation, screenshots, or live UI verification unless the user explicitly asks. Leave live testing to the user. Unit tests are enough when they apply.

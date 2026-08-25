@@ -103,3 +103,9 @@ ul {
     opacity 0.3s ease,
     transform 0.3s ease;
 }
+
+body.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+  touch-action: none;
+}
