@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { parseLocalDate } from './dates'
 
 export type RuleFormDraft = {
   accountId: string
@@ -8,6 +9,16 @@ export type RuleFormDraft = {
   frequency: 'weekly' | 'monthly'
   weekday?: number
   monthDay?: number
+}
+
+export function ruleScheduleFromDate(iso: string) {
+  const date = parseLocalDate(iso)
+  const day = date.getDate()
+  return {
+    startsOn: iso,
+    weekday: date.getDay(),
+    monthDay: Math.min(Math.max(day, 1), 28),
+  }
 }
 
 export type FormDrawerCloseReason = 'dismiss' | 'submit' | 'silent'
@@ -21,9 +32,9 @@ export type FormDrawer =
   | { name: 'account'; mode?: 'create' | 'join' }
   | { name: 'purchase-new'; plannedDate?: string }
   | { name: 'purchase-edit'; purchaseId: string }
-  | { name: 'income-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
-  | { name: 'expense-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft }
-  | { name: 'transfer-rule'; ruleId?: string; fromAccountId?: string }
+  | { name: 'income-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft; startsOn?: string }
+  | { name: 'expense-rule'; ruleId?: string; accountId?: string; draft?: RuleFormDraft; startsOn?: string }
+  | { name: 'transfer-rule'; ruleId?: string; fromAccountId?: string; startsOn?: string }
   | { name: 'transaction-edit'; transactionId: string }
   | { name: 'savings-goal'; accountId?: string; goalId?: string }
   | { name: 'savings-advice'; accountId: string; goalId: string }

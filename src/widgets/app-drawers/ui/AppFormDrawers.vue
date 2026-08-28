@@ -60,7 +60,8 @@ const ruleFormKey = computed(() => {
   ) {
     return 'rule'
   }
-  return current.ruleId ?? 'new'
+  const startsOn = current.startsOn ?? ''
+  return `${current.ruleId ?? 'new'}:${startsOn}`
 })
 
 async function onOperationSaved(tx: Transaction) {
@@ -118,6 +119,7 @@ function onDismissed() {
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       :draft="formDrawer.draft"
+      :starts-on="formDrawer.startsOn"
       @saved="onSaved"
     />
     <ExpenseRuleForm
@@ -126,6 +128,7 @@ function onDismissed() {
       :rule-id="formDrawer.ruleId"
       :account-id="formDrawer.accountId"
       :draft="formDrawer.draft"
+      :starts-on="formDrawer.startsOn"
       @saved="onSaved"
     />
     <TransferRuleForm
@@ -133,6 +136,7 @@ function onDismissed() {
       :key="ruleFormKey"
       :rule-id="formDrawer.ruleId"
       :from-account-id="formDrawer.fromAccountId"
+      :starts-on="formDrawer.startsOn"
       @saved="onSaved"
     />
     <EditOperationForm

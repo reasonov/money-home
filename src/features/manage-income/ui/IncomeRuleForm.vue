@@ -7,6 +7,7 @@ import {
   AppInputNumber,
   AppSelect,
   getErrorMessage,
+  ruleScheduleFromDate,
   todayLocal,
   type IncomeFrequency,
   type RuleFormDraft,
@@ -30,6 +31,7 @@ const props = defineProps<{
   ruleId?: string
   accountId?: string
   draft?: RuleFormDraft
+  startsOn?: string
 }>()
 
 const emit = defineEmits<{
@@ -43,6 +45,7 @@ const categories = useCategoryStore()
 
 const existing = props.ruleId ? store.items.find((item) => item.id === props.ruleId) : undefined
 const draft = existing ? undefined : props.draft
+const schedule = !existing && props.startsOn ? ruleScheduleFromDate(props.startsOn) : undefined
 
 const accountId = ref(
   existing?.accountId ??
@@ -55,10 +58,10 @@ const title = ref(existing?.title ?? draft?.title ?? '')
 const categoryId = ref(existing?.categoryId ?? draft?.categoryId ?? '')
 const amount = ref(existing ? String(existing.amount) : draft ? String(draft.amount) : '')
 const frequency = ref<IncomeFrequency>(existing?.frequency ?? draft?.frequency ?? 'monthly')
-const weekday = ref(String(existing?.weekday ?? draft?.weekday ?? 5))
-const monthDay = ref(String(existing?.monthDay ?? draft?.monthDay ?? 10))
-const anchorDate = ref(existing?.anchorDate ?? todayLocal())
-const startsOn = ref(existing?.startsOn ?? todayLocal())
+const weekday = ref(String(existing?.weekday ?? draft?.weekday ?? schedule?.weekday ?? 5))
+const monthDay = ref(String(existing?.monthDay ?? draft?.monthDay ?? schedule?.monthDay ?? 10))
+const anchorDate = ref(existing?.anchorDate ?? schedule?.startsOn ?? todayLocal())
+const startsOn = ref(existing?.startsOn ?? schedule?.startsOn ?? todayLocal())
 const error = ref('')
 const pending = ref(false)
 

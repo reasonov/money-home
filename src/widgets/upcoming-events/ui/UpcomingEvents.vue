@@ -28,6 +28,7 @@ interface UpcomingEvent {
   amount: number
   overdue: boolean
   purchaseId?: string
+  ruleId?: string
   inflow?: boolean
 }
 
@@ -91,6 +92,7 @@ const events = computed(() => {
         title: rule.title?.trim() || 'Пополнение',
         amount: rule.amount,
         overdue: false,
+        ruleId: rule.id,
       })
     }
   }
@@ -115,6 +117,7 @@ const events = computed(() => {
         title: rule.title?.trim() || 'Регулярный расход',
         amount: rule.amount,
         overdue: false,
+        ruleId: rule.id,
       })
     }
   }
@@ -139,6 +142,7 @@ const events = computed(() => {
         title: transferTitle(rule, selected),
         amount: rule.amount,
         overdue: false,
+        ruleId: rule.id,
         ...(selected === ALL_ACCOUNTS_ID ? {} : { inflow: rule.toAccountId === selected }),
       })
     }
@@ -203,7 +207,14 @@ function openEvent(item: UpcomingEvent) {
     void router.push({ name: 'calendar', query: { purchase: item.purchaseId } })
     return
   }
-  void router.push({ name: 'income' })
+  if (item.ruleId) {
+    void router.push({
+      name: 'calendar',
+      query: { rule: item.ruleId, ruleKind: item.kind },
+    })
+    return
+  }
+  void router.push({ name: 'calendar' })
 }
 </script>
 

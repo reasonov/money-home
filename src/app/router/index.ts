@@ -117,13 +117,11 @@ const router = createRouter({
           path: 'calendar',
           name: 'calendar',
           component: () => import('@/pages/calendar/ui/CalendarPage.vue'),
-          meta: { title: 'Планы покупок', tab: true, accountSelect: true },
+          meta: { title: 'Планы', tab: true, accountSelect: true },
         },
         {
           path: 'income',
-          name: 'income',
-          component: () => import('@/pages/income/ui/IncomePage.vue'),
-          meta: { title: 'Регулярные операции' },
+          redirect: { name: 'calendar', query: { kind: 'regular' } },
         },
         {
           path: 'savings',

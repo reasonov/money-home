@@ -9,7 +9,6 @@ export const TOUR_STEP_IDS = [
   'header-inbox',
   'header-menu',
   'history',
-  'income-rules',
   'savings',
   'calendar-cta',
   'stats-chart',

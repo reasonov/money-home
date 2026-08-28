@@ -14,7 +14,7 @@ import {
 describe('appNav helpers', () => {
   it('normalizes bottom nav to four unique known ids', () => {
     expect(normalizeBottomNav(undefined)).toEqual(DEFAULT_BOTTOM_NAV)
-    expect(normalizeBottomNav(['income', 'income', 'nope'])).toEqual(['income', 'home', 'stats', 'calendar'])
+    expect(normalizeBottomNav(['history', 'history', 'nope'])).toEqual(['history', 'home', 'stats', 'calendar'])
   })
 
   it('swaps an assigned bottom nav slot', () => {

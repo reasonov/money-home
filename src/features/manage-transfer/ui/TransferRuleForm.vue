@@ -9,6 +9,7 @@ import {
   AppSelect,
   getErrorMessage,
   openFormDrawer,
+  ruleScheduleFromDate,
   todayLocal,
   type IncomeFrequency,
 } from '@/shared'
@@ -29,6 +30,7 @@ const WEEKDAYS = [
 const props = defineProps<{
   ruleId?: string
   fromAccountId?: string
+  startsOn?: string
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +42,7 @@ const session = useSessionStore()
 const accounts = useAccountStore()
 
 const existing = props.ruleId ? store.items.find((item) => item.id === props.ruleId) : undefined
+const schedule = !existing && props.startsOn ? ruleScheduleFromDate(props.startsOn) : undefined
 
 const fromId = ref(
   existing?.fromAccountId ??
@@ -53,10 +56,10 @@ const toId = ref(
 const title = ref(existing?.title ?? '')
 const amount = ref(existing ? String(existing.amount) : '')
 const frequency = ref<IncomeFrequency>(existing?.frequency ?? 'monthly')
-const weekday = ref(String(existing?.weekday ?? 5))
-const monthDay = ref(String(existing?.monthDay ?? 10))
-const anchorDate = ref(existing?.anchorDate ?? todayLocal())
-const startsOn = ref(existing?.startsOn ?? todayLocal())
+const weekday = ref(String(existing?.weekday ?? schedule?.weekday ?? 5))
+const monthDay = ref(String(existing?.monthDay ?? schedule?.monthDay ?? 10))
+const anchorDate = ref(existing?.anchorDate ?? schedule?.startsOn ?? todayLocal())
+const startsOn = ref(existing?.startsOn ?? schedule?.startsOn ?? todayLocal())
 const error = ref('')
 const pending = ref(false)
 

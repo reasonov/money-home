@@ -125,6 +125,7 @@ export {
   lastFormDrawerCloseReason,
   openFormDrawer,
   closeFormDrawer,
+  ruleScheduleFromDate,
   type FormDrawer,
   type FormDrawerCloseReason,
   type RuleFormDraft,
