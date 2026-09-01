@@ -11,8 +11,8 @@ defineEmits<{
   <aside class="offer" role="note">
     <p class="offer__text">Можно добавить базовые категории, которых ещё нет</p>
     <div class="offer__actions">
-      <AppButton @click="$emit('select')">Выбрать</AppButton>
       <AppButton variant="ghost" @click="$emit('dismiss')">Не сейчас</AppButton>
+      <AppButton @click="$emit('select')">Выбрать</AppButton>
     </div>
   </aside>
 </template>

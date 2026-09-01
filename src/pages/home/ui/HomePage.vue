@@ -12,13 +12,16 @@ import {
   formatMoney,
   openFormDrawer,
   todayLocal,
+  useHorizontalSwipe,
 } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import { useCategoryStore } from '@/entities/category'
 import {
+  canShiftChartPeriod,
   filterStatsTransactions,
   formatPeriodLabel,
   rollupCategorySlices,
+  shiftChartPeriod,
   useTransactionStore,
   type CategorySpendSlice,
   type ChartPeriod,
@@ -37,6 +40,7 @@ const router = useRouter()
 
 const period = ref<ChartPeriod>('month')
 const kind = ref<'expense' | 'income'>('expense')
+const asOf = ref(todayLocal())
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 const drillGroupId = ref<string | null>(null)
@@ -46,17 +50,56 @@ const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
   { value: 'income', label: 'Доходы' },
 ]
 
+const customRange = computed(() => ({
+  from: customFrom.value,
+  to: customTo.value,
+}))
+
 const periodLabel = computed(() =>
-  formatPeriodLabel(period.value, undefined, {
-    from: customFrom.value,
-    to: customTo.value,
-  }),
+  formatPeriodLabel(period.value, asOf.value, customRange.value),
 )
+
+const canShiftNext = computed(() =>
+  canShiftChartPeriod(period.value, asOf.value, 1, customRange.value),
+)
+
+function onPeriodShift(delta: number) {
+  if (delta > 0 && !canShiftNext.value) {
+    return
+  }
+  const next = shiftChartPeriod(period.value, asOf.value, delta, customRange.value)
+  asOf.value = next.asOf
+  if (next.from) customFrom.value = next.from
+  if (next.to) customTo.value = next.to
+}
+
+const {
+  rootRef: sliderRef,
+  offset: sliderOffset,
+  dragging: sliderDragging,
+  settling: sliderSettling,
+  animateSwipe,
+  onPointerDown: onSliderDown,
+  onPointerMove: onSliderMove,
+  onPointerUp: onSliderUp,
+  onPointerCancel: onSliderCancel,
+} = useHorizontalSwipe({
+  onSwipe: onPeriodShift,
+  canSwipe: (delta) => delta < 0 || canShiftNext.value,
+})
+
+const sliderStyle = computed(() => ({
+  transform: `translate3d(${sliderOffset.value}px, 0, 0)`,
+  transition: sliderSettling.value
+    ? 'transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)'
+    : 'none',
+}))
 
 const filtered = computed(() =>
   filterStatsTransactions(transactions.posted, {
     accountId: selectedAccountId.value,
     period: period.value,
+    asOf: asOf.value,
     from: customFrom.value,
     to: customTo.value,
   }),
@@ -75,9 +118,6 @@ const drillGroup = computed(() =>
   drillGroupId.value ? categories.getGroupById(drillGroupId.value) : null,
 )
 const centerLabel = computed(() => (kind.value === 'expense' ? 'Потрачено' : 'Получено'))
-const emptyText = computed(() =>
-  kind.value === 'expense' ? 'Нет расходов за период' : 'Нет доходов за период',
-)
 const totalLabel = computed(() =>
   selectedAccountId.value === ALL_ACCOUNTS_ID
     ? 'Всего на счетах'
@@ -100,6 +140,9 @@ function openCategoryHistory(slice: CategorySpendSlice) {
       kind: kind.value,
       period: period.value,
       ...(period.value === 'custom' ? { from: customFrom.value, to: customTo.value } : {}),
+      ...(period.value !== 'custom' && period.value !== 'all' && asOf.value !== todayLocal()
+        ? { asOf: asOf.value }
+        : {}),
     },
   })
 }
@@ -163,7 +206,11 @@ function openCategoryHistory(slice: CategorySpendSlice) {
             v-model="period"
             v-model:from="customFrom"
             v-model:to="customTo"
+            v-model:as-of="asOf"
             :label="periodLabel"
+            :can-next="canShiftNext"
+            spread
+            @shift="animateSwipe"
           />
         </div>
 
@@ -176,14 +223,24 @@ function openCategoryHistory(slice: CategorySpendSlice) {
           Назад · {{ drillGroup.name }}
         </button>
 
-        <CategorySpendChart
-          v-if="slices.length"
-          embedded
-          :slices="slices"
-          :center-label="centerLabel"
-          @legend-click="openCategoryHistory"
-        />
-        <AppEmpty v-else :description="emptyText" />
+        <div
+          ref="sliderRef"
+          class="home__slider"
+          :class="{ 'is-dragging': sliderDragging }"
+          @pointerdown="onSliderDown"
+          @pointermove="onSliderMove"
+          @pointerup="onSliderUp"
+          @pointercancel="onSliderCancel"
+        >
+          <div class="home__slider-pane" :style="sliderStyle">
+            <CategorySpendChart
+              embedded
+              :slices="slices"
+              :center-label="centerLabel"
+              @legend-click="openCategoryHistory"
+            />
+          </div>
+        </div>
       </section>
 
       <RouterLink class="history-link" to="/history" aria-label="Открыть историю операций">
@@ -237,10 +294,24 @@ function openCategoryHistory(slice: CategorySpendSlice) {
 }
 
 .home__toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 9.75rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-2);
+}
+
+.home__slider {
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.home__slider.is-dragging {
+  touch-action: none;
+}
+
+.home__slider-pane {
+  min-height: 220px;
+  will-change: transform;
 }
 
 .home__back {

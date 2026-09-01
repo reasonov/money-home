@@ -416,9 +416,6 @@ async function onDelete() {
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <div class="form__submit">
-      <AppButton type="submit" block :disabled="pending || (!isTransfer && !availableCats.length)">
-        {{ pending ? 'Сохраняем…' : 'Сохранить' }}
-      </AppButton>
       <AppButton type="button" variant="danger" block :disabled="pending" @click="onDelete">
         {{
           isAutoRule
@@ -427,6 +424,9 @@ async function onDelete() {
               : 'Отменить пополнение'
             : 'Удалить'
         }}
+      </AppButton>
+      <AppButton type="submit" block :disabled="pending || (!isTransfer && !availableCats.length)">
+        {{ pending ? 'Сохраняем…' : 'Сохранить' }}
       </AppButton>
     </div>
     <AppButton

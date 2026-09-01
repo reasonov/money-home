@@ -38,6 +38,7 @@ export { usePointerReorder, moveItem } from './lib/usePointerReorder'
 export type { DragGhost } from './lib/pointerDrag'
 export { formatMoney, formatMoneyPlain } from './lib/formatMoney'
 export { roundMoney, floorMoney } from './lib/parseAmount'
+export { useHorizontalSwipe } from './lib/useHorizontalSwipe'
 export {
   parseLocalDate,
   formatLocalDate,

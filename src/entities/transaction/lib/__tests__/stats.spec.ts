@@ -3,6 +3,7 @@ import { todayLocal } from '@/shared'
 import type { Transaction } from '../../model/types'
 import {
   averageDailyExpense,
+  canShiftChartPeriod,
   expensesByCategory,
   expensesByDay,
   expensesByWeekday,
@@ -13,6 +14,7 @@ import {
   heatmapWindow,
   periodDayCount,
   previousStatsDateRange,
+  shiftChartPeriod,
   statsDateRange,
   statsSummary,
   topTransactions,
@@ -542,6 +544,10 @@ describe('formatPeriodLabel', () => {
     expect(formatPeriodLabel('month', '2026-08-14')).toBe('Август')
   })
 
+  it('adds the year when the month is in another year', () => {
+    expect(formatPeriodLabel('month', '2025-08-14')).toBe('Август 2025')
+  })
+
   it('uses the calendar year', () => {
     expect(formatPeriodLabel('year', '2026-08-14')).toBe('2026')
   })
@@ -554,5 +560,101 @@ describe('formatPeriodLabel', () => {
 
   it('uses За все время for the unbounded period', () => {
     expect(formatPeriodLabel('all', '2026-08-14')).toBe('За все время')
+  })
+})
+
+describe('shiftChartPeriod', () => {
+  const today = '2026-08-14'
+
+  it('shifts a day back', () => {
+    expect(shiftChartPeriod('day', today, -1, undefined, today)).toEqual({ asOf: '2026-08-13' })
+  })
+
+  it('shifts a day forward to today', () => {
+    expect(shiftChartPeriod('day', '2026-08-13', 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('does not shift a day into the future', () => {
+    expect(shiftChartPeriod('day', today, 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('shifts a week to the last day of the previous week', () => {
+    expect(shiftChartPeriod('week', today, -1, undefined, today)).toEqual({ asOf: '2026-08-09' })
+  })
+
+  it('shifts a week forward onto today when landing on the current week', () => {
+    expect(shiftChartPeriod('week', '2026-08-09', 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('shifts a month to the last day of the previous month', () => {
+    expect(shiftChartPeriod('month', today, -1, undefined, today)).toEqual({ asOf: '2026-07-31' })
+  })
+
+  it('shifts a month forward onto today when landing on the current month', () => {
+    expect(shiftChartPeriod('month', '2026-07-31', 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('does not shift a month into the future', () => {
+    expect(shiftChartPeriod('month', today, 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('lands on the last day of February from March', () => {
+    expect(shiftChartPeriod('month', '2026-03-31', -1, undefined, '2026-03-31')).toEqual({
+      asOf: '2026-02-28',
+    })
+  })
+
+  it('shifts a year to the last day of the previous year', () => {
+    expect(shiftChartPeriod('year', today, -1, undefined, today)).toEqual({ asOf: '2025-12-31' })
+  })
+
+  it('shifts a year forward onto today when landing on the current year', () => {
+    expect(shiftChartPeriod('year', '2025-12-31', 1, undefined, today)).toEqual({ asOf: today })
+  })
+
+  it('shifts a custom range back by its length', () => {
+    expect(
+      shiftChartPeriod('custom', today, -1, { from: '2026-08-01', to: '2026-08-15' }, today),
+    ).toEqual({
+      asOf: '2026-07-31',
+      from: '2026-07-17',
+      to: '2026-07-31',
+    })
+  })
+
+  it('does not shift a custom range into the future', () => {
+    expect(
+      shiftChartPeriod('custom', today, 1, { from: '2026-08-01', to: '2026-08-14' }, today),
+    ).toEqual({
+      asOf: today,
+      from: '2026-08-01',
+      to: '2026-08-14',
+    })
+  })
+
+  it('leaves all time unchanged', () => {
+    expect(shiftChartPeriod('all', today, -1, undefined, today)).toEqual({ asOf: today })
+  })
+})
+
+describe('canShiftChartPeriod', () => {
+  const today = '2026-08-14'
+
+  it('allows going back from the current month and forbids going forward', () => {
+    expect(canShiftChartPeriod('month', today, -1, undefined, today)).toBe(true)
+    expect(canShiftChartPeriod('month', today, 1, undefined, today)).toBe(false)
+  })
+
+  it('allows going forward from a past month', () => {
+    expect(canShiftChartPeriod('month', '2026-07-31', 1, undefined, today)).toBe(true)
+  })
+
+  it('forbids shifting all time', () => {
+    expect(canShiftChartPeriod('all', today, -1, undefined, today)).toBe(false)
+    expect(canShiftChartPeriod('all', today, 1, undefined, today)).toBe(false)
+  })
+
+  it('forbids shifting custom without bounds', () => {
+    expect(canShiftChartPeriod('custom', today, -1, undefined, today)).toBe(false)
   })
 })

@@ -24,6 +24,7 @@ import { usePurchaseStore } from '@/entities/purchase'
 import { useTransferRuleStore } from '@/entities/transfer-rule'
 import {
   averageDailyExpense,
+  canShiftChartPeriod,
   expensesByWeekday,
   expenseShare,
   filterStatsTransactions,
@@ -32,6 +33,7 @@ import {
   periodDayCount,
   previousStatsDateRange,
   rollupCategorySlices,
+  shiftChartPeriod,
   statsDateRange,
   statsSummary,
   topTransactions,
@@ -76,6 +78,7 @@ const period = ref<ChartPeriod>('month')
 const chart = ref<StatsChartId>('category')
 const kind = ref<'expense' | 'income'>('expense')
 const forecastHorizon = ref<'30' | '90'>('30')
+const asOf = ref(todayLocal())
 const customFrom = ref(todayLocal().slice(0, 8) + '01')
 const customTo = ref(todayLocal())
 const insightOpen = ref(false)
@@ -93,7 +96,7 @@ const kindOptions: { value: 'expense' | 'income'; label: string }[] = [
 ]
 
 const periodLabel = computed(() =>
-  formatPeriodLabel(period.value, undefined, {
+  formatPeriodLabel(period.value, asOf.value, {
     from: customFrom.value,
     to: customTo.value,
   }),
@@ -118,19 +121,31 @@ const customRange = computed(() => ({
   to: customTo.value,
 }))
 
+const canShiftNext = computed(() =>
+  canShiftChartPeriod(period.value, asOf.value, 1, customRange.value),
+)
+
+function onPeriodShift(delta: number) {
+  const next = shiftChartPeriod(period.value, asOf.value, delta, customRange.value)
+  asOf.value = next.asOf
+  if (next.from) customFrom.value = next.from
+  if (next.to) customTo.value = next.to
+}
+
 const filtered = computed(() =>
   filterStatsTransactions(transactions.posted, {
     accountId: selectedAccountId.value,
     period: period.value,
+    asOf: asOf.value,
     from: customFrom.value,
     to: customTo.value,
   }),
 )
 
-const range = computed(() => statsDateRange(period.value, undefined, customRange.value))
+const range = computed(() => statsDateRange(period.value, asOf.value, customRange.value))
 const summary = computed(() => statsSummary(filtered.value))
 const previousRange = computed(() =>
-  previousStatsDateRange(period.value, undefined, customRange.value),
+  previousStatsDateRange(period.value, asOf.value, customRange.value),
 )
 const previousFiltered = computed(() => {
   const prev = previousRange.value
@@ -151,7 +166,7 @@ const previousSummary = computed(() => {
   return statsSummary(previousFiltered.value)
 })
 
-const dayCount = computed(() => periodDayCount(range.value, undefined, filtered.value))
+const dayCount = computed(() => periodDayCount(range.value, asOf.value, filtered.value))
 const dailyExpense = computed(() => averageDailyExpense(summary.value.expenseTotal, dayCount.value))
 const share = computed(() => expenseShare(summary.value.expenseTotal, summary.value.incomeTotal))
 
@@ -315,6 +330,9 @@ function openCategorySlice(slice: CategorySpendSlice) {
       kind: kind.value,
       period: period.value,
       ...(period.value === 'custom' ? { from: customFrom.value, to: customTo.value } : {}),
+      ...(period.value !== 'custom' && period.value !== 'all' && asOf.value !== todayLocal()
+        ? { asOf: asOf.value }
+        : {}),
     },
   })
 }
@@ -374,7 +392,10 @@ function onInsightChart(id: InsightChartId) {
           v-model="period"
           v-model:from="customFrom"
           v-model:to="customTo"
+          v-model:as-of="asOf"
           :label="periodLabel"
+          :can-next="canShiftNext"
+          @shift="onPeriodShift"
         />
       </div>
 
@@ -544,7 +565,7 @@ function onInsightChart(id: InsightChartId) {
 
 .stats__toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 9.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-2);
 }

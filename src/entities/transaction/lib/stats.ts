@@ -137,6 +137,93 @@ export function statsDateRange(
   }
 }
 
+export interface ShiftedChartPeriod {
+  asOf: string
+  from?: string
+  to?: string
+}
+
+function periodAnchor(range: DateRange, today: string): string {
+  if (range.from && range.to && today >= range.from && today <= range.to) {
+    return today
+  }
+  return range.to ?? today
+}
+
+export function shiftChartPeriod(
+  period: ChartPeriod,
+  asOf: string,
+  delta: number,
+  custom?: DateRange,
+  today = todayLocal(),
+): ShiftedChartPeriod {
+  if (period === 'all' || delta === 0) {
+    return { asOf }
+  }
+
+  if (period === 'custom') {
+    const current = statsDateRange('custom', asOf, custom)
+    if (!current.from || !current.to) {
+      return { asOf }
+    }
+    const from = parseLocalDate(current.from)
+    const to = parseLocalDate(current.to)
+    const length = daysBetween(from, to) + 1
+    const nextFrom = formatLocalDate(addDays(from, delta * length))
+    const nextTo = formatLocalDate(addDays(to, delta * length))
+    if (nextFrom > today) {
+      return { asOf, from: current.from, to: current.to }
+    }
+    return {
+      asOf: periodAnchor({ from: nextFrom, to: nextTo }, today),
+      from: nextFrom,
+      to: nextTo,
+    }
+  }
+
+  const asOfDate = parseLocalDate(asOf)
+  let candidate: Date
+  if (period === 'day') {
+    candidate = addDays(asOfDate, delta)
+  } else if (period === 'week') {
+    candidate = addDays(asOfDate, delta * 7)
+  } else if (period === 'month') {
+    candidate = new Date(asOfDate.getFullYear(), asOfDate.getMonth() + delta, 1)
+  } else {
+    candidate = new Date(asOfDate.getFullYear() + delta, 0, 1)
+  }
+
+  const range = statsDateRange(period, formatLocalDate(candidate))
+  if (range.from && range.from > today) {
+    return { asOf }
+  }
+  return { asOf: periodAnchor(range, today) }
+}
+
+export function canShiftChartPeriod(
+  period: ChartPeriod,
+  asOf: string,
+  delta: number,
+  custom?: DateRange,
+  today = todayLocal(),
+): boolean {
+  if (period === 'all' || delta === 0) {
+    return false
+  }
+  if (period === 'custom' && (!custom?.from || !custom?.to)) {
+    return false
+  }
+  if (delta < 0) {
+    return true
+  }
+  const next = shiftChartPeriod(period, asOf, delta, custom, today)
+  if (period === 'custom') {
+    const current = statsDateRange('custom', asOf, custom)
+    return Boolean(next.from && next.from !== current.from)
+  }
+  return next.asOf !== asOf
+}
+
 function inRange(iso: string, range: DateRange): boolean {
   if (range.from && iso < range.from) {
     return false
@@ -539,7 +626,12 @@ export function formatPeriodLabel(
   }
 
   if (period === 'month') {
-    return formatMonthLabel(parseLocalDate(asOf))
+    const date = parseLocalDate(asOf)
+    const label = formatMonthLabel(date)
+    if (date.getFullYear() !== parseLocalDate(todayLocal()).getFullYear()) {
+      return `${label} ${date.getFullYear()}`
+    }
+    return label
   }
 
   if (period === 'year') {

@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import {
-  AppButton,
-  AppField,
-  AppInput,
-  AppSelect,
-  confirmAction,
-  getErrorMessage,
-} from '@/shared'
+import { AppButton, AppField, AppInput, AppSelect, confirmAction, getErrorMessage } from '@/shared'
 import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
@@ -105,9 +98,7 @@ function applyCategory(category: Category | null | undefined) {
   groupId.value = props.initialGroupId ?? ''
   colorManual.value = false
   selected.value = props.accounts.map((item) => item.id)
-  color.value = groupId.value
-    ? categories.autoShadeForGroup(groupId.value)
-    : CATEGORY_COLORS[0]
+  color.value = groupId.value ? categories.autoShadeForGroup(groupId.value) : CATEGORY_COLORS[0]
   error.value = ''
 }
 
@@ -145,7 +136,10 @@ watch(groupId, (next, prev) => {
   if (next) {
     const group = categories.getGroupById(next)
     if (!group) return
-    if (!colorManual.value || !familyByBase(group.color)?.light.some((item) => item === color.value)) {
+    if (
+      !colorManual.value ||
+      !familyByBase(group.color)?.light.some((item) => item === color.value)
+    ) {
       color.value = categories.autoShadeForGroup(next, editingId.value ?? undefined)
       colorManual.value = false
     }

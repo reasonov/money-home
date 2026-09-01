@@ -28,6 +28,7 @@ const emit = defineEmits<{
 
 const theme = useChartTheme()
 const selectedIndex = ref<number | null>(null)
+const isEmpty = computed(() => props.slices.length === 0)
 const total = computed(() => props.slices.reduce((sum, slice) => sum + slice.amount, 0))
 const selected = computed(() =>
   selectedIndex.value == null ? null : (props.slices[selectedIndex.value] ?? null),
@@ -129,7 +130,8 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
     <h2 v-if="title" class="card__title">{{ title }}</h2>
     <div class="card__body">
       <div class="card__chart">
-        <Doughnut :data="chartData" :options="chartOptions" />
+        <div v-if="isEmpty" class="card__empty-ring" aria-hidden="true" />
+        <Doughnut v-else :data="chartData" :options="chartOptions" />
         <div v-if="centerLabel || total" class="card__center">
           <template v-if="selected">
             <p class="card__center-label">{{ selected.name }}</p>
@@ -142,7 +144,7 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
           </template>
         </div>
       </div>
-      <ul class="legend">
+      <ul v-if="slices.length" class="legend">
         <li v-for="(slice, index) in slices" :key="slice.groupId ?? slice.categoryId ?? slice.name">
           <button
             type="button"
@@ -192,6 +194,20 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 .card__chart {
   position: relative;
   height: 220px;
+}
+
+.card__empty-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  aspect-ratio: 1;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-text-muted) 32%, transparent);
+  -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 62.5%);
+  mask: radial-gradient(farthest-side, transparent 62%, #000 62.5%);
 }
 
 .card__center {

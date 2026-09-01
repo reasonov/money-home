@@ -101,7 +101,11 @@ async function onSubmit() {
       <CategorySelect id="tpl-cat" v-model="categoryId" :categories="availableCats" required />
     </AppField>
     <AppField label="Название" for-id="tpl-title">
-      <AppInput id="tpl-title" v-model="title" :placeholder="kind === 'expense' ? 'Магазин' : 'Зарплата'" />
+      <AppInput
+        id="tpl-title"
+        v-model="title"
+        :placeholder="kind === 'expense' ? 'Магазин' : 'Зарплата'"
+      />
     </AppField>
     <AppField label="Комментарий" for-id="tpl-notes">
       <AppTextarea id="tpl-notes" v-model="notes" />

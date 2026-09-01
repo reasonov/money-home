@@ -35,6 +35,7 @@ export {
 } from './api/transactionApi'
 export {
   averageDailyExpense,
+  canShiftChartPeriod,
   expensesByCategory,
   expensesByDay,
   expensesByWeekday,
@@ -45,6 +46,7 @@ export {
   heatmapWindow,
   periodDayCount,
   previousStatsDateRange,
+  shiftChartPeriod,
   statsDateRange,
   statsSummary,
   topTransactions,
@@ -60,6 +62,7 @@ export {
   type HeatmapWeek,
   type MemberTotalsSlice,
   type PeriodKey,
+  type ShiftedChartPeriod,
   type StatsFilters,
   type StatsPeriod,
   type StatsSummary,

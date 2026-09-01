@@ -93,12 +93,12 @@ async function save() {
   <div v-if="canAct" class="actions">
     <template v-if="editing">
       <AppInputNumber v-model="amount" :min="1" placeholder="Новая сумма" aria-label="Новая сумма" />
-      <AppButton variant="secondary" :disabled="pending" @click="save">Сохранить</AppButton>
       <AppButton variant="ghost" @click="editing = false">Закрыть</AppButton>
+      <AppButton variant="secondary" :disabled="pending" @click="save">Сохранить</AppButton>
     </template>
     <template v-else>
-      <AppButton variant="secondary" :disabled="pending" @click="startEdit">Изменить сумму</AppButton>
       <AppButton variant="ghost" :disabled="pending" @click="skip">Отменить операцию</AppButton>
+      <AppButton variant="secondary" :disabled="pending" @click="startEdit">Изменить сумму</AppButton>
     </template>
   </div>
 </template>

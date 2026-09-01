@@ -5,7 +5,9 @@ import { useRoute } from 'vue-router'
 import { AppButton, AppEmpty, AppPeriodSelect, openFormDrawer, todayLocal } from '@/shared'
 import { ALL_ACCOUNTS_ID, useAccountStore } from '@/entities/account'
 import {
+  canShiftChartPeriod,
   formatPeriodLabel,
+  shiftChartPeriod,
   statsDateRange,
   useTransactionStore,
   type ChartPeriod,
@@ -29,7 +31,13 @@ function periodFromQuery(): ChartPeriod {
   return CHART_PERIODS.includes(value as ChartPeriod) ? (value as ChartPeriod) : 'month'
 }
 
+function asOfFromQuery(): string {
+  const value = queryParam('asOf')
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : todayLocal()
+}
+
 const period = ref<ChartPeriod>(periodFromQuery())
+const asOf = ref(asOfFromQuery())
 const customFrom = ref(queryParam('from') || todayLocal().slice(0, 8) + '01')
 const customTo = ref(queryParam('to') || todayLocal())
 const listKind = ref<'expense' | 'income' | undefined>(undefined)
@@ -42,6 +50,7 @@ function applyQuery() {
   const to = queryParam('to')
   if (from) customFrom.value = from
   if (to) customTo.value = to
+  asOf.value = asOfFromQuery()
   const kind = queryParam('kind')
   listKind.value = kind === 'expense' || kind === 'income' ? kind : undefined
   listCategoryId.value = queryParam('category') || undefined
@@ -57,18 +66,28 @@ watch(
   },
 )
 
+const customRange = computed(() => ({
+  from: customFrom.value,
+  to: customTo.value,
+}))
+
 const periodLabel = computed(() =>
-  formatPeriodLabel(period.value, undefined, {
-    from: customFrom.value,
-    to: customTo.value,
-  }),
+  formatPeriodLabel(period.value, asOf.value, customRange.value),
 )
 
+const canShiftNext = computed(() =>
+  canShiftChartPeriod(period.value, asOf.value, 1, customRange.value),
+)
+
+function onPeriodShift(delta: number) {
+  const next = shiftChartPeriod(period.value, asOf.value, delta, customRange.value)
+  asOf.value = next.asOf
+  if (next.from) customFrom.value = next.from
+  if (next.to) customTo.value = next.to
+}
+
 const periodItems = computed(() => {
-  const range = statsDateRange(period.value, undefined, {
-    from: customFrom.value,
-    to: customTo.value,
-  })
+  const range = statsDateRange(period.value, asOf.value, customRange.value)
   return transactions.posted.filter((item) => {
     if (
       selectedAccountId.value !== ALL_ACCOUNTS_ID &&
@@ -101,8 +120,11 @@ const periodItems = computed(() => {
             v-model="period"
             v-model:from="customFrom"
             v-model:to="customTo"
+            v-model:as-of="asOf"
             :label="periodLabel"
+            :can-next="canShiftNext"
             show-all
+            @shift="onPeriodShift"
           />
         </div>
 

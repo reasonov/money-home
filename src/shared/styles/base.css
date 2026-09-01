@@ -85,7 +85,9 @@ ul {
 
 .money {
   font-variant-numeric: tabular-nums;
-  transition: color 0.25s ease, opacity 0.25s ease;
+  transition:
+    color 0.25s ease,
+    opacity 0.25s ease;
 }
 
 :focus {
