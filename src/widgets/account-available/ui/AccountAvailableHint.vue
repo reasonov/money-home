@@ -2,15 +2,15 @@
 import { computed } from 'vue'
 import {
   AppHelpTip,
+  availableUntilAcrossAccounts,
   availableUntilNextIncome,
-  compareDates,
   formatLocalDate,
   formatMoney,
   formatShortDate,
   parseLocalDate,
   todayLocal,
   transferProjectionForAccount,
-  type AvailableUntilNextIncomeResult,
+  type AccountAvailableSlice,
 } from '@/shared'
 import { useAccountStore } from '@/entities/account'
 import { useExpenseRuleStore } from '@/entities/expense-rule'
@@ -32,10 +32,10 @@ const transferRules = useTransferRuleStore()
 const purchases = usePurchaseStore()
 const transactions = useTransactionStore()
 
-function computeFor(accountId: string, balance: number): AvailableUntilNextIncomeResult {
-  return availableUntilNextIncome({
+function sliceFor(accountId: string, balance: number): AccountAvailableSlice {
+  return {
+    id: accountId,
     currentBalance: balance,
-    asOfDate: parseLocalDate(todayLocal()),
     incomeRules: incomeRules.forAccount(accountId).filter((rule) => rule.active),
     plannedPurchases: purchases.plannedFor(accountId),
     postedOccurrenceDates: incomeRules
@@ -45,39 +45,37 @@ function computeFor(accountId: string, balance: number): AvailableUntilNextIncom
     postedExpenseOccurrenceDates: expenseRules
       .forAccount(accountId)
       .flatMap((rule) => transactions.expenseOccurrenceDatesFor(rule.id)),
-    ...transferProjectionForAccount(
-      transferRules.items,
-      accountId,
-      (id) => transactions.transferOccurrenceDatesFor(id),
-    ),
-  })
+  }
 }
 
-const targets = computed(() => {
-  if (props.accountId) {
-    return [{ id: props.accountId, amount: props.balance ?? 0 }]
-  }
-  return accounts.items
-    .filter((item) => !item.excludeFromTotal)
-    .map((item) => ({ id: item.id, amount: item.amount }))
-})
-
 const result = computed(() => {
-  let available = 0
-  let plannedSpend = 0
-  let nextIncomeDate: Date | null = null
-  for (const target of targets.value) {
-    const part = computeFor(target.id, target.amount)
-    available += part.available
-    plannedSpend += part.plannedSpend
-    if (
-      part.nextIncomeDate &&
-      (!nextIncomeDate || compareDates(part.nextIncomeDate, nextIncomeDate) < 0)
-    ) {
-      nextIncomeDate = part.nextIncomeDate
-    }
+  const asOfDate = parseLocalDate(todayLocal())
+  if (props.accountId) {
+    const slice = sliceFor(props.accountId, props.balance ?? 0)
+    return availableUntilNextIncome({
+      currentBalance: slice.currentBalance,
+      asOfDate,
+      incomeRules: slice.incomeRules,
+      plannedPurchases: slice.plannedPurchases,
+      postedOccurrenceDates: slice.postedOccurrenceDates,
+      expenseRules: slice.expenseRules,
+      postedExpenseOccurrenceDates: slice.postedExpenseOccurrenceDates,
+      ...transferProjectionForAccount(
+        transferRules.items,
+        props.accountId,
+        (id) => transactions.transferOccurrenceDatesFor(id),
+      ),
+    })
   }
-  return { available, plannedSpend, nextIncomeDate }
+  const slices = accounts.items
+    .filter((item) => !item.excludeFromTotal)
+    .map((item) => sliceFor(item.id, item.amount))
+  return availableUntilAcrossAccounts(
+    asOfDate,
+    slices,
+    transferRules.items,
+    (id) => transactions.transferOccurrenceDatesFor(id),
+  )
 })
 
 const text = computed(() => {
@@ -94,15 +92,18 @@ const text = computed(() => {
   }
   return `Доступно с учётом плановых покупок: ${amount}`
 })
+
+const helpText = computed(() =>
+  props.accountId
+    ? 'Уже вычтены плановые покупки и регулярные расходы до следующего пополнения. Копилки деньги не резервируют.'
+    : 'Уже вычтены плановые покупки и регулярные расходы до ближайшего пополнения. Переводы между этими счетами не вычитаются. Копилки деньги не резервируют.',
+)
 </script>
 
 <template>
   <span class="hint" :class="{ 'is-compact': compact }">
     {{ text }}
-    <AppHelpTip
-      v-if="!compact"
-      text="Уже вычтены плановые покупки и регулярные расходы до следующего пополнения. Копилки деньги не резервируют."
-    />
+    <AppHelpTip v-if="!compact" :text="helpText" />
   </span>
 </template>
 

@@ -367,6 +367,7 @@ export interface AvailableUntilNextIncomeInput {
   outgoingTransferRules?: ProjectionIncomeRule[]
   postedIncomingTransferDates?: string[]
   postedOutgoingTransferDates?: string[]
+  untilDate?: Date
 }
 
 export interface AvailableUntilNextIncomeResult {
@@ -409,7 +410,8 @@ export function availableUntilNextIncome(
     expenseRules = [],
     postedExpenseOccurrenceDates,
   } = withTransferRules(input)
-  const nextIncomeDate = findNextIncomeDate(incomeRules, asOfDate, postedOccurrenceDates)
+  const nextIncomeDate =
+    input.untilDate ?? findNextIncomeDate(incomeRules, asOfDate, postedOccurrenceDates)
   const spendUntil = nextIncomeDate ?? addDays(asOfDate, NEXT_AFFORDABLE_HORIZON_DAYS)
 
   let plannedSpend = 0
@@ -450,6 +452,76 @@ export function availableUntilNextIncome(
     plannedSpend: reserved,
     nextIncomeDate,
   }
+}
+
+export interface AccountAvailableSlice {
+  id: string
+  currentBalance: number
+  incomeRules: ProjectionIncomeRule[]
+  plannedPurchases: ProjectionPurchase[]
+  postedOccurrenceDates?: string[]
+  expenseRules?: ProjectionIncomeRule[]
+  postedExpenseOccurrenceDates?: string[]
+}
+
+export type ProjectionTransferRule = ProjectionIncomeRule & {
+  id: string
+  fromAccountId: string
+  toAccountId: string
+}
+
+function isInternalTransfer(rule: ProjectionTransferRule, includedIds: Set<string>): boolean {
+  return includedIds.has(rule.fromAccountId) && includedIds.has(rule.toAccountId)
+}
+
+export function availableUntilAcrossAccounts(
+  asOfDate: Date,
+  accounts: AccountAvailableSlice[],
+  transferRules: ProjectionTransferRule[],
+  postedTransferDatesFor: (ruleId: string) => string[] = () => [],
+): AvailableUntilNextIncomeResult {
+  const includedIds = new Set(accounts.map((account) => account.id))
+  const externalTransfers = transferRules.filter(
+    (rule) => !isInternalTransfer(rule, includedIds),
+  )
+
+  function inputFor(
+    account: AccountAvailableSlice,
+    untilDate?: Date,
+  ): AvailableUntilNextIncomeInput {
+    return {
+      currentBalance: account.currentBalance,
+      asOfDate,
+      incomeRules: account.incomeRules,
+      plannedPurchases: account.plannedPurchases,
+      postedOccurrenceDates: account.postedOccurrenceDates,
+      expenseRules: account.expenseRules,
+      postedExpenseOccurrenceDates: account.postedExpenseOccurrenceDates,
+      ...transferProjectionForAccount(externalTransfers, account.id, postedTransferDatesFor),
+      ...(untilDate ? { untilDate } : {}),
+    }
+  }
+
+  let nextIncomeDate: Date | null = null
+  for (const account of accounts) {
+    const part = availableUntilNextIncome(inputFor(account))
+    if (
+      part.nextIncomeDate &&
+      (!nextIncomeDate || compareDates(part.nextIncomeDate, nextIncomeDate) < 0)
+    ) {
+      nextIncomeDate = part.nextIncomeDate
+    }
+  }
+
+  let available = 0
+  let plannedSpend = 0
+  for (const account of accounts) {
+    const part = availableUntilNextIncome(inputFor(account, nextIncomeDate ?? undefined))
+    available += part.available
+    plannedSpend += part.plannedSpend
+  }
+
+  return { available, plannedSpend, nextIncomeDate }
 }
 
 export interface TransferCandidateAccount {

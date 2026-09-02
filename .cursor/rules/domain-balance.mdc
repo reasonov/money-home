@@ -22,4 +22,5 @@ Canonical formula: `docs/SPEC.md` § Balance Projection Algorithm.
 - Recheck on create and on edit of amount/date/account (exclude the edited purchase).
 - If `!canAfford`: refuse; banner + drawer; offer transfer from another of the user's accounts when surplus ≥ shortfall.
 - «Свободно до пополнения»: `balance − planned − future expense rules` with dates strictly before next income.
+- All accounts: one nearest income date; same formula to that date; skip transfers between included accounts.
 - «Готово» по покупке: один расход и одно списание. Skip/adjust auto-post must not re-apply that date.

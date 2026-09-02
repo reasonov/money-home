@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatLocalDate, parseLocalDate } from '../dates'
-import { availableUntilNextIncome, forecastBalanceSeries, projectBalance, suggestTransfer } from '../projectBalance'
+import { availableUntilAcrossAccounts, availableUntilNextIncome, forecastBalanceSeries, projectBalance, suggestTransfer } from '../projectBalance'
 
 describe('projectBalance', () => {
   it('rejects curtain when projected balance is 1500', () => {
@@ -461,6 +461,187 @@ describe('availableUntilNextIncome', () => {
     expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
     expect(result.plannedSpend).toBe(2000)
     expect(result.available).toBe(8000)
+  })
+
+  it('untilDate uses a shared horizon instead of this account income', () => {
+    const result = availableUntilNextIncome({
+      currentBalance: 10000,
+      asOfDate: parseLocalDate('2026-08-04'),
+      untilDate: parseLocalDate('2026-08-10'),
+      incomeRules: [
+        {
+          amount: 20000,
+          frequency: 'monthly',
+          monthDay: 20,
+          active: true,
+        },
+      ],
+      plannedPurchases: [
+        {
+          amount: 2000,
+          plannedDate: '2026-08-08',
+          status: 'planned',
+        },
+        {
+          amount: 4000,
+          plannedDate: '2026-08-15',
+          status: 'planned',
+        },
+      ],
+      expenseRules: [
+        {
+          amount: 1500,
+          frequency: 'monthly',
+          monthDay: 12,
+          active: true,
+        },
+      ],
+    })
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-10')
+    expect(result.plannedSpend).toBe(2000)
+    expect(result.available).toBe(8000)
+  })
+})
+
+describe('availableUntilAcrossAccounts', () => {
+  it('uses the earliest income date and ignores later plans', () => {
+    const result = availableUntilAcrossAccounts(parseLocalDate('2026-08-04'), [
+      {
+        id: 'a',
+        currentBalance: 10000,
+        incomeRules: [
+          {
+            amount: 20000,
+            frequency: 'monthly',
+            monthDay: 10,
+            active: true,
+          },
+        ],
+        plannedPurchases: [
+          {
+            amount: 1000,
+            plannedDate: '2026-08-08',
+            status: 'planned',
+          },
+        ],
+      },
+      {
+        id: 'b',
+        currentBalance: 5000,
+        incomeRules: [
+          {
+            amount: 15000,
+            frequency: 'monthly',
+            monthDay: 20,
+            active: true,
+          },
+        ],
+        plannedPurchases: [
+          {
+            amount: 3000,
+            plannedDate: '2026-08-15',
+            status: 'planned',
+          },
+        ],
+        expenseRules: [
+          {
+            amount: 2000,
+            frequency: 'monthly',
+            monthDay: 12,
+            active: true,
+          },
+        ],
+      },
+    ], [])
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-10')
+    expect(result.plannedSpend).toBe(1000)
+    expect(result.available).toBe(14000)
+  })
+
+  it('does not reserve internal transfers or treat them as next income', () => {
+    const result = availableUntilAcrossAccounts(
+      parseLocalDate('2026-08-04'),
+      [
+        {
+          id: 'a',
+          currentBalance: 10000,
+          incomeRules: [
+            {
+              amount: 20000,
+              frequency: 'monthly',
+              monthDay: 20,
+              active: true,
+            },
+          ],
+          plannedPurchases: [],
+        },
+        {
+          id: 'b',
+          currentBalance: 5000,
+          incomeRules: [],
+          plannedPurchases: [
+            {
+              amount: 2000,
+              plannedDate: '2026-08-08',
+              status: 'planned',
+            },
+          ],
+        },
+      ],
+      [
+        {
+          id: 't1',
+          fromAccountId: 'a',
+          toAccountId: 'b',
+          amount: 3000,
+          frequency: 'monthly',
+          monthDay: 6,
+          active: true,
+        },
+      ],
+    )
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
+    expect(result.plannedSpend).toBe(2000)
+    expect(result.available).toBe(13000)
+  })
+
+  it('still reserves transfers that leave the included set', () => {
+    const result = availableUntilAcrossAccounts(
+      parseLocalDate('2026-08-04'),
+      [
+        {
+          id: 'a',
+          currentBalance: 10000,
+          incomeRules: [
+            {
+              amount: 20000,
+              frequency: 'monthly',
+              monthDay: 20,
+              active: true,
+            },
+          ],
+          plannedPurchases: [],
+        },
+      ],
+      [
+        {
+          id: 't1',
+          fromAccountId: 'a',
+          toAccountId: 'piggy',
+          amount: 1500,
+          frequency: 'monthly',
+          monthDay: 10,
+          active: true,
+        },
+      ],
+    )
+
+    expect(formatLocalDate(result.nextIncomeDate!)).toBe('2026-08-20')
+    expect(result.plannedSpend).toBe(1500)
+    expect(result.available).toBe(8500)
   })
 })
 
