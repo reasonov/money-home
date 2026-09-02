@@ -6,6 +6,17 @@ describe('matchCategoryIcon', () => {
     expect(matchCategoryIcon('Кофе')).toBe('coffee')
     expect(matchCategoryIcon('Кафе')).toBe('dining')
     expect(matchCategoryIcon('Пицца')).toBe('pizza')
+    expect(matchCategoryIcon('Маникюр')).toBe('manicure')
+    expect(matchCategoryIcon('Парикмахер')).toBe('haircut')
+    expect(matchCategoryIcon('Косметолог')).toBe('cosmetics')
+    expect(matchCategoryIcon('Уход')).toBe('care')
+  })
+
+  it('matches common aliases', () => {
+    expect(matchCategoryIcon('Педикюр')).toBe('manicure')
+    expect(matchCategoryIcon('Парикмахерская')).toBe('haircut')
+    expect(matchCategoryIcon('Стрижка')).toBe('haircut')
+    expect(matchCategoryIcon('Косметология')).toBe('cosmetics')
   })
 
   it('ignores case and surrounding spaces', () => {

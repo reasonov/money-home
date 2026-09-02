@@ -1,5 +1,19 @@
 export { useTransactionStore } from './model/store'
 export { matchOperationsByAmount } from './lib/amountMatches'
+export { default as SplitRemainderFields } from './ui/SplitRemainderFields.vue'
+export {
+  MAX_SPLIT_LINES,
+  allocatedSplitAmount,
+  partsFromLines,
+  remainderAfterSplits,
+  splitRemainder,
+  splitRemainderMessage,
+  splitSavedToast,
+  type SplitPart,
+  type SplitRemainderError,
+  type SplitRemainderLine,
+  type SplitRemainderResult,
+} from './lib/splitRemainder'
 export { lastOperationAccountId } from './lib/lastAccount'
 export { transactionFromOutboxPayload, pendingInsertAmountDelta } from './lib/fromOutbox'
 export { ruleDraftFromOperation } from './lib/ruleDraft'

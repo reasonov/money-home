@@ -36,7 +36,13 @@ import { useSessionStore } from '@/entities/session'
 import {
   lastOperationAccountId,
   matchOperationsByAmount,
+  partsFromLines,
+  SplitRemainderFields,
+  splitRemainder,
+  splitRemainderMessage,
+  splitSavedToast,
   useTransactionStore,
+  type SplitRemainderLine,
   type Transaction,
 } from '@/entities/transaction'
 import {
@@ -100,6 +106,7 @@ const pending = ref(false)
 const createOpen = ref(false)
 const templatesOpen = ref(false)
 const savingTemplate = ref(false)
+const splitLines = ref<SplitRemainderLine[]>([])
 const line = ref('')
 const parsePending = ref(false)
 const parseSuggestion = ref<ParsedOperationLine | null>(null)
@@ -334,6 +341,14 @@ const matchingTemplate = computed(() => {
 
 const inFavorites = computed(() => Boolean(matchingTemplate.value))
 
+const hasSplits = computed(() => splitLines.value.length > 0)
+
+const remainderCategoryName = computed(
+  () => availableCats.value.find((item) => item.id === categoryId.value)?.name ?? '',
+)
+
+const splitTotal = computed(() => Number(amount.value))
+
 async function toggleCurrentTemplate() {
   if (!canSaveTemplate.value || savingTemplate.value) {
     return
@@ -369,6 +384,22 @@ function onCategoryCreated(category: Category) {
   createOpen.value = false
 }
 
+async function addOperation(category: Category, value: number) {
+  return transactions.addManual({
+    accountId: accountId.value,
+    kind: props.kind,
+    categoryId: category.id,
+    categoryName: category.name,
+    categoryColor: category.color,
+    categoryIcon: category.icon,
+    title: title.value || category.name,
+    amount: value,
+    occurredOn: occurredOn.value,
+    notes: notes.value,
+    createdBy: session.user!.id,
+  })
+}
+
 async function onSubmit() {
   error.value = ''
   const value = Number(amount.value)
@@ -377,23 +408,24 @@ async function onSubmit() {
     error.value = 'Выберите счёт и категорию, затем укажите сумму больше 0 ₽'
     return
   }
+  const split = splitRemainder(value, category.id, partsFromLines(splitLines.value))
+  if (!split.ok) {
+    error.value = splitRemainderMessage(split.error)
+    return
+  }
   pending.value = true
   try {
-    const created = await transactions.addManual({
-      accountId: accountId.value,
-      kind: props.kind,
-      categoryId: category.id,
-      categoryName: category.name,
-      categoryColor: category.color,
-      categoryIcon: category.icon,
-      title: title.value || category.name,
-      amount: value,
-      occurredOn: occurredOn.value,
-      notes: notes.value,
-      createdBy: session.user!.id,
-    })
+    const created = await addOperation(category, split.parts.length ? split.remainder : value)
+    for (const part of split.parts) {
+      const partCategory = categories.getById(part.categoryId)
+      if (!partCategory) {
+        error.value = splitRemainderMessage('categories')
+        return
+      }
+      await addOperation(partCategory, part.amount)
+    }
     saveLastCategoryId(props.kind, category.id)
-    showToast(props.kind === 'expense' ? 'Расход сохранён' : 'Доход сохранён')
+    showToast(splitSavedToast(props.kind, 1 + split.parts.length))
     emit('saved', created)
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить')
@@ -414,6 +446,7 @@ async function onSubmit() {
         Заполнить из избранного
       </AppButton>
       <AppButton
+        v-if="!hasSplits"
         type="button"
         class="form__fav-add"
         :aria-label="inFavorites ? 'Удалить из избранного' : 'Добавить в избранное'"
@@ -504,6 +537,14 @@ async function onSubmit() {
     >
       <AppButton variant="secondary" block @click="createOpen = true">Добавить категорию</AppButton>
     </AppEmpty>
+    <SplitRemainderFields
+      v-if="availableCats.length"
+      v-model="splitLines"
+      :total="splitTotal"
+      :remainder-category-id="categoryId"
+      :remainder-category-name="remainderCategoryName"
+      :categories="availableCats"
+    />
     <AppField label="Дата" for-id="op-date" required>
       <AppInput id="op-date" v-model="occurredOn" type="date" required />
     </AppField>

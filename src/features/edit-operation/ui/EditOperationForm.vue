@@ -27,7 +27,17 @@ import {
 } from '@/entities/category'
 import { findMatchingTemplate, useOperationTemplateStore } from '@/entities/operation-template'
 import { useSessionStore } from '@/entities/session'
-import { ruleDraftFromOperation, useTransactionStore, type Transaction } from '@/entities/transaction'
+import {
+  partsFromLines,
+  ruleDraftFromOperation,
+  SplitRemainderFields,
+  splitRemainder,
+  splitRemainderMessage,
+  splitSavedToast,
+  useTransactionStore,
+  type SplitRemainderLine,
+  type Transaction,
+} from '@/entities/transaction'
 
 const props = defineProps<{
   transactionId: string
@@ -50,6 +60,7 @@ const pending = ref(false)
 const error = ref('')
 const createOpen = ref(false)
 const savingTemplate = ref(false)
+const splitLines = ref<SplitRemainderLine[]>([])
 
 const kind = ref<CategoryKind | 'transfer'>('expense')
 const source = ref('')
@@ -148,6 +159,16 @@ const matchingTemplate = computed(() => {
 })
 
 const inFavorites = computed(() => Boolean(matchingTemplate.value))
+
+const canSplit = computed(() => !isTransfer.value && !isAutoRule.value)
+
+const hasSplits = computed(() => splitLines.value.length > 0)
+
+const remainderCategoryName = computed(
+  () => availableCats.value.find((item) => item.id === categoryId.value)?.name ?? '',
+)
+
+const splitTotal = computed(() => Number(amount.value))
 
 async function toggleCurrentTemplate() {
   if (!canSaveTemplate.value || savingTemplate.value || isTransfer.value) {
@@ -254,19 +275,56 @@ async function onSubmit() {
     return
   }
 
+  const split = !isTransfer.value
+    ? splitRemainder(value, categoryId.value, partsFromLines(splitLines.value))
+    : { ok: true as const, remainder: value, parts: [] }
+  if (!split.ok) {
+    error.value = splitRemainderMessage(split.error)
+    return
+  }
+  const userId = session.user?.id
+  if (split.parts.length && !userId) {
+    error.value = 'Не удалось сохранить'
+    return
+  }
+
   pending.value = true
   try {
     await transactions.updatePosted({
       id: props.transactionId,
       accountId: accountId.value,
-      amount: value,
+      amount: split.parts.length ? split.remainder : value,
       occurredOn: occurredOn.value,
       counterpartyAccountId: isTransfer.value ? toAccountId.value : undefined,
       categoryId: isTransfer.value ? undefined : categoryId.value,
       title: title.value,
       notes: notes.value,
     })
-    showToast('Операция сохранена')
+    if (split.parts.length && userId) {
+      for (const part of split.parts) {
+        const partCategory = categories.getById(part.categoryId)
+        if (!partCategory) {
+          error.value = splitRemainderMessage('categories')
+          return
+        }
+        await transactions.addManual({
+          accountId: accountId.value,
+          kind: categoryKind.value,
+          categoryId: partCategory.id,
+          categoryName: partCategory.name,
+          categoryColor: partCategory.color,
+          categoryIcon: partCategory.icon,
+          title: title.value || partCategory.name,
+          amount: part.amount,
+          occurredOn: occurredOn.value,
+          notes: notes.value,
+          createdBy: userId,
+        })
+      }
+      showToast(splitSavedToast(categoryKind.value, 1 + split.parts.length))
+    } else {
+      showToast('Операция сохранена')
+    }
     emit('saved')
   } catch (err) {
     error.value = getErrorMessage(err, 'Не удалось сохранить')
@@ -325,7 +383,7 @@ async function onDelete() {
       {{ source === 'expense_rule' ? 'Регулярный расход' : 'Регулярное пополнение' }}: можно изменить только сумму
     </p>
 
-    <div v-if="!isTransfer" class="form__actions">
+    <div v-if="!isTransfer && !hasSplits" class="form__actions">
       <AppButton
         v-if="!isAutoRule"
         type="button"
@@ -401,6 +459,14 @@ async function onDelete() {
       <AppEmpty v-if="!availableCats.length" description="Нет категорий для этого счёта">
         <AppButton variant="secondary" block @click="createOpen = true">Добавить категорию</AppButton>
       </AppEmpty>
+      <SplitRemainderFields
+        v-if="canSplit && availableCats.length"
+        v-model="splitLines"
+        :total="splitTotal"
+        :remainder-category-id="categoryId"
+        :remainder-category-name="remainderCategoryName"
+        :categories="availableCats"
+      />
     </template>
 
     <AppField label="Дата" for-id="edit-date" required>
@@ -434,7 +500,7 @@ async function onDelete() {
       type="button"
       variant="secondary"
       block
-      :disabled="pending || !availableCats.length"
+      :disabled="pending || !availableCats.length || hasSplits"
       @click="repeatToday"
     >
       Повторить
