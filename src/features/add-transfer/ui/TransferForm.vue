@@ -8,6 +8,7 @@ import {
   AppInputNumber,
   AppSelect,
   formatMoney,
+  formatMoneyPlain,
   getErrorMessage,
   openFormDrawer,
   showToast,
@@ -30,6 +31,7 @@ const transactions = useTransactionStore()
 const fromId = ref(accounts.getById(props.fromAccountId ?? '')?.id ?? accounts.items[0]?.id ?? '')
 const toId = ref(accounts.items.find((item) => item.id !== fromId.value)?.id ?? '')
 const amount = ref<string | number>('')
+const occurredOn = ref(todayLocal())
 const notes = ref('')
 const error = ref('')
 const pending = ref(false)
@@ -49,6 +51,14 @@ function swap() {
   const previous = fromId.value
   fromId.value = toId.value
   toId.value = previous
+}
+
+function fillAllAmount() {
+  const available = fromAccount.value?.amount ?? 0
+  if (available <= 0) {
+    return
+  }
+  amount.value = available
 }
 
 async function onSubmit() {
@@ -72,7 +82,7 @@ async function onSubmit() {
       fromAccountId: fromId.value,
       toAccountId: toId.value,
       amount: value,
-      occurredOn: todayLocal(),
+      occurredOn: occurredOn.value,
       notes: notes.value,
     })
     transactions.upsert({
@@ -108,9 +118,14 @@ async function onSubmit() {
     <AppField label="Сумма, ₽" for-id="tr-amount" required>
       <AppInputNumber id="tr-amount" v-model="amount" :min="1" placeholder="0" />
     </AppField>
-    <p v-if="fromAccount" class="hint">
-      На счёте «{{ fromAccount.name }}»: {{ formatMoney(fromAccount.amount) }}
-    </p>
+    <button
+      v-if="fromAccount && fromAccount.amount > 0"
+      type="button"
+      class="fill"
+      @click="fillAllAmount"
+    >
+      Ввести всю сумму: {{ formatMoneyPlain(fromAccount.amount) }}
+    </button>
     <AppField label="Откуда" for-id="tr-from" required>
       <AppSelect id="tr-from" v-model="fromId">
         <option v-for="account in accounts.items" :key="account.id" :value="account.id">
@@ -130,6 +145,9 @@ async function onSubmit() {
         </option>
       </AppSelect>
     </AppField>
+    <AppField label="Дата" for-id="tr-date" required>
+      <AppInput id="tr-date" v-model="occurredOn" type="date" required />
+    </AppField>
     <AppField label="Комментарий" for-id="tr-notes">
       <AppInput id="tr-notes" v-model="notes" />
     </AppField>
@@ -147,10 +165,17 @@ async function onSubmit() {
   gap: var(--space-4);
 }
 
-.hint {
+.fill {
   margin: calc(var(--space-3) * -1) 0 0;
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 0.875rem;
-  color: var(--color-text-muted);
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
 }
 
 .error {
