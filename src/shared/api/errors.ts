@@ -23,6 +23,14 @@ export function isMissingCategoryFk(
   return text.includes('category_id_fkey')
 }
 
+function isUserFacingMessage(message: string): boolean {
+  return /[а-яё]/i.test(message)
+}
+
+function translateErrorMessage(message: string, fallback: string): string {
+  return mapAuthMessage(message) || (isUserFacingMessage(message) ? message : fallback)
+}
+
 export function getErrorMessage(error: unknown, fallback = 'Что-то пошло не так'): string {
   if (error instanceof Error && error.message === OFFLINE_NO_DATA_MESSAGE) {
     return OFFLINE_NO_DATA_MESSAGE
@@ -31,11 +39,10 @@ export function getErrorMessage(error: unknown, fallback = 'Что-то пошл
     return NETWORK_ERROR_MESSAGE
   }
   if (error && typeof error === 'object' && 'message' in error) {
-    const message = String((error as { message: unknown }).message)
-    return mapAuthMessage(message) || fallback
+    return translateErrorMessage(String((error as { message: unknown }).message), fallback)
   }
   if (typeof error === 'string' && error.trim()) {
-    return mapAuthMessage(error) || fallback
+    return translateErrorMessage(error, fallback)
   }
   return fallback
 }

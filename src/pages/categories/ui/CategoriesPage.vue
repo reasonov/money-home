@@ -108,8 +108,9 @@ const categoryMenu: DropdownOption[] = [
 const groupMenu: DropdownOption[] = [
   { label: 'Изменить', key: 'edit' },
   { label: 'Категория в группу', key: 'add' },
+  { label: 'Распустить', key: 'dissolve' },
   {
-    label: 'Распустить',
+    label: 'Удалить',
     key: 'remove',
     props: { style: { color: 'var(--color-danger)' } },
   },
@@ -196,6 +197,28 @@ async function removeCategory(category: Category) {
   }
 }
 
+async function deleteGroup(group: CategoryGroup) {
+  const count = categories.items.filter((item) => item.groupId === group.id).length
+  const ok = await confirmAction({
+    title: 'Удалить группу?',
+    message: count
+      ? `«${group.name}» и ${categoryCountLabel(count)} исчезнут. История операций не изменится.`
+      : `«${group.name}» исчезнет. История операций не изменится.`,
+    confirmLabel: 'Удалить',
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    await categories.removeGroup(group.id, { deleteChildren: true })
+    if (editingGroup.value?.id === group.id) {
+      closeGroupDrawer()
+    }
+    showToast('Группа удалена')
+  } catch (err) {
+    showToast(getErrorMessage(err, 'Не удалось удалить группу'))
+  }
+}
+
 async function dissolveGroup(group: CategoryGroup) {
   const ok = await confirmAction({
     title: 'Распустить группу?',
@@ -234,8 +257,12 @@ function onGroupMenu(group: CategoryGroup, key: string | number) {
     openCreateCategory(group.id)
     return
   }
-  if (key === 'remove') {
+  if (key === 'dissolve') {
     void dissolveGroup(group)
+    return
+  }
+  if (key === 'remove') {
+    void deleteGroup(group)
   }
 }
 

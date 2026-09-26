@@ -29,14 +29,17 @@ import {
   updateSavingsGoalRow,
 } from '@/entities/savings-goal'
 import {
+  adjustDueExpense,
+  adjustDueIncome,
+  adjustDueTransfer,
   adjustExpenseOccurrence,
   adjustIncomeOccurrence,
   adjustTransferOccurrence,
   cancelPostedTransaction,
-  findExpenseOccurrence,
-  findIncomeOccurrence,
-  findTransferOccurrence,
   insertTransaction,
+  skipDueExpense,
+  skipDueIncome,
+  skipDueTransfer,
   skipExpenseOccurrence,
   skipIncomeOccurrence,
   skipTransferOccurrence,
@@ -162,7 +165,7 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
       await deleteCategory(String(payload.id))
       return
     case 'deleteCategoryGroup':
-      await deleteCategoryGroup(String(payload.id))
+      await deleteCategoryGroup(String(payload.id), Boolean(payload.deleteChildren))
       return
     case 'createAccount':
       await createAccount(payload as Parameters<typeof createAccount>[0])
@@ -212,48 +215,42 @@ export async function applyOutboxItem(item: OutboxRecord): Promise<void> {
     case 'adjustTransferOccurrence':
       await adjustTransferOccurrence(String(payload.id), Number(payload.amount))
       return
-    case 'skipDueIncome': {
-      const occ = await findIncomeOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await skipIncomeOccurrence(occ.id)
-      }
+    case 'skipDueIncome':
+      await skipDueIncome(String(payload.ruleId), String(payload.occurredOn))
       return
-    }
-    case 'skipDueExpense': {
-      const occ = await findExpenseOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await skipExpenseOccurrence(occ.id)
-      }
+    case 'skipDueExpense':
+      await skipDueExpense(String(payload.ruleId), String(payload.occurredOn))
       return
-    }
-    case 'skipDueTransfer': {
-      const occ = await findTransferOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await skipTransferOccurrence(occ.id)
-      }
+    case 'skipDueTransfer':
+      await skipDueTransfer(String(payload.ruleId), String(payload.occurredOn))
       return
-    }
-    case 'adjustDueIncome': {
-      const occ = await findIncomeOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await adjustIncomeOccurrence(occ.id, Number(payload.amount))
-      }
+    case 'adjustDueIncome':
+      await adjustDueIncome(
+        String(payload.ruleId),
+        String(payload.occurredOn),
+        Number(payload.amount),
+        payload.title != null ? String(payload.title) : undefined,
+        payload.notes != null ? String(payload.notes) : undefined,
+      )
       return
-    }
-    case 'adjustDueExpense': {
-      const occ = await findExpenseOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await adjustExpenseOccurrence(occ.id, Number(payload.amount))
-      }
+    case 'adjustDueExpense':
+      await adjustDueExpense(
+        String(payload.ruleId),
+        String(payload.occurredOn),
+        Number(payload.amount),
+        payload.title != null ? String(payload.title) : undefined,
+        payload.notes != null ? String(payload.notes) : undefined,
+      )
       return
-    }
-    case 'adjustDueTransfer': {
-      const occ = await findTransferOccurrence(String(payload.ruleId), String(payload.occurredOn))
-      if (occ) {
-        await adjustTransferOccurrence(occ.id, Number(payload.amount))
-      }
+    case 'adjustDueTransfer':
+      await adjustDueTransfer(
+        String(payload.ruleId),
+        String(payload.occurredOn),
+        Number(payload.amount),
+        payload.title != null ? String(payload.title) : undefined,
+        payload.notes != null ? String(payload.notes) : undefined,
+      )
       return
-    }
     case 'upsertOperationTemplate':
       await upsertOperationTemplate(
         String(payload.userId),

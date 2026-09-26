@@ -148,6 +148,35 @@ export async function skipIncomeOccurrence(occurrenceId: string): Promise<void> 
   }
 }
 
+export async function skipDueIncome(ruleId: string, occurredOn: string): Promise<void> {
+  const { error } = await supabase.rpc('skip_due_income', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось отменить пополнение'))
+  }
+}
+
+export async function adjustDueIncome(
+  ruleId: string,
+  occurredOn: string,
+  amount: number,
+  title?: string,
+  notes?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('adjust_due_income', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+    p_amount: roundMoney(amount),
+    ...(title != null ? { p_title: title } : {}),
+    ...(notes != null ? { p_notes: notes } : {}),
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось изменить пополнение'))
+  }
+}
+
 export async function adjustIncomeOccurrence(occurrenceId: string, amount: number): Promise<Transaction> {
   const { data, error } = await supabase
     .rpc('adjust_income_occurrence', {
@@ -169,10 +198,49 @@ export async function skipExpenseOccurrence(occurrenceId: string): Promise<void>
   }
 }
 
+export async function skipDueExpense(ruleId: string, occurredOn: string): Promise<void> {
+  const { error } = await supabase.rpc('skip_due_expense', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось отменить расход'))
+  }
+}
+
 export async function skipTransferOccurrence(occurrenceId: string): Promise<void> {
   const { error } = await supabase.rpc('skip_transfer_occurrence', { p_occurrence_id: occurrenceId })
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось отменить перевод'))
+  }
+}
+
+export async function skipDueTransfer(ruleId: string, occurredOn: string): Promise<void> {
+  const { error } = await supabase.rpc('skip_due_transfer', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось отменить перевод'))
+  }
+}
+
+export async function adjustDueExpense(
+  ruleId: string,
+  occurredOn: string,
+  amount: number,
+  title?: string,
+  notes?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('adjust_due_expense', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+    p_amount: roundMoney(amount),
+    ...(title != null ? { p_title: title } : {}),
+    ...(notes != null ? { p_notes: notes } : {}),
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось изменить расход'))
   }
 }
 
@@ -188,6 +256,25 @@ export async function adjustExpenseOccurrence(occurrenceId: string, amount: numb
     throw new Error(getErrorMessage(error, 'Не удалось изменить расход'))
   }
   return mapTransaction(data)
+}
+
+export async function adjustDueTransfer(
+  ruleId: string,
+  occurredOn: string,
+  amount: number,
+  title?: string,
+  notes?: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('adjust_due_transfer', {
+    p_rule_id: ruleId,
+    p_occurred_on: occurredOn,
+    p_amount: roundMoney(amount),
+    ...(title != null ? { p_title: title } : {}),
+    ...(notes != null ? { p_notes: notes } : {}),
+  })
+  if (error) {
+    throw new Error(getErrorMessage(error, 'Не удалось изменить перевод'))
+  }
 }
 
 export async function adjustTransferOccurrence(occurrenceId: string, amount: number): Promise<Transaction> {

@@ -717,6 +717,36 @@ export type Database = {
         Args: { p_account_id: string; p_delta: number }
         Returns: Database['public']['Tables']['accounts']['Row']
       }
+      adjust_due_expense: {
+        Args: {
+          p_amount: number
+          p_notes?: string
+          p_occurred_on: string
+          p_rule_id: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
+      adjust_due_income: {
+        Args: {
+          p_amount: number
+          p_notes?: string
+          p_occurred_on: string
+          p_rule_id: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
+      adjust_due_transfer: {
+        Args: {
+          p_amount: number
+          p_notes?: string
+          p_occurred_on: string
+          p_rule_id: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
       adjust_expense_occurrence: {
         Args: { p_new_amount: number; p_occurrence_id: string }
         Returns: Database['public']['Tables']['transactions']['Row']
@@ -768,7 +798,7 @@ export type Database = {
         Returns: undefined
       }
       delete_category_group: {
-        Args: { p_id: string }
+        Args: { p_delete_children?: boolean; p_id: string }
         Returns: undefined
       }
       ensure_profile: {
@@ -802,6 +832,18 @@ export type Database = {
       share_account: {
         Args: { p_account_id: string }
         Returns: Database['public']['Tables']['accounts']['Row']
+      }
+      skip_due_expense: {
+        Args: { p_occurred_on: string; p_rule_id: string }
+        Returns: undefined
+      }
+      skip_due_income: {
+        Args: { p_occurred_on: string; p_rule_id: string }
+        Returns: undefined
+      }
+      skip_due_transfer: {
+        Args: { p_occurred_on: string; p_rule_id: string }
+        Returns: undefined
       }
       skip_expense_occurrence: {
         Args: { p_occurrence_id: string }

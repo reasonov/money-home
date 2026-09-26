@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ChevronRight, Plus } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Plus } from '@lucide/vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   AppButton,
@@ -214,14 +214,13 @@ function openCategoryHistory(slice: CategorySpendSlice) {
           />
         </div>
 
-        <button
-          v-if="drillGroup"
-          type="button"
-          class="home__back"
-          @click="drillGroupId = null"
-        >
-          Назад · {{ drillGroup.name }}
-        </button>
+        <div v-if="drillGroup" class="home__crumb">
+          <button type="button" class="home__back" @click="drillGroupId = null">
+            <ChevronLeft :size="18" :stroke-width="2" />
+            Назад
+          </button>
+          <span class="home__crumb-name">{{ drillGroup.name }}</span>
+        </div>
 
         <div
           ref="sliderRef"
@@ -314,16 +313,35 @@ function openCategoryHistory(slice: CategorySpendSlice) {
   will-change: transform;
 }
 
+.home__crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .home__back {
-  align-self: start;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
   min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-accent);
+  font: inherit;
   font-weight: 700;
-  text-align: left;
   cursor: pointer;
+}
+
+.home__crumb-name {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty-actions {

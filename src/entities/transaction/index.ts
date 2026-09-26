@@ -34,6 +34,9 @@ export type {
 } from './model/types'
 export type { ExpenseOccurrenceRow, OccurrenceRow, TransferOccurrenceRow } from './api/transactionApi'
 export {
+  adjustDueExpense,
+  adjustDueIncome,
+  adjustDueTransfer,
   adjustExpenseOccurrence,
   adjustIncomeOccurrence,
   adjustTransferOccurrence,
@@ -42,6 +45,9 @@ export {
   findIncomeOccurrence,
   findTransferOccurrence,
   insertTransaction,
+  skipDueExpense,
+  skipDueIncome,
+  skipDueTransfer,
   skipExpenseOccurrence,
   skipIncomeOccurrence,
   skipTransferOccurrence,

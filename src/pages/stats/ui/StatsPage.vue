@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { ChevronLeft } from '@lucide/vue'
 import { useRouter } from 'vue-router'
 import {
   AppButton,
@@ -416,14 +417,13 @@ function onInsightChart(id: InsightChartId) {
           aria-label="Тип операций"
         />
 
-        <button
-          v-if="chart === 'category' && drillGroup"
-          type="button"
-          class="stats__back"
-          @click="drillGroupId = null"
-        >
-          Назад · {{ drillGroup.name }}
-        </button>
+        <div v-if="chart === 'category' && drillGroup" class="stats__crumb">
+          <button type="button" class="stats__back" @click="drillGroupId = null">
+            <ChevronLeft :size="18" :stroke-width="2" />
+            Назад
+          </button>
+          <span class="stats__crumb-name">{{ drillGroup.name }}</span>
+        </div>
 
         <CategorySpendChart
           v-if="chart === 'category' && categorySlices.length"
@@ -580,16 +580,35 @@ function onInsightChart(id: InsightChartId) {
   box-shadow: var(--shadow-soft);
 }
 
+.stats__crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .stats__back {
-  align-self: start;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
   min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-accent);
+  font: inherit;
   font-weight: 700;
-  text-align: left;
   cursor: pointer;
+}
+
+.stats__crumb-name {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insight-drawer {

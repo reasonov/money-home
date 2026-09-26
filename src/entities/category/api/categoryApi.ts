@@ -184,8 +184,11 @@ export async function upsertCategoryGroup(input: UpsertCategoryGroupInput): Prom
   }
 }
 
-export async function deleteCategoryGroup(id: string): Promise<void> {
-  const { error } = await supabase.rpc('delete_category_group', { p_id: id })
+export async function deleteCategoryGroup(id: string, deleteChildren = false): Promise<void> {
+  const { error } = await supabase.rpc('delete_category_group', {
+    p_id: id,
+    p_delete_children: deleteChildren,
+  })
   if (error) {
     throw new Error(getErrorMessage(error, 'Не удалось удалить группу'))
   }

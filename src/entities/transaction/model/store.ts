@@ -367,8 +367,102 @@ export const useTransactionStore = defineStore('transaction', () => {
     }
     upsert(next)
     useAccountStore().applyAmountDelta(next.accountId, postedBalanceDelta(next, 1))
+    if (await enqueueLocalDueAdjust(next, input.title, input.notes)) {
+      return next
+    }
     await enqueueMutation(current.createdBy, 'updatePostedTransaction', { ...input }, input.id)
     return next
+  }
+
+  async function enqueueLocalDueAdjust(tx: Transaction, title?: string, notes?: string): Promise<boolean> {
+    if (!isLocalOnlyId(tx.id)) {
+      return false
+    }
+    const occ = occurrenceByTransaction(tx.id)
+    if (!occ) {
+      return false
+    }
+    const payload = {
+      occurredOn: occ.occurred_on,
+      amount: tx.amount,
+      ...(title != null ? { title } : {}),
+      ...(notes != null ? { notes } : {}),
+    }
+    if ('income_rule_id' in occ) {
+      upsertIncomeOccurrence({ ...occ, status: 'adjusted' })
+      await enqueueMutation(
+        tx.createdBy,
+        'adjustDueIncome',
+        { ...payload, ruleId: occ.income_rule_id },
+        occ.id,
+      )
+      return true
+    }
+    if ('expense_rule_id' in occ) {
+      upsertExpenseOccurrence({ ...occ, status: 'adjusted' })
+      await enqueueMutation(
+        tx.createdBy,
+        'adjustDueExpense',
+        { ...payload, ruleId: occ.expense_rule_id },
+        occ.id,
+      )
+      return true
+    }
+    if ('transfer_rule_id' in occ) {
+      upsertTransferOccurrence({ ...occ, status: 'adjusted' })
+      await enqueueMutation(
+        tx.createdBy,
+        'adjustDueTransfer',
+        { ...payload, ruleId: occ.transfer_rule_id },
+        occ.id,
+      )
+      return true
+    }
+    return false
+  }
+
+  async function enqueueLocalDueSkip(tx: Transaction): Promise<boolean> {
+    if (!isLocalOnlyId(tx.id)) {
+      return false
+    }
+    const occ = occurrenceByTransaction(tx.id)
+    if (!occ) {
+      return false
+    }
+    if ('income_rule_id' in occ) {
+      upsertIncomeOccurrence({ ...occ, status: 'skipped' })
+      rememberSkippedDue(dueKey('income', occ.income_rule_id, occ.occurred_on))
+      await enqueueMutation(
+        tx.createdBy,
+        'skipDueIncome',
+        { ruleId: occ.income_rule_id, occurredOn: occ.occurred_on },
+        occ.id,
+      )
+      return true
+    }
+    if ('expense_rule_id' in occ) {
+      upsertExpenseOccurrence({ ...occ, status: 'skipped' })
+      rememberSkippedDue(dueKey('expense', occ.expense_rule_id, occ.occurred_on))
+      await enqueueMutation(
+        tx.createdBy,
+        'skipDueExpense',
+        { ruleId: occ.expense_rule_id, occurredOn: occ.occurred_on },
+        occ.id,
+      )
+      return true
+    }
+    if ('transfer_rule_id' in occ) {
+      upsertTransferOccurrence({ ...occ, status: 'skipped' })
+      rememberSkippedDue(dueKey('transfer', occ.transfer_rule_id, occ.occurred_on))
+      await enqueueMutation(
+        tx.createdBy,
+        'skipDueTransfer',
+        { ruleId: occ.transfer_rule_id, occurredOn: occ.occurred_on },
+        occ.id,
+      )
+      return true
+    }
+    return false
   }
 
   async function cancelPosted(id: string) {
@@ -379,6 +473,9 @@ export const useTransactionStore = defineStore('transaction', () => {
     }
     upsert({ ...current, status: 'cancelled' })
     useAccountStore().applyAmountDelta(current.accountId, postedBalanceDelta(current, -1))
+    if (await enqueueLocalDueSkip(current)) {
+      return
+    }
     await enqueueMutation(current.createdBy, 'cancelPostedTransaction', { id }, id)
   }
 

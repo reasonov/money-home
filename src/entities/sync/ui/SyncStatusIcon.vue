@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WifiOff } from '@lucide/vue'
+import { CircleAlert, WifiOff } from '@lucide/vue'
 import { useSyncStore } from '../model/store'
 
 const sync = useSyncStore()
@@ -7,8 +7,14 @@ const sync = useSyncStore()
 
 <template>
   <div v-if="sync.showStatusIcon" class="status">
-    <button type="button" class="status__btn" aria-describedby="sync-status-tip" aria-label="Нет сети">
-      <WifiOff :size="20" :stroke-width="1.8" />
+    <button
+      type="button"
+      class="status__btn"
+      aria-describedby="sync-status-tip"
+      :aria-label="sync.status === 'error' ? 'Ошибка синхронизации' : 'Нет сети'"
+    >
+      <CircleAlert v-if="sync.status === 'error'" :size="20" :stroke-width="1.8" />
+      <WifiOff v-else :size="20" :stroke-width="1.8" />
     </button>
     <p id="sync-status-tip" class="status__tip" role="tooltip">{{ sync.bannerText }}</p>
   </div>

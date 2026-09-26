@@ -370,14 +370,20 @@ export const useCategoryStore = defineStore('category', () => {
     await enqueueMutation(userId, 'deleteCategory', { id }, id)
   }
 
-  async function removeGroup(id: string) {
+  async function removeGroup(id: string, options?: { deleteChildren?: boolean }) {
     assertWritable()
     const userId = useSessionStore().user?.id
     if (!userId) {
       throw new Error('Войдите в аккаунт')
     }
-    dissolveGroupLocal(id)
-    await enqueueMutation(userId, 'deleteCategoryGroup', { id }, id)
+    const deleteChildren = options?.deleteChildren === true
+    if (deleteChildren) {
+      items.value = items.value.filter((item) => item.groupId !== id)
+      groups.value = groups.value.filter((item) => item.id !== id)
+    } else {
+      dissolveGroupLocal(id)
+    }
+    await enqueueMutation(userId, 'deleteCategoryGroup', { id, deleteChildren }, id)
   }
 
   async function applyStarter(
